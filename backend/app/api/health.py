@@ -7,6 +7,7 @@ router = APIRouter(tags=["Health"])
 
 
 @router.get("/health")
+@router.head("/health")
 async def health_check():
     db_status = "unknown"
     try:

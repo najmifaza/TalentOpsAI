@@ -58,7 +58,7 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
   - Implementasi router Career Portal publik (`GET /api/careers`, `GET /api/careers/{id}`, `POST /api/careers/{id}/apply`, `GET /api/careers/track/{token}`).
   - Implementasi router Candidate HR internal (`GET /api/candidates`, `GET /api/candidates/{id}`, `POST /api/candidates/upload`, `DELETE /api/candidates/{id}`, `GET /api/candidates/stream/{id}`).
   - Integrasi soft-deletion kriptografis Right to Erasure sesuai amanat UU PDP No. 27/2022 (penghancuran DEK, tombstone blind index, pencatatan audit log `pii_access_logs`, tanpa menghapus baris fisik kandidat).
-- **Status & Verifikasi:** Selesai 100%. Test suite `pytest backend/tests` lulus 16 dari 16 test (100% pass).
+- **Status & Verifikasi:** Selesai 100%. Test suite `pytest backend/tests` lulus 16 dari 16 test (100% pass). Deploy live ke VPS Ubuntu berhasil, service `talentops-backend` status active (running), curl HEAD `/api/health` 200 OK, dan `GET /api/careers` mengembalikan data lowongan riil dari database.
 - **Catatan untuk Rekan Tim (Willy & Fardizza):**
   - *Public Apply:* Endpoint `/api/careers/{job_id}/apply` menerima form-data (termasuk `dpa_consent=true`) dan mengembalikan `masked_identifier` serta `tracking_token`.
   - *HR Dropzone:* Endpoint `/api/candidates/upload` menerima form `job_id` dan file multi-upload untuk status awal `queued`.

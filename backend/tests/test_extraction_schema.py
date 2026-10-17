@@ -1,5 +1,6 @@
 import os
 import sys
+import pytest
 from pydantic import ValidationError
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -12,8 +13,7 @@ from app.schemas.extraction import (
 )
 
 
-def run_checks():
-    # 1. Valid extraction payload
+def test_valid_extraction_payload():
     raw_payload = {
         "claims": [
             {
@@ -48,27 +48,38 @@ def run_checks():
     assert schema.claims[0].technology == "FastAPI"
     assert schema.education.degree == "S1"
 
-    # 2. Strict Anti-Bias: forbidding university / accreditation
+
+def test_strict_anti_bias_forbids_university():
     biased_payload = {
         "degree": "S1",
         "field_of_study": "Informatika",
         "graduation_status": "Lulus",
         "university": "Universitas Top Tier",  # FORBIDDEN
     }
-    bias_caught = False
-    try:
+    with pytest.raises(ValidationError):
         EducationItem.model_validate(biased_payload)
-    except ValidationError:
-        bias_caught = True
-    assert bias_caught, "Schema MUST reject unallowed university/campus fields"
 
-    # 3. Substring Guard check
+
+def test_substring_guard_validation_and_downgrade():
     cv_text = "Experienced developer who built async rest microservices handling 2k rps with python."
-    schema.apply_substring_guard(cv_text)
-    assert schema.claims[0].has_implementation_detail is True, "Authentic narrative must retain True"
 
-    # 4. Substring Guard hallucination downgrade
-    hallucinated_payload = {
+    # 1. Authentic claim retained
+    valid_payload = {
+        "claims": [
+            {
+                "dimension": "SKILL",
+                "technology": "FastAPI",
+                "has_implementation_detail": True,
+                "context_narrative": "built async rest microservices handling 2k rps",
+            }
+        ]
+    }
+    schema = CandidateExtractionSchema.model_validate(valid_payload)
+    schema.apply_substring_guard(cv_text)
+    assert schema.claims[0].has_implementation_detail is True
+
+    # 2. Hallucinated claim downgraded
+    fake_payload = {
         "claims": [
             {
                 "dimension": "SKILL",
@@ -78,12 +89,6 @@ def run_checks():
             }
         ]
     }
-    fake_schema = CandidateExtractionSchema.model_validate(hallucinated_payload)
+    fake_schema = CandidateExtractionSchema.model_validate(fake_payload)
     fake_schema.apply_substring_guard(cv_text)
-    assert fake_schema.claims[0].has_implementation_detail is False, "Hallucinated claim must be downgraded to False"
-
-    print("ALL CHECKS PASSED: Pydantic v2 Extraction Schema & Anti-Bias verified.")
-
-
-if __name__ == "__main__":
-    run_checks()
+    assert fake_schema.claims[0].has_implementation_detail is False

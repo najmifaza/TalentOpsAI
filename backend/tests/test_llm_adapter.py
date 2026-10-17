@@ -1,8 +1,8 @@
-import asyncio
 import os
 import sys
+from unittest.mock import AsyncMock, patch
+import pytest
 
-# Ensure backend root is on sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.core.llm_adapter import (
@@ -12,14 +12,15 @@ from app.core.llm_adapter import (
 )
 
 
-async def run_checks():
-    # 1. Deterministic hashing test
+def test_deterministic_hashing():
     h1 = compute_file_hash("resume sample content")
     h2 = compute_file_hash("resume sample content")
     assert h1 == h2, "Hash must be deterministic"
     assert len(h1) == 64, "SHA-256 hash must be 64 chars"
 
-    # 2. Pre-cached store test
+
+@pytest.mark.asyncio
+async def test_pre_cached_store():
     fake_hash = "mock_hash_123456"
     fixture_data = {"candidate": "Budi Santoso", "skills": ["FastAPI", "Python"]}
     register_pre_cached_fixture(fake_hash, fixture_data)
@@ -34,19 +35,24 @@ async def run_checks():
     assert cached_res["label"] == "[PRE-CACHED]"
     assert cached_res["parsed"]["candidate"] == "Budi Santoso"
 
-    # 3. Cache bypass test (use_cache=False)
-    # Should attempt live completion instead of serving cache
-    live_res = await adapter.complete(
-        messages=[{"role": "user", "content": "Respond with single word: READY"}],
-        file_hash=fake_hash,
-        use_cache=False,
-    )
-    assert live_res["source"] == "LIVE"
-    assert live_res["label"] == "[LIVE]"
-    assert "READY" in live_res["content"].upper()
 
-    print("ALL CHECKS PASSED: LLM Adapter verified.")
+@pytest.mark.asyncio
+async def test_cache_bypass_mocked_gateway():
+    fake_hash = "mock_hash_bypass_999"
+    adapter = LLMAdapter()
 
+    mock_resp = AsyncMock()
+    mock_resp.status_code = 200
+    mock_resp.json = lambda: {
+        "choices": [{"message": {"content": "READY"}}]
+    }
 
-if __name__ == "__main__":
-    asyncio.run(run_checks())
+    with patch("httpx.AsyncClient.post", return_value=mock_resp):
+        live_res = await adapter.complete(
+            messages=[{"role": "user", "content": "Respond with single word: READY"}],
+            file_hash=fake_hash,
+            use_cache=False,
+        )
+        assert live_res["source"] == "LIVE"
+        assert live_res["label"] == "[LIVE]"
+        assert "READY" in live_res["content"].upper()

@@ -2,12 +2,17 @@ import docx
 from docx.oxml.ns import qn
 
 # ponytail: Basic XML tag inspection for DOCX hidden text. Upgrade to PDF alpha-channel OCR scanner.
-def audit_docx_hidden_text(docx_path: str) -> tuple[str, list[str]]:
+def audit_docx_hidden_text(docx_source: str | bytes) -> tuple[str, list[str]]:
     """
     PRD Bab 6.1: Inspects DOCX for hidden elements (w:vanish, white font, 1pt font).
+    Accepts filepath string or raw bytes.
     Returns (cleaned_text, detected_hidden_snippets).
     """
-    doc = docx.Document(docx_path)
+    import io
+    if isinstance(docx_source, bytes):
+        doc = docx.Document(io.BytesIO(docx_source))
+    else:
+        doc = docx.Document(docx_source)
     clean_paragraphs: list[str] = []
     hidden_snippets: list[str] = []
 

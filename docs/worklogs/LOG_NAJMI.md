@@ -31,3 +31,36 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
   - *Role Non-Programmer:* Verifikasi GitHub hanya untuk role IT/programmer. Untuk role non-programmer, frontend lewati tampilan audit GitHub dan tampilkan status `NOT_APPLICABLE` (bukan error).
   - *Penanganan Token:* Gunakan `tracking_token` (UUIDv4) untuk fetch status `/api/careers/track/{token}`, sedangkan `masked_identifier` (`#TK-XXXXXX`) hanya untuk tampilan visual.
 - **Rencana Selanjutnya (Sprint 2):** Implementasi In-Memory Regex PII Sanitizer, Envelope Encryption AES-256-GCM, dan Endpoint Ingestion (`/api/careers/{id}/apply` & `/api/candidates/upload`).
+
+---
+
+### 2026-10-18 - Najmi - Data Ingestion, Kriptografi UU PDP & Adapter Interkoneksi (Sprint 2)
+- **Komponen / File:**
+  - `backend/app/core/crypto.py`
+  - `backend/app/core/sanitizer.py`
+  - `backend/app/core/file_parser.py`
+  - `backend/app/core/rate_limiter.py`
+  - `backend/app/core/broadcaster.py`
+  - `backend/app/adapters/calendar.py`
+  - `backend/app/adapters/github.py`
+  - `backend/app/api/careers.py`
+  - `backend/app/api/candidates.py`
+  - `backend/app/main.py`
+  - `backend/requirements.txt`
+  - `backend/tests/test_sprint2_ingestion_crypto.py`
+- **Yang Dikerjakan:**
+  - Implementasi Envelope Encryption AES-256-GCM (`generate_dek`, `encrypt_dek`, `encrypt_pii`) dan Blind Indexing HMAC-SHA256 dengan pepper untuk email.
+  - Implementasi In-Memory Regex PII Sanitizer (< 20 ms) yang menyensor nama, kontak telepon, email, gender, dan almamater universitas dengan fitur Two-Way Dictionary Matching.
+  - Implementasi parser in-memory file resume PDF/DOCX dengan validasi biner Magic Bytes (`%PDF-` dan `PK\x03\x04`), serta generator `masked_identifier` (`#TK-XXXXXX`) dan `tracking_token` (UUIDv4).
+  - Implementasi Mock Calendar Adapter dengan penguncian transaksional `SELECT ... FOR UPDATE` (menjamin anti double-booking) dan format event ID deterministik standar Google Calendar.
+  - Implementasi GitHub REST API v3 adapter untuk verifikasi eksistensi repositori publik, stars, forks, dan bahasa pemrograman.
+  - Implementasi SSE Broadcaster in-memory (`asyncio.Queue`) dengan trace replay buffer.
+  - Implementasi router Career Portal publik (`GET /api/careers`, `GET /api/careers/{id}`, `POST /api/careers/{id}/apply`, `GET /api/careers/track/{token}`).
+  - Implementasi router Candidate HR internal (`GET /api/candidates`, `GET /api/candidates/{id}`, `POST /api/candidates/upload`, `DELETE /api/candidates/{id}`, `GET /api/candidates/stream/{id}`).
+  - Integrasi soft-deletion kriptografis Right to Erasure sesuai amanat UU PDP No. 27/2022 (penghancuran DEK, tombstone blind index, pencatatan audit log `pii_access_logs`, tanpa menghapus baris fisik kandidat).
+- **Status & Verifikasi:** Selesai 100%. Test suite `pytest backend/tests` lulus 16 dari 16 test (100% pass).
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - *Public Apply:* Endpoint `/api/careers/{job_id}/apply` menerima form-data (termasuk `dpa_consent=true`) dan mengembalikan `masked_identifier` serta `tracking_token`.
+  - *HR Dropzone:* Endpoint `/api/candidates/upload` menerima form `job_id` dan file multi-upload untuk status awal `queued`.
+  - *SSE Broadcaster:* Siap dikonsumsi di endpoint `/api/candidates/stream/{id}`.
+- **Rencana Selanjutnya (Sprint 3):** Dukungan orkestrasi agent triage background worker bersama modul AI scoring Fardizza, serta hardening VPS deployment.

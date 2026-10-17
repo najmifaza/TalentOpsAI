@@ -250,9 +250,28 @@ Dokumen acuan arsitektur & spesifikasi API: [PRD_TALENTOPS_AI_MASTER.md](file://
    Willy (Frontend) tidak boleh menunggu endpoint Najmi (Backend) selesai. Manfaatkan skema JSON baku pada [Bab 8.2 PRD](file:///d:/Coding/GitHub/LombaUndip/PRD_TALENTOPS_AI_MASTER.md#L670) sebagai *mock service worker* lokal di frontend sejak Sprint 1.
 2. **Skema Validasi Output Model (Zero Raw Text):**  
    Fardizza (AI/Data) wajib membungkus seluruh luaran Gemini 3.8 ke dalam Pydantic Model sebelum diserahkan ke Najmi (Backend) untuk dikalkulasi dan disimpan ke MariaDB. Dilarang meneruskan string mentah (*unparsed text*) ke database.
-3. **Konvensi Percabangan Git (Branching Workflow):**
-   - `main`: Branch rilis produksi yang terhubung ke deployment Vercel & VPS.
-   - `feat/backend-core`: Modul database, endpoint REST, dan security (**Najmi**).
-   - `feat/ai-engine`: Modul adapter LLM, formula skor 4D, dan skrip evaluasi (**Fardizza**).
-   - `feat/frontend-ui`: Komponen React 18, React Flow graph, dan styling (**Willy**).
-   - *Pull Request (PR) wajib melewati review minimal 1 anggota tim sebelum dimerge ke `main`.*
+3. **Konvensi Percabangan Git & Skema Merge Mandiri:**
+   - **Struktur Branching:**
+     - `main`: Branch produksi stabil. Terhubung otomatis ke CI/CD deployment Vercel & VPS.
+     - `feat/<role>-<fitur>`: Branch kerja per sub-fitur spesifik (bukan nunggu satu sprint penuh selesai).
+       - Contoh Najmi: `feat/backend-auth`, `feat/backend-db-schema`, `feat/backend-calendar-lock`
+       - Contoh Fardizza: `feat/ai-9router-client`, `feat/ai-pydantic-schema`, `feat/ai-4d-scoring`
+       - Contoh Willy: `feat/ui-career-portal`, `feat/ui-evidence-graph`, `feat/ui-whatif-studio`
+   - **Skema Alur Kerja (Work -> Self-Merge -> Pull):**
+     ```
+     [Branch main] ───────────────┬───────────────────────────────► [Auto Deploy VPS/Vercel]
+                                  │ (checkout branch baru)            ▲
+                                  v                                   │
+     [Branch feat/<role>-<fitur>] ──► [Coding & Self-Test] ──► [PR GitHub] (Self-Merge / Review)
+     ```
+   - **Aturan Merge Mandiri (Self-Merge as Contributor):**
+     - **Merge per Sub-Fitur (Atomic Merge):** Jangan menunda merge sampai akhir sprint. Begitu 1 sub-fitur selesai diuji lokal, langsung buat PR dan merge ke `main` agar anggota lain bisa segera `git pull origin main`.
+     - **Izin Self-Merge:** Karena semua anggota tim berstatus kontributor repository, pembuat branch diizinkan melakukan **Self-Merge** (Squash and Merge) tanpa harus menunggu approval formal, asalkan:
+       1. Kode tidak broken (server lokal bisa running, frontend lulus `npm run build`).
+       2. Fitur teruji di lokal dan tidak mengubah file di luar kepemilikan foldernya.
+       3. Beri notifikasi singkat di grup WhatsApp setelah merge berhasil.
+     - **Ritual Sinkronisasi:** Sebelum membuat branch baru atau sebelum push, wajib jalankan `git checkout main && git pull origin main` agar basis kode lokal selalu sinkron dengan branch produksi.
+4. **Isolasi Modul & Penanganan Risiko Tabrakan (Zero-Conflict Parallel Execution):**
+   - **Frontend vs Backend (Sprint 1–2):** Willy bekerja penuh menggunakan Mock JSON statis berbasis kontrak PRD Bab 5.1 & 8.2 (via Mock Service Worker / fixtures lokal). Frontend tidak bergantung pada kesiapan endpoint live VPS.
+   - **AI Logic vs Database Ingestion (Sprint 2):** Skema Pydantic (`schemas/extraction.py`) dikunci Fardizza sebagai *single source of truth* sebelum prompt dioptimasi atau query database ditulis Najmi.
+   - **Separasi Fisik Direktori Codebase:** Pembagian folder root diisolasi menjadi `backend/` (Najmi), `ai_engine/` (Fardizza), dan `frontend/` (Willy) untuk mengeliminasi potensi konflik merge pada file bersama. Modifikasi file bersama di root (`.env.example`, `docker-compose.yml`) wajib disepakati via komunikasi singkat tim.

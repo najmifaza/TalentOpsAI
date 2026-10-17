@@ -27,11 +27,15 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Enterprise Dark Theme, Candida
   - `frontend/src/data/mockCandidates.js`
 - **Yang Dikerjakan:**
   - Inisialisasi struktur arsitektur SPA **React 18 + Vite 5** dengan styling **Tailwind CSS**.
-  - Penerapan tema visual **Enterprise Dark Mode** (palet warna slate/zinc, aksen cyan/blue, glassmorphism panel, dan micro-animations).
+  - **Penerapan Tema Visual Human-Crafted Modern (Anti AI-Slop):**
+    - Menghindari dark mode generik/hitam legam agar tidak terkesan klise AI.
+    - Mengadopsi palet warna organik terkurasi: Deep Forest Pine (`#051F20`, `#0B2B26`, `#163832`), Soft Sage (`#8EB69B`), Mint Cream (`#DAF1DE`), serta Clean Mint-Tinted Canvas (`#EEF4F0`).
+    - Tipografi modern **Plus Jakarta Sans** dipadukan dengan **Inter**.
+    - Desain kartu analitik modern dengan grafik mini-bar chart, semi-circular match rate gauge (76.5%), distribusi bobot 4D, dan banner arsitektur forest green.
   - Pembangunan kerangka layout shell **Dashboard HR Recruiter**:
-    - Sidebar navigasi modular dengan status pelacak sprint.
-    - Topbar header responsif dengan indikator tenant dan integrasi badge kesehatan backend.
-    - Dashboard Overview dengan kartu metrik ringkasan (Total Kandidat, Rasio Strong Match, Rasio Review, Kepatuhan UU PDP No. 27/2022).
+    - Sidebar navigasi hijau hutan (`#0B2B26`) dengan widget profil akun pengembang (Willy Narendra) dan status pelacak sprint.
+    - Topbar header bersih dengan tombol aksi cepat (*Add Custom AI Filter*) dan integrasi badge kesehatan backend.
+    - Dashboard Overview dengan kartu metrik ringkasan (Core Competency Index, Determinism & Fairness, Kepatuhan UU PDP No. 27/2022).
   - Pembangunan tabel dossier antrean kandidat dengan implementasi:
     - Masked Identifier (`#TK-XXXXXX`) dan nama tersensor untuk perlindungan privasi UU PDP.
     - Visualisasi skor 4D deterministik ($S_{\text{comp}}, S_{\text{port}}, S_{\text{conf}}, S_{\text{risk}}$).

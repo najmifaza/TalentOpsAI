@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 from typing import Any
 
 import httpx
@@ -32,7 +33,12 @@ class LLMAdapterError(Exception):
 class LLMAdapter:
     def __init__(self, base_url: str | None = None, api_key: str | None = None):
         self.base_url = (base_url or settings.LLM_ROUTER_BASE_URL).rstrip("/")
-        self.api_key = api_key or settings.LLM_API_KEY or settings.LLM_ROUTER_API_KEY
+        self.api_key = (
+            api_key
+            or settings.LLM_API_KEY
+            or (settings.LLM_ROUTER_API_KEY if settings.LLM_ROUTER_API_KEY != "dummy-key" else "")
+            or os.getenv("CUSTOM_API_KEY", "")
+        )
         self.headers: dict[str, str] = {
             "Content-Type": "application/json",
         }

@@ -1,4 +1,5 @@
 import json
+import os
 from typing import List
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,8 +18,8 @@ class Settings(BaseSettings):
         "https://talentops.vercel.app",
     ]
 
-    DATABASE_URL: str = "mysql+aiomysql://talentops_app:talentops_password@127.0.0.1:3306/talentops_db"
-    SYNC_DATABASE_URL: str = "mysql+pymysql://talentops_app:talentops_password@127.0.0.1:3306/talentops_db"
+    DATABASE_URL: str = "mysql+aiomysql://talentops_app:***@127.0.0.1:3306/talentops_db"
+    SYNC_DATABASE_URL: str = "mysql+pymysql://talentops_app:***@127.0.0.1:3306/talentops_db"
 
     MASTER_KEK: str = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
     HMAC_PEPPER: str = "talentops_hmac_secret_pepper_2026"
@@ -27,11 +28,11 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 1440
 
     LLM_ROUTER_BASE_URL: str = "http://127.0.0.1:20128/v1"
-    LLM_ROUTER_API_KEY: str = "dummy-key"
-    LLM_API_KEY: str = ""
+    LLM_ROUTER_API_KEY: str = ""
+    LLM_API_KEY: str = os.getenv("LLM_API_KEY") or os.getenv("CUSTOM_API_KEY", "")
     LLM_ROUTER_PROVIDER: str = "antigravity"
-    LLM_MODEL_NAME: str = "gemini-3.8"
-    LLM_FALLBACK_MODEL: str = "gemini-3.8"
+    LLM_MODEL_NAME: str = "ag/gemini-3.8-flash-low"
+    LLM_FALLBACK_MODEL: str = "ag/gemini-3.8-flash-high"
     LLM_TEMPERATURE: float = 0.0
     LLM_THINKING_LEVEL: str = "low"
     LLM_TIMEOUT: float = 30.0

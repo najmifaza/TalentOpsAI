@@ -1,7 +1,7 @@
 # WORKLOG - WILLY (FRONTEND & PRODUCT UI/UX)
 
 Peran: Developer 3  
-Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Enterprise Dark Theme, Candidate Evidence Graph (React Flow), What-If Simulation Studio, Public Career & HR Portal, Vercel Edge Deployment & State Management.
+Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage Theme, Candidate Evidence Graph (React Flow), What-If Simulation Studio, Public Career & HR Portal, Vercel Edge Deployment & State Management.
 
 ---
 

@@ -97,7 +97,7 @@ Dokumen acuan arsitektur & spesifikasi API: [PRD_TALENTOPS_AI_MASTER.md](file://
      - State management lokal & asinkron untuk cache query, status filter pelamar, dan token auth.
   2. **Public Career Portal (`/careers/apply`):**
      - Formulir lamaran kandidat dengan komponen drag-and-drop file uploader (PDF/DOCX), validasi MIME-type di browser, checkbox persetujuan DPA, dan dialog penerbitan *tracking token*.
-     - Halaman pelacakan status kandidat berbasis token (`/careers/track/{token}`).
+     - Halaman pelacakan status kandidat berbasis token (`/careers/track/{token}`): Frontend wajib menggunakan `tracking_token` (UUIDv4) untuk fetch data API, sedangkan `masked_identifier` (`#TK-XXXXXX`) hanya untuk tampilan display visual.
   3. **HR Recruiter Dashboard:**
      - Tampilan tabel dossier kandidat terurut berdasarkan `triage_priority` dan `confidence_score`.
      - Filter pencarian berbasis taksonomi teknologi, status kelulusan, dan flag anomali.
@@ -105,9 +105,11 @@ Dokumen acuan arsitektur & spesifikasi API: [PRD_TALENTOPS_AI_MASTER.md](file://
      - Modal interaktif dossier kandidat: ringkasan riwayat karier, gap kompetensi, dan tombol interaktif *Approve / Reject / Schedule Interview*.
   4. **Fitur Visualisasi Interaktif Utama:**
      - **Candidate Evidence Graph (React Flow):** Visualisasi graf node interaktif yang menghubungkan klaim kompetensi langsung ke kutipan teks resume dan metadata repositori GitHub terverifikasi.
+     - *Penanganan Role Non-Programmer:* Untuk lowongan non-programmer (UI/UX, PM, dll.), visualisasi graf melewati audit GitHub dan menampilkan badge status `NOT_APPLICABLE` (bukan status error merah).
      - **What-If Policy Simulation Studio:** Panel slider interaktif untuk simulasi pergeseran bobot penilaian 4D secara instan di browser (in-memory) tanpa latensi backend.
   5. **Client Deployment & Optimasi:**
      - Setup hosting pada Vercel Global Edge Network, konfigurasi rewrite rules `vercel.json`, code splitting, dan kompresi bundle asset.
+     - Konfigurasi HTTP Header Content Security Policy (CSP) produksi pada `vercel.json` (`connect-src 'self' https://api.talentops.id`), tanpa mencantumkan port dev lokal.
 
 ---
 
@@ -250,9 +252,33 @@ Dokumen acuan arsitektur & spesifikasi API: [PRD_TALENTOPS_AI_MASTER.md](file://
    Willy (Frontend) tidak boleh menunggu endpoint Najmi (Backend) selesai. Manfaatkan skema JSON baku pada [Bab 8.2 PRD](file:///d:/Coding/GitHub/LombaUndip/PRD_TALENTOPS_AI_MASTER.md#L670) sebagai *mock service worker* lokal di frontend sejak Sprint 1.
 2. **Skema Validasi Output Model (Zero Raw Text):**  
    Fardizza (AI/Data) wajib membungkus seluruh luaran Gemini 3.8 ke dalam Pydantic Model sebelum diserahkan ke Najmi (Backend) untuk dikalkulasi dan disimpan ke MariaDB. Dilarang meneruskan string mentah (*unparsed text*) ke database.
-3. **Konvensi Percabangan Git (Branching Workflow):**
-   - `main`: Branch rilis produksi yang terhubung ke deployment Vercel & VPS.
-   - `feat/backend-core`: Modul database, endpoint REST, dan security (**Najmi**).
-   - `feat/ai-engine`: Modul adapter LLM, formula skor 4D, dan skrip evaluasi (**Fardizza**).
-   - `feat/frontend-ui`: Komponen React 18, React Flow graph, dan styling (**Willy**).
-   - *Pull Request (PR) wajib melewati review minimal 1 anggota tim sebelum dimerge ke `main`.*
+3. **Konvensi Percabangan Git & Skema Merge Mandiri:**
+   - **Struktur Branching:**
+     - `main`: Branch produksi stabil. Terhubung otomatis ke CI/CD deployment Vercel & VPS.
+     - `feat/<role>-<fitur>`: Branch kerja per sub-fitur spesifik (bukan nunggu satu sprint penuh selesai).
+       - Contoh Najmi: `feat/backend-auth`, `feat/backend-db-schema`, `feat/backend-calendar-lock`
+       - Contoh Fardizza: `feat/ai-9router-client`, `feat/ai-pydantic-schema`, `feat/ai-4d-scoring`
+       - Contoh Willy: `feat/ui-career-portal`, `feat/ui-evidence-graph`, `feat/ui-whatif-studio`
+   - **Skema Alur Kerja (Work -> Self-Merge -> Pull):**
+     ```
+     [Branch main] ───────────────┬───────────────────────────────► [Auto Deploy VPS/Vercel]
+                                  │ (checkout branch baru)            ▲
+                                  v                                   │
+     [Branch feat/<role>-<fitur>] ──► [Coding & Self-Test] ──► [PR GitHub] (Self-Merge / Review)
+     ```
+   - **Aturan Merge Mandiri (Self-Merge as Contributor):**
+     - **Merge per Sub-Fitur (Atomic Merge):** Jangan menunda merge sampai akhir sprint. Begitu 1 sub-fitur selesai diuji lokal, langsung buat PR dan merge ke `main` agar anggota lain bisa segera `git pull origin main`.
+     - **Izin Self-Merge:** Karena semua anggota tim berstatus kontributor repository, pembuat branch diizinkan melakukan **Self-Merge** (Squash and Merge) tanpa harus menunggu approval formal, asalkan:
+       1. Kode tidak broken (server lokal bisa running, frontend lulus `npm run build`).
+       2. Fitur teruji di lokal dan tidak mengubah file di luar kepemilikan foldernya.
+       3. Beri notifikasi singkat di grup WhatsApp setelah merge berhasil.
+     - **Ritual Sinkronisasi:** Sebelum membuat branch baru atau sebelum push, wajib jalankan `git checkout main && git pull origin main` agar basis kode lokal selalu sinkron dengan branch produksi.
+4. **Isolasi Modul & Penanganan Risiko Tabrakan (Zero-Conflict Parallel Execution):**
+   - **Frontend vs Backend (Sprint 1–2):** Willy bekerja penuh menggunakan Mock JSON statis berbasis kontrak PRD Bab 5.1 & 8.2 (via Mock Service Worker / fixtures lokal). Frontend tidak bergantung pada kesiapan endpoint live VPS.
+   - **AI Logic vs Database Ingestion (Sprint 2):** Skema Pydantic (`schemas/extraction.py`) dikunci Fardizza sebagai *single source of truth* sebelum prompt dioptimasi atau query database ditulis Najmi.
+   - **Separasi Fisik Direktori Codebase:** Pembagian folder root diisolasi menjadi `backend/` (Najmi), `ai_engine/` (Fardizza), dan `frontend/` (Willy) untuk mengeliminasi potensi konflik merge pada file bersama. Modifikasi file bersama di root (`.env.example`, `docker-compose.yml`) wajib disepakati via komunikasi singkat tim.
+5. **Kewajiban Pengisian & Pembacaan Worklog Mandiri (`docs/worklogs/`):**
+   - **Ritual Wajib Baca Log Rekan:** Sebelum mulai ngoding atau membuat branch baru, setiap anggota tim **wajib membaca worklog rekan satu tim terlebih dahulu** (khususnya `LOG_NAJMI.md` untuk mengetahui URL endpoint live, skema data, konfigurasi CSP, dan token format) agar progres selalu sinkron dan tidak terjadi tabrakan konfigurasi.
+   - **Pencatatan Mandiri:** Setiap developer yang mulai berkontribusi pada penulisan kode wajib mencatat pekerjaan hariannya pada file markdown masing-masing di direktori `docs/worklogs/` (`LOG_NAJMI.md`, dan membuat file sendiri saat mulai aktif, misal `LOG_WILLY.md`, `LOG_FARDIZZA.md`).
+   - Format wajib per entri: tanggal (`YYYY-MM-DD`), nama pengembang, komponen/file yang diubah, uraian pekerjaan konkret, status/verifikasi pengujian lokal, dan rencana langkah selanjutnya.
+   - Entri worklog wajib di-commit bersamaan dengan kode fitur sebelum branch di-merge ke `main` sebagai bukti otentik kontribusi teknis untuk rubrik penilaian tim pada kompetisi UINIC 8.0 & GTNIC 2026.

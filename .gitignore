@@ -1,7 +1,28 @@
+# Virtual Environments
+.venv/
+venv/
+ENV/
+
+# Python cache & artifacts
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment files
 .env
-.venv/
-venv/
+!.env.example
+
+# Node / Frontend
+node_modules/
+.npm
+dist/
+dist-ssr/
+*.local
+
+# System files
 .DS_Store
+Thumbs.db

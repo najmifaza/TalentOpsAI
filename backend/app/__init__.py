@@ -1,1 +1,1 @@
-# app package
+"""TalentOps AI Backend Application Package."""

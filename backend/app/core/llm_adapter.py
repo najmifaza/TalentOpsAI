@@ -32,11 +32,12 @@ class LLMAdapterError(Exception):
 class LLMAdapter:
     def __init__(self, base_url: str | None = None, api_key: str | None = None):
         self.base_url = (base_url or settings.LLM_ROUTER_BASE_URL).rstrip("/")
-        self.api_key = api_key or settings.LLM_API_KEY
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
+        self.api_key = api_key or settings.LLM_API_KEY or settings.LLM_ROUTER_API_KEY
+        self.headers: dict[str, str] = {
             "Content-Type": "application/json",
         }
+        if self.api_key:
+            self.headers["Authorization"] = f"Bearer {self.api_key}"
 
     async def complete(
         self,

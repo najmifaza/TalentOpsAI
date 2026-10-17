@@ -1,42 +1,39 @@
 import React from 'react';
 import HealthStatusBadge from './HealthStatusBadge';
-import { Bell, Sparkles, Building2 } from 'lucide-react';
+import { Building2, Sparkles, Filter, Plus } from 'lucide-react';
 
-export default function Header({ currentTitle = "HR Recruiter Triage Dashboard" }) {
+export default function Header({ currentTitle = "Dashboard", onActionClick }) {
   return (
-    <header className="h-16 border-b border-slate-800/80 bg-[#0E131F]/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
+    <header className="h-20 bg-[#EEF4F0] px-8 flex items-center justify-between sticky top-0 z-30 select-none">
       <div className="flex items-center gap-4">
         <div>
-          <h1 className="text-base font-semibold text-slate-100 flex items-center gap-2">
-            <span>{currentTitle}</span>
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              v2.5.2
-            </span>
+          <h1 className="text-2xl font-extrabold text-[#0B201B] tracking-tight">
+            {currentTitle}
           </h1>
-          <p className="text-xs text-slate-400">
-            Autonomous Candidate Screening & Ethical Triage Engine
+          <p className="text-xs text-[#6C837C] font-medium">
+            Human-Centric Agentic Recruitment & Autonomous Candidate Triage
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         {/* Walking Skeleton Health Status Badge */}
         <HealthStatusBadge />
 
-        <div className="h-5 w-px bg-slate-800"></div>
-
-        {/* Tenant / Organization */}
-        <div className="flex items-center gap-2 text-xs text-slate-300 px-2.5 py-1 rounded-lg bg-slate-800/50 border border-slate-700/50">
-          <Building2 className="w-3.5 h-3.5 text-slate-400" />
-          <span className="font-medium">PT Solusi Digital Nusantara</span>
+        {/* Tenant Organization Pill */}
+        <div className="hidden sm:flex items-center gap-2 text-xs text-[#3D544E] px-3 py-1.5 rounded-full bg-white border border-[#E1EBE4] shadow-sm">
+          <Building2 className="w-3.5 h-3.5 text-[#235347]" />
+          <span className="font-semibold text-[#0B201B]">PT Solusi Digital</span>
         </div>
 
-        {/* Recruiter Avatar */}
-        <div className="flex items-center gap-2.5 pl-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center text-xs font-semibold text-white shadow-inner">
-            HR
-          </div>
-        </div>
+        {/* Action Button (Inspired by 'Add Custom Widget' in Reference Image) */}
+        <button
+          onClick={onActionClick || (() => alert('Fitur kustomisasi widget akan aktif pada Sprint 2.'))}
+          className="flex items-center gap-2 px-4 py-2 bg-[#0B2B26] hover:bg-[#163832] text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow transition-all duration-200"
+        >
+          <Plus className="w-3.5 h-3.5 text-[#8EB69B]" />
+          <span>Tambah Filter AI</span>
+        </button>
       </div>
     </header>
   );

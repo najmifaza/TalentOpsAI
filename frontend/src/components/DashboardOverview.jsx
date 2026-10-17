@@ -6,13 +6,14 @@ import {
   Users, 
   CheckCircle2, 
   ShieldCheck, 
-  Zap, 
-  Sparkles, 
+  TrendingUp, 
   Server,
   Database,
   ArrowUpRight,
-  TrendingUp,
-  Cpu
+  Sparkles,
+  Cpu,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 
 export default function DashboardOverview() {
@@ -24,105 +25,269 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      {/* Walking Skeleton Banner */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-indigo-950/20 border border-cyan-500/20 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-cyan-500/5 to-transparent pointer-events-none"></div>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+      {/* Top 3 KPI Metric Cards (Inspired by Row 1 in Reference Image) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Metric 1 */}
+        <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
-              <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
-                Sprint 1 Walking Skeleton — Active & Live
+            <span className="text-xs font-semibold text-[#6C837C] tracking-wide">
+              Core Competency Index
+            </span>
+            <div className="text-2xl font-extrabold text-[#0B201B] tracking-tight">
+              88.45 <span className="text-xs font-medium text-[#6C837C]">/100</span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#10B981]">
+              <span>▲ 4.2%</span>
+              <span className="text-[#6C837C] font-normal">vs standar industri</span>
+            </div>
+          </div>
+          {/* Mini Bar Chart Graphic */}
+          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] rounded-xl">
+            <span className="w-1.5 bg-[#8EB69B] rounded-full h-4"></span>
+            <span className="w-1.5 bg-[#235347] rounded-full h-8"></span>
+            <span className="w-1.5 bg-[#8EB69B] rounded-full h-5"></span>
+            <span className="w-1.5 bg-[#10B981] rounded-full h-9"></span>
+            <span className="w-1.5 bg-[#235347] rounded-full h-7"></span>
+          </div>
+        </div>
+
+        {/* Metric 2 */}
+        <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-[#6C837C] tracking-wide">
+              Determinism & Fairness
+            </span>
+            <div className="text-2xl font-extrabold text-[#0B201B] tracking-tight">
+              99.20 <span className="text-xs font-medium text-[#6C837C]">/100%</span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#10B981]">
+              <span>▲ 0.8%</span>
+              <span className="text-[#6C837C] font-normal">zero demographic bias</span>
+            </div>
+          </div>
+          {/* Mini Bar Chart Graphic */}
+          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] rounded-xl">
+            <span className="w-1.5 bg-[#DAF1DE] rounded-full h-3"></span>
+            <span className="w-1.5 bg-[#8EB69B] rounded-full h-6"></span>
+            <span className="w-1.5 bg-[#235347] rounded-full h-10"></span>
+            <span className="w-1.5 bg-[#8EB69B] rounded-full h-7"></span>
+            <span className="w-1.5 bg-[#10B981] rounded-full h-9"></span>
+          </div>
+        </div>
+
+        {/* Metric 3 */}
+        <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-[#6C837C] tracking-wide">
+              UU PDP Privacy Compliance
+            </span>
+            <div className="text-2xl font-extrabold text-[#0B201B] tracking-tight">
+              100% <span className="text-xs font-medium text-[#6C837C]">AES-256</span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#10B981]">
+              <span>★ Verified</span>
+              <span className="text-[#6C837C] font-normal">zero PII leakage</span>
+            </div>
+          </div>
+          {/* Mini Bar Chart Graphic */}
+          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] rounded-xl">
+            <span className="w-1.5 bg-[#8EB69B] rounded-full h-5"></span>
+            <span className="w-1.5 bg-[#8EB69B] rounded-full h-7"></span>
+            <span className="w-1.5 bg-[#235347] rounded-full h-9"></span>
+            <span className="w-1.5 bg-[#10B981] rounded-full h-10"></span>
+            <span className="w-1.5 bg-[#235347] rounded-full h-8"></span>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: Gauge + 4D Distribution + Queue Summary (Inspired by Row 2 in Reference Image) */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        {/* Semi-Circle Gauge Card (Inspired by 'Waste Processing Level 72%') */}
+        <div className="md:col-span-3 clean-card p-6 flex flex-col justify-between text-center">
+          <div>
+            <span className="text-xs font-semibold text-[#6C837C] block mb-2">
+              Average Match Rate
+            </span>
+            <div className="text-4xl font-extrabold text-[#0B201B]">
+              76.5%
+            </div>
+          </div>
+
+          {/* Semi-circular visual */}
+          <div className="relative w-36 h-20 mx-auto my-3 overflow-hidden">
+            <svg viewBox="0 0 100 50" className="w-full h-full">
+              <path
+                d="M 10 50 A 40 40 0 0 1 90 50"
+                fill="none"
+                stroke="#E1EBE4"
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
+              <path
+                d="M 10 50 A 40 40 0 0 1 76 18"
+                fill="none"
+                stroke="#10B981"
+                strokeWidth="10"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+
+          <div className="text-[11px] text-[#6C837C] font-medium">
+            Cut-off Minimum: <strong className="text-[#0B201B]">75.0%</strong>
+          </div>
+        </div>
+
+        {/* 4D Dimension Distribution Card (Inspired by 'Renewable Energy 86%') */}
+        <div className="md:col-span-4 clean-card p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-[#6C837C]">
+                4D Scoring Dimensions
+              </span>
+              <span className="text-lg font-bold text-[#0B201B]">86.2%</span>
+            </div>
+
+            <div className="mt-4 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-[#3D544E]">
+                  <span className="w-2 h-2 rounded-full bg-[#10B981]"></span>
+                  <span>S_comp (Keahlian Inti)</span>
+                </span>
+                <span className="font-semibold text-[#0B201B]">88%</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-[#3D544E]">
+                  <span className="w-2 h-2 rounded-full bg-[#235347]"></span>
+                  <span>S_port (Repositori GitHub)</span>
+                </span>
+                <span className="font-semibold text-[#0B201B]">82%</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-[#3D544E]">
+                  <span className="w-2 h-2 rounded-full bg-[#8EB69B]"></span>
+                  <span>S_conf (Keyakinan Bukti)</span>
+                </span>
+                <span className="font-semibold text-[#0B201B]">91%</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-2 text-[#3D544E]">
+                  <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                  <span>S_risk (Penalti Anomali)</span>
+                </span>
+                <span className="font-semibold text-[#0B201B]">18%</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => alert('Detail kalkulasi deterministik 4D PRD Bab 5.1')}
+            className="w-full mt-4 py-2 px-3 bg-[#EEF4F0] hover:bg-[#E1EBE4] text-[#0B2B26] text-xs font-semibold rounded-xl border border-[#E1EBE4] transition-colors"
+          >
+            Lihat Formula Matematis
+          </button>
+        </div>
+
+        {/* Queue Distribution Breakdown (Inspired by 'Sources Usage in Manufacturing') */}
+        <div className="md:col-span-5 clean-card p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-[#0B201B]">Distribusi Antrean Triage</h4>
+                <p className="text-[11px] text-[#6C837C]">Batch 1 Golden Dataset (5 Kandidat)</p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-[#DAF1DE] text-[#0B2B26] text-xs font-bold border border-[#C2E0C4]">
+                5 Active
               </span>
             </div>
-            <h2 className="text-lg font-bold text-slate-100">
-              Pipeline Integrasi End-to-End: Vercel Client &rarr; VPS Backend &rarr; MariaDB
-            </h2>
-            <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-              Arsitektur terdistribusi berjalan dengan sukses. Request frontend terhubung langsung ke backend FastAPI live di VPS Linux 
-              (<code className="text-cyan-300 font-mono">https://api-talentops.fawt.biz.id</code>) dengan enkripsi data ACID.
+
+            <div className="mt-4 grid grid-cols-2 gap-2.5 text-xs">
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
+                <div className="text-[11px] text-[#6C837C]">Strong Match</div>
+                <div className="text-base font-extrabold text-[#10B981] mt-0.5">2 (40%)</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
+                <div className="text-[11px] text-[#6C837C]">Review Required</div>
+                <div className="text-base font-extrabold text-amber-600 mt-0.5">1 (20%)</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
+                <div className="text-[11px] text-[#6C837C]">Weak Fit</div>
+                <div className="text-base font-extrabold text-[#3D544E] mt-0.5">1 (20%)</div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
+                <div className="text-[11px] text-[#6C837C]">Security Quarantine</div>
+                <div className="text-base font-extrabold text-rose-600 mt-0.5">1 (20%)</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-[11px] text-[#6C837C] mt-3 flex items-center justify-between pt-2 border-t border-[#E1EBE4]">
+            <span>Audit GitHub IT: <strong className="text-[#0B201B]">3 Terverifikasi</strong></span>
+            <span>Non-IT: <strong className="text-[#0B201B]">1 N/A</strong></span>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3: 2 Pill Cards + Forest Feature Banner (Inspired by Row 3 in Reference Image) */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        {/* Dark Pill Card (Climate Change Index style) */}
+        <div className="md:col-span-3 bg-[#0B2B26] text-white rounded-3xl p-5 flex items-center gap-4 shadow-md">
+          <div className="relative w-12 h-12 rounded-full border-2 border-[#8EB69B] flex items-center justify-center font-bold text-sm shrink-0">
+            92.4
+          </div>
+          <div className="min-w-0">
+            <h5 className="text-xs font-bold text-white truncate">Autonomous Agent Cycle</h5>
+            <p className="text-[10px] text-[#DAF1DE]/70 leading-tight mt-0.5">
+              Gemini 3.8 Single-Pass & Bounded Self-Healing
+            </p>
+          </div>
+        </div>
+
+        {/* Light Pill Card (Water level style) */}
+        <div className="md:col-span-3 clean-card p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-2 border-[#10B981] flex items-center justify-center font-bold text-xs text-[#0B2B26] shrink-0 bg-[#DAF1DE]/60">
+            5.7ms
+          </div>
+          <div className="min-w-0">
+            <h5 className="text-xs font-bold text-[#0B201B] truncate">Live Backend Latency</h5>
+            <p className="text-[10px] text-[#6C837C] leading-tight mt-0.5">
+              Vercel Edge &rarr; VPS MariaDB ACID
+            </p>
+          </div>
+        </div>
+
+        {/* Forest Feature Banner (Inspired by 'Let's join our community 230k+ people') */}
+        <div className="md:col-span-6 forest-card p-5 flex items-center justify-between relative overflow-hidden shadow-lg">
+          <div className="relative z-10 max-w-sm space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#8EB69B]/25 text-[#DAF1DE] font-semibold">
+                Sprint 1 Walking Skeleton
+              </span>
+              <span className="text-[10px] text-[#8EB69B]">SDG 8 &bull; UU PDP</span>
+            </div>
+            <h3 className="text-base font-bold text-white">
+              Rekrutmen Beretika, Nondiskriminatif & Otonom
+            </h3>
+            <p className="text-[11px] text-[#DAF1DE]/80 leading-relaxed">
+              Arsitektur terdistribusi live: Frontend Willy terhubung stabil ke backend Najmi & modul AI Fardizza.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-center shrink-0">
-            <div className="px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center gap-2 font-mono">
-              <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-              <span>FastAPI 2.5.2</span>
-            </div>
-            <div className="px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center gap-2 font-mono">
-              <Database className="w-3.5 h-3.5 text-blue-400" />
-              <span>MariaDB 12-Table</span>
+          <div className="relative z-10 shrink-0 ml-4">
+            <div className="w-10 h-10 rounded-2xl bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer border border-white/20">
+              <ArrowUpRight className="w-5 h-5 text-[#DAF1DE]" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1 */}
-        <div className="p-4 rounded-xl glass-panel glass-panel-hover space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-medium">Total Kandidat Aktif</span>
-            <Users className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-100">{candidates.length}</span>
-            <span className="text-[11px] text-cyan-400 font-medium">Batch 1 Golden Dataset</span>
-          </div>
-          <p className="text-[11px] text-slate-400">5 profil sintetis terstandarisasi PRD</p>
-        </div>
-
-        {/* Card 2 */}
-        <div className="p-4 rounded-xl glass-panel glass-panel-hover space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-medium">Strong Match Ratio</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-emerald-400">
-              {Math.round((strongMatches / candidates.length) * 100)}%
-            </span>
-            <span className="text-[11px] text-emerald-400 font-medium">
-              ({strongMatches} Kandidat)
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-400">Ambang batas deterministik &ge; 85.0</p>
-        </div>
-
-        {/* Card 3 */}
-        <div className="p-4 rounded-xl glass-panel glass-panel-hover space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-medium">Review & Anomali</span>
-            <TrendingUp className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-amber-400">{reviewRequired}</span>
-            <span className="text-[11px] text-amber-400 font-medium">Memerlukan HR</span>
-          </div>
-          <p className="text-[11px] text-slate-400">Deteksi overlap tanggal & mitigasi risiko</p>
-        </div>
-
-        {/* Card 4 */}
-        <div className="p-4 rounded-xl glass-panel glass-panel-hover space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-medium">Kepatuhan UU PDP No. 27</span>
-            <ShieldCheck className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-cyan-400">100%</span>
-            <span className="text-[11px] text-cyan-400 font-medium">AES-256-GCM</span>
-          </div>
-          <p className="text-[11px] text-slate-400">Masked PII & local envelope encryption</p>
-        </div>
-      </div>
-
-      {/* Main Table Section */}
-      <div className="space-y-3">
+      {/* Main Table Section: Candidate Queue */}
+      <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-slate-100">Antrean Triage Kandidat</h3>
-            <p className="text-xs text-slate-400">
-              Daftar pelamar terenkripsi dengan evaluasi multi-dimensi AI Agent Gemini 3.8
+            <h3 className="text-lg font-bold text-[#0B201B]">Daftar Antrean Seleksi Kandidat</h3>
+            <p className="text-xs text-[#6C837C]">
+              Tampilan dossier anonim terenkripsi dengan rincian scoring multi-dimensi PRD Bab 8.2
             </p>
           </div>
         </div>

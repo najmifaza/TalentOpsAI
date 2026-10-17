@@ -1,0 +1,145 @@
+{
+  "e2f3c6502352debb1d1cc417f3ba4eb7ed56204a9540a6d57e4f05fe3ecce4d0": {
+    "claims": [
+      {
+        "dimension": "SKILL",
+        "technology": "FastAPI",
+        "has_implementation_detail": true,
+        "context_narrative": "Architected and built async REST microservices using FastAPI and Redis handling 2500 rps.",
+        "metric_string": "2500 rps",
+        "repo_url": null,
+        "source_location": "PENGALAMAN KERJA - Solusi Fintek Digital"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "Redis",
+        "has_implementation_detail": true,
+        "context_narrative": "Architected and built async REST microservices using FastAPI and Redis handling 2500 rps.",
+        "metric_string": "2500 rps",
+        "repo_url": null,
+        "source_location": "PENGALAMAN KERJA - Solusi Fintek Digital"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "PostgreSQL",
+        "has_implementation_detail": true,
+        "context_narrative": "Reduced database query latency by 40% using composite indexing in PostgreSQL.",
+        "metric_string": "reduced latency by 40%",
+        "repo_url": null,
+        "source_location": "PENGALAMAN KERJA - Solusi Fintek Digital"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "CI/CD GitHub Actions",
+        "has_implementation_detail": true,
+        "context_narrative": "Maintained open-source payment service repository https://github.com/candidate/payment-service with full CI/CD pipeline and automated tests.",
+        "metric_string": null,
+        "repo_url": "https://github.com/candidate/payment-service",
+        "source_location": "PENGALAMAN KERJA - Solusi Fintek Digital"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "Python",
+        "has_implementation_detail": true,
+        "context_narrative": "Built RESTful APIs using Python and PostgreSQL handling 500k daily transactions.",
+        "metric_string": "500k daily transactions",
+        "repo_url": null,
+        "source_location": "PENGALAMAN KERJA - PT Teknologi Nusantara"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "PostgreSQL",
+        "has_implementation_detail": true,
+        "context_narrative": "Built RESTful APIs using Python and PostgreSQL handling 500k daily transactions.",
+        "metric_string": "500k daily transactions",
+        "repo_url": null,
+        "source_location": "PENGALAMAN KERJA - PT Teknologi Nusantara"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "Docker",
+        "has_implementation_detail": true,
+        "context_narrative": "Containerized services with Docker and streamlined deployment via GitHub Actions.",
+        "metric_string": null,
+        "repo_url": null,
+        "source_location": "PENGALAMAN KERJA - PT Teknologi Nusantara"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "Django",
+        "has_implementation_detail": false,
+        "context_narrative": "Bahasa & Framework: Python, FastAPI, Django, Go",
+        "metric_string": null,
+        "repo_url": null,
+        "source_location": "KEAHLIAN TEKNIS"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "Go",
+        "has_implementation_detail": false,
+        "context_narrative": "Bahasa & Framework: Python, FastAPI, Django, Go",
+        "metric_string": null,
+        "repo_url": null,
+        "source_location": "KEAHLIAN TEKNIS"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "MariaDB",
+        "has_implementation_detail": false,
+        "context_narrative": "Database & Cache: PostgreSQL, MariaDB, Redis",
+        "metric_string": null,
+        "repo_url": null,
+        "source_location": "KEAHLIAN TEKNIS"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "Kubernetes",
+        "has_implementation_detail": false,
+        "context_narrative": "Infrastruktur & Tool: Docker, Kubernetes, CI/CD GitHub Actions, Linux",
+        "metric_string": null,
+        "repo_url": null,
+        "source_location": "KEAHLIAN TEKNIS"
+      },
+      {
+        "dimension": "SKILL",
+        "technology": "Linux",
+        "has_implementation_detail": false,
+        "context_narrative": "Infrastruktur & Tool: Docker, Kubernetes, CI/CD GitHub Actions, Linux",
+        "metric_string": null,
+        "repo_url": null,
+        "source_location": "KEAHLIAN TEKNIS"
+      }
+    ],
+    "career_timeline": [
+      {
+        "role": "Senior Backend Engineer",
+        "company": "Solusi Fintek Digital",
+        "is_relevant_role": true,
+        "employment_type": "full_time",
+        "start": "2022-01",
+        "end": "present"
+      },
+      {
+        "role": "Backend Developer",
+        "company": "PT Teknologi Nusantara",
+        "is_relevant_role": true,
+        "employment_type": "full_time",
+        "start": "2019-06",
+        "end": "2021-12"
+      }
+    ],
+    "education": {
+      "degree": "S1",
+      "field_of_study": "Informatika",
+      "graduation_status": "Lulus"
+    },
+    "anomalies": {
+      "hidden_text_detected": false,
+      "prompt_injection_detected": false,
+      "career_break_detected": false,
+      "overlapping_dates_detected": false,
+      "title_inflation_detected": false,
+      "notes": []
+    }
+  }
+}

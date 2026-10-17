@@ -1,0 +1,27 @@
+Eko Prasetyo
+Email: eko.prasetyo@email.com | Phone: +6281566778899
+Lokasi: Semarang, Indonesia
+
+RINGKASAN PROFESIONAL
+Backend Engineer dengan keahlian Go, PostgreSQL, dan Docker. Mengambil jeda karier untuk perawatan orang tua sebelum kembali aktif berkontribusi di industri tech.
+
+KEAHLIAN TEKNIS
+- Bahasa & Tool: Go, Python, PostgreSQL, Docker, Kafka
+
+PENGALAMAN KERJA
+1. Mid Backend Developer - PT Awan Cerdas
+   Maret 2023 - Sekarang (Full-time)
+   - Engineered data ingestion pipelines in Go processing 10k messages per minute from Apache Kafka.
+   - Maintained transactional database operations in PostgreSQL.
+
+2. Career Break - Family Care & Elder Support
+   September 2021 - Februari 2023
+   - Dedicated 18-month career pause to provide direct medical assistance and family care.
+
+3. Backend Engineer - PT Logistik Handal
+   Maret 2018 - Agustus 2021 (Full-time)
+   - Developed order tracking APIs with Go and MySQL.
+   - Integrated third-party delivery dispatch services.
+
+PENDIDIKAN
+S1 Teknik Komputer (Lulus 2017)

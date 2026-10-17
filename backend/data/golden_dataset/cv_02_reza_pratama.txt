@@ -1,0 +1,26 @@
+Reza Pratama
+Email: reza.pratama@email.com | Phone: +6281298765432
+Lokasi: Bandung, Indonesia
+
+RINGKASAN PROFESIONAL
+Software Architect dan Senior Backend Developer berpengalaman memimpin transformasi sistem cloud dan database terdistribusi.
+
+KEAHLIAN TEKNIS
+- Bahasa: Python, Go, Node.js
+- Framework: Django, Express, FastAPI
+- Database: MySQL, PostgreSQL, MongoDB
+- DevOps: Docker, Terraform
+
+PENGALAMAN KERJA
+1. Full-time Lead Architect - PT Inovasi Megah
+   Januari 2020 - Juni 2023 (Full-time)
+   - Led architecture design of distributed microservices serving 1 million monthly active users.
+   - Coordinated technical roadmap across 3 backend engineering squads.
+
+2. Full-time Backend Specialist - PT Global Distribusi
+   Januari 2022 - Mei 2024 (Full-time)
+   - Implemented high-throughput order processing system in Go and Python.
+   - Integrated payment gateways and message queues for event-driven processing.
+
+PENDIDIKAN
+S1 Sistem Informasi (Lulus 2019)

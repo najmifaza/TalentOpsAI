@@ -1,0 +1,26 @@
+Budi Santoso
+Email: budi.santoso@email.com | Phone: +6281234567890 | GitHub: https://github.com/candidate/payment-service
+Lokasi: Jakarta, Indonesia
+
+RINGKASAN PROFESIONAL
+Senior Backend Engineer dengan pengalaman lebih dari 5 tahun merancang dan membangun arsitektur microservices berbasis asinkronus dengan FastAPI, Docker, PostgreSQL, dan Redis pada industri finansial bervolume tinggi.
+
+KEAHLIAN TEKNIS
+- Bahasa & Framework: Python, FastAPI, Django, Go
+- Database & Cache: PostgreSQL, MariaDB, Redis
+- Infrastruktur & Tool: Docker, Kubernetes, CI/CD GitHub Actions, Linux
+
+PENGALAMAN KERJA
+1. Senior Backend Engineer - Solusi Fintek Digital
+   Januari 2022 - Sekarang (Full-time)
+   - Architected and built async REST microservices using FastAPI and Redis handling 2500 rps.
+   - Reduced database query latency by 40% using composite indexing in PostgreSQL.
+   - Maintained open-source payment service repository https://github.com/candidate/payment-service with full CI/CD pipeline and automated tests.
+
+2. Backend Developer - PT Teknologi Nusantara
+   Juni 2019 - Desember 2021 (Full-time)
+   - Built RESTful APIs using Python and PostgreSQL handling 500k daily transactions.
+   - Containerized services with Docker and streamlined deployment via GitHub Actions.
+
+PENDIDIKAN
+S1 Informatika (Lulus 2019)

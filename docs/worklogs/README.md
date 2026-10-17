@@ -1,6 +1,12 @@
 # PANDUAN WORKLOG TIM TALENTOPS AI
 
-Setiap anggota wajib mencatat pekerjaan harian di file masing-masing sebelum push commit. Format standar:
+### Kewajiban Utama:
+1. **Wajib Membaca Log Teman Sebelum Mulai Bekerja:**  
+   Sebelum menulis kode atau membuat branch baru, setiap anggota tim **wajib membaca worklog rekan satu tim terlebih dahulu** (misal: Willy dan Fardizza membaca `LOG_NAJMI.md`) agar seluruh kontrak API, URL live, konfigurasi lingkungan, dan batas antarmuka selalu sinkron tanpa miskomunikasi.
+2. **Pencatatan Sebelum Push Commit:**  
+   Setiap anggota wajib mencatat pekerjaan harian di file masing-masing sebelum push commit / merge ke branch `main`.
+
+Format standar:
 
 ```markdown
 ### [YYYY-MM-DD] - [Nama] - [Fokus Modul]
@@ -13,4 +19,4 @@ Setiap anggota wajib mencatat pekerjaan harian di file masing-masing sebelum pus
 
 Daftar file anggota:
 - `LOG_NAJMI.md` (Backend, Database, Security & Infrastructure)
-- File anggota lain dibuat saat mulai berkontribusi pada kode.
+- File anggota lain (`LOG_FARDIZZA.md`, `LOG_WILLY.md`) dibuat saat mulai aktif berkontribusi pada kode.

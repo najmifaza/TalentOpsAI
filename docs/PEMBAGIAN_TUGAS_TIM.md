@@ -97,7 +97,7 @@ Dokumen acuan arsitektur & spesifikasi API: [PRD_TALENTOPS_AI_MASTER.md](file://
      - State management lokal & asinkron untuk cache query, status filter pelamar, dan token auth.
   2. **Public Career Portal (`/careers/apply`):**
      - Formulir lamaran kandidat dengan komponen drag-and-drop file uploader (PDF/DOCX), validasi MIME-type di browser, checkbox persetujuan DPA, dan dialog penerbitan *tracking token*.
-     - Halaman pelacakan status kandidat berbasis token (`/careers/track/{token}`).
+     - Halaman pelacakan status kandidat berbasis token (`/careers/track/{token}`): Frontend wajib menggunakan `tracking_token` (UUIDv4) untuk fetch data API, sedangkan `masked_identifier` (`#TK-XXXXXX`) hanya untuk tampilan display visual.
   3. **HR Recruiter Dashboard:**
      - Tampilan tabel dossier kandidat terurut berdasarkan `triage_priority` dan `confidence_score`.
      - Filter pencarian berbasis taksonomi teknologi, status kelulusan, dan flag anomali.
@@ -105,9 +105,11 @@ Dokumen acuan arsitektur & spesifikasi API: [PRD_TALENTOPS_AI_MASTER.md](file://
      - Modal interaktif dossier kandidat: ringkasan riwayat karier, gap kompetensi, dan tombol interaktif *Approve / Reject / Schedule Interview*.
   4. **Fitur Visualisasi Interaktif Utama:**
      - **Candidate Evidence Graph (React Flow):** Visualisasi graf node interaktif yang menghubungkan klaim kompetensi langsung ke kutipan teks resume dan metadata repositori GitHub terverifikasi.
+     - *Penanganan Role Non-Programmer:* Untuk lowongan non-programmer (UI/UX, PM, dll.), visualisasi graf melewati audit GitHub dan menampilkan badge status `NOT_APPLICABLE` (bukan status error merah).
      - **What-If Policy Simulation Studio:** Panel slider interaktif untuk simulasi pergeseran bobot penilaian 4D secara instan di browser (in-memory) tanpa latensi backend.
   5. **Client Deployment & Optimasi:**
      - Setup hosting pada Vercel Global Edge Network, konfigurasi rewrite rules `vercel.json`, code splitting, dan kompresi bundle asset.
+     - Konfigurasi HTTP Header Content Security Policy (CSP) produksi pada `vercel.json` (`connect-src 'self' https://api.talentops.id`), tanpa mencantumkan port dev lokal.
 
 ---
 
@@ -275,3 +277,7 @@ Dokumen acuan arsitektur & spesifikasi API: [PRD_TALENTOPS_AI_MASTER.md](file://
    - **Frontend vs Backend (Sprint 1–2):** Willy bekerja penuh menggunakan Mock JSON statis berbasis kontrak PRD Bab 5.1 & 8.2 (via Mock Service Worker / fixtures lokal). Frontend tidak bergantung pada kesiapan endpoint live VPS.
    - **AI Logic vs Database Ingestion (Sprint 2):** Skema Pydantic (`schemas/extraction.py`) dikunci Fardizza sebagai *single source of truth* sebelum prompt dioptimasi atau query database ditulis Najmi.
    - **Separasi Fisik Direktori Codebase:** Pembagian folder root diisolasi menjadi `backend/` (Najmi), `ai_engine/` (Fardizza), dan `frontend/` (Willy) untuk mengeliminasi potensi konflik merge pada file bersama. Modifikasi file bersama di root (`.env.example`, `docker-compose.yml`) wajib disepakati via komunikasi singkat tim.
+5. **Kewajiban Pencatatan Worklog Mandiri (`docs/worklogs/`):**
+   - Setiap developer yang mulai berkontribusi pada penulisan kode wajib mencatat pekerjaan hariannya pada file markdown masing-masing di direktori `docs/worklogs/` (`LOG_NAJMI.md`, dan membuat file sendiri saat mulai aktif, misal `LOG_WILLY.md`, `LOG_FARDIZZA.md`).
+   - Format wajib per entri: tanggal (`YYYY-MM-DD`), nama pengembang, komponen/file yang diubah, uraian pekerjaan konkret, status/verifikasi pengujian lokal, dan rencana langkah selanjutnya.
+   - Entri worklog wajib di-commit bersamaan dengan kode fitur sebelum branch di-merge ke `main` sebagai bukti otentik kontribusi teknis untuk rubrik penilaian tim pada kompetisi UINIC 8.0 & GTNIC 2026.

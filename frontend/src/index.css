@@ -4,24 +4,41 @@
 
 @layer base {
   body {
-    @apply bg-[#EEF4F0] text-[#0B201B] font-sans;
+    @apply bg-[#EEF4F0] text-[#0B201B] font-sans transition-colors duration-200;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  .dark body {
+    @apply bg-[#051F20] text-[#DAF1DE];
   }
 }
 
-/* Modern Clean Card & Panel Utilities */
+/* Modern Clean Card & Panel Utilities (Light Mode) */
 .clean-card {
   background-color: #FFFFFF;
   border: 1px solid #E1EBE4;
   border-radius: 1.25rem;
   box-shadow: 0 2px 10px -2px rgba(11, 43, 38, 0.04), 0 1px 3px -1px rgba(11, 43, 38, 0.02);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .clean-card-hover:hover {
   border-color: #C2E0C4;
   box-shadow: 0 12px 28px -6px rgba(11, 43, 38, 0.08), 0 4px 10px -2px rgba(11, 43, 38, 0.03);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+}
+
+/* Modern Clean Card Utilities (Deep Forest Dark Mode) */
+.dark .clean-card {
+  background-color: #0B2B26;
+  border-color: #163832;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+}
+
+.dark .clean-card-hover:hover {
+  border-color: #235347;
+  box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.5);
+  transform: translateY(-2px);
 }
 
 /* Forest Banner Card */
@@ -29,6 +46,21 @@
   background: linear-gradient(135deg, #0B2B26 0%, #163832 60%, #235347 100%);
   color: #FFFFFF;
   border-radius: 1.25rem;
+  transition: all 0.25s ease;
+}
+
+.dark .forest-card {
+  background: linear-gradient(135deg, #072421 0%, #0B2B26 60%, #163832 100%);
+  border: 1px solid #163832;
+}
+
+/* Micro-interaction Button Utilities */
+.btn-interactive {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-interactive:active {
+  transform: scale(0.97);
 }
 
 /* Custom Clean Scrollbar */
@@ -41,11 +73,23 @@
   background: #EEF4F0;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #051F20;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #C2E0C4;
   border-radius: 9999px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #163832;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #8EB69B;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #235347;
 }

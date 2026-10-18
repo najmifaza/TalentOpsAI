@@ -33,46 +33,46 @@ export default function DashboardOverview() {
         {/* Metric 1 */}
         <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-[#6C837C] tracking-wide">
+            <span className="text-xs font-semibold text-[#6C837C] dark:text-[#8EB69B] tracking-wide">
               Core Competency Index
             </span>
-            <div className="text-2xl font-extrabold text-[#0B201B] tracking-tight">
-              88.45 <span className="text-xs font-medium text-[#6C837C]">/100</span>
+            <div className="text-2xl font-extrabold text-[#0B201B] dark:text-[#DAF1DE] tracking-tight">
+              88.45 <span className="text-xs font-medium text-[#6C837C] dark:text-[#8EB69B]/70">/100</span>
             </div>
             <div className="flex items-center gap-1 text-[11px] font-semibold text-[#10B981]">
               <span>▲ 4.2%</span>
-              <span className="text-[#6C837C] font-normal">vs standar industri</span>
+              <span className="text-[#6C837C] dark:text-[#8EB69B]/70 font-normal">vs standar industri</span>
             </div>
           </div>
           {/* Mini Bar Chart Graphic */}
-          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] rounded-xl">
+          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] dark:bg-[#072421] rounded-xl border border-transparent dark:border-[#163832]">
             <span className="w-1.5 bg-[#8EB69B] rounded-full h-4"></span>
-            <span className="w-1.5 bg-[#235347] rounded-full h-8"></span>
+            <span className="w-1.5 bg-[#235347] dark:bg-[#8EB69B] rounded-full h-8"></span>
             <span className="w-1.5 bg-[#8EB69B] rounded-full h-5"></span>
             <span className="w-1.5 bg-[#10B981] rounded-full h-9"></span>
-            <span className="w-1.5 bg-[#235347] rounded-full h-7"></span>
+            <span className="w-1.5 bg-[#235347] dark:bg-[#8EB69B] rounded-full h-7"></span>
           </div>
         </div>
 
         {/* Metric 2 */}
         <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-[#6C837C] tracking-wide">
+            <span className="text-xs font-semibold text-[#6C837C] dark:text-[#8EB69B] tracking-wide">
               Determinism & Fairness
             </span>
-            <div className="text-2xl font-extrabold text-[#0B201B] tracking-tight">
-              99.20 <span className="text-xs font-medium text-[#6C837C]">/100%</span>
+            <div className="text-2xl font-extrabold text-[#0B201B] dark:text-[#DAF1DE] tracking-tight">
+              99.20 <span className="text-xs font-medium text-[#6C837C] dark:text-[#8EB69B]/70">/100%</span>
             </div>
             <div className="flex items-center gap-1 text-[11px] font-semibold text-[#10B981]">
               <span>▲ 0.8%</span>
-              <span className="text-[#6C837C] font-normal">zero demographic bias</span>
+              <span className="text-[#6C837C] dark:text-[#8EB69B]/70 font-normal">zero demographic bias</span>
             </div>
           </div>
           {/* Mini Bar Chart Graphic */}
-          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] rounded-xl">
-            <span className="w-1.5 bg-[#DAF1DE] rounded-full h-3"></span>
+          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] dark:bg-[#072421] rounded-xl border border-transparent dark:border-[#163832]">
+            <span className="w-1.5 bg-[#DAF1DE] dark:bg-[#163832] rounded-full h-3"></span>
             <span className="w-1.5 bg-[#8EB69B] rounded-full h-6"></span>
-            <span className="w-1.5 bg-[#235347] rounded-full h-10"></span>
+            <span className="w-1.5 bg-[#235347] dark:bg-[#8EB69B] rounded-full h-10"></span>
             <span className="w-1.5 bg-[#8EB69B] rounded-full h-7"></span>
             <span className="w-1.5 bg-[#10B981] rounded-full h-9"></span>
           </div>
@@ -81,24 +81,24 @@ export default function DashboardOverview() {
         {/* Metric 3 */}
         <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-[#6C837C] tracking-wide">
+            <span className="text-xs font-semibold text-[#6C837C] dark:text-[#8EB69B] tracking-wide">
               UU PDP Privacy Compliance
             </span>
-            <div className="text-2xl font-extrabold text-[#0B201B] tracking-tight">
-              100% <span className="text-xs font-medium text-[#6C837C]">AES-256</span>
+            <div className="text-2xl font-extrabold text-[#0B201B] dark:text-[#DAF1DE] tracking-tight">
+              100% <span className="text-xs font-medium text-[#6C837C] dark:text-[#8EB69B]/70">AES-256</span>
             </div>
             <div className="flex items-center gap-1 text-[11px] font-semibold text-[#10B981]">
               <span>★ Verified</span>
-              <span className="text-[#6C837C] font-normal">zero PII leakage</span>
+              <span className="text-[#6C837C] dark:text-[#8EB69B]/70 font-normal">zero PII leakage</span>
             </div>
           </div>
           {/* Mini Bar Chart Graphic */}
-          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] rounded-xl">
+          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] dark:bg-[#072421] rounded-xl border border-transparent dark:border-[#163832]">
             <span className="w-1.5 bg-[#8EB69B] rounded-full h-5"></span>
             <span className="w-1.5 bg-[#8EB69B] rounded-full h-7"></span>
-            <span className="w-1.5 bg-[#235347] rounded-full h-9"></span>
+            <span className="w-1.5 bg-[#235347] dark:bg-[#8EB69B] rounded-full h-9"></span>
             <span className="w-1.5 bg-[#10B981] rounded-full h-10"></span>
-            <span className="w-1.5 bg-[#235347] rounded-full h-8"></span>
+            <span className="w-1.5 bg-[#235347] dark:bg-[#8EB69B] rounded-full h-8"></span>
           </div>
         </div>
       </div>
@@ -108,10 +108,10 @@ export default function DashboardOverview() {
         {/* Semi-Circle Gauge Card */}
         <div className="md:col-span-1 lg:col-span-3 clean-card p-6 flex flex-col justify-between text-center">
           <div>
-            <span className="text-xs font-semibold text-[#6C837C] block mb-2">
+            <span className="text-xs font-semibold text-[#6C837C] dark:text-[#8EB69B] block mb-2">
               Average Match Rate
             </span>
-            <div className="text-4xl font-extrabold text-[#0B201B]">
+            <div className="text-4xl font-extrabold text-[#0B201B] dark:text-[#DAF1DE]">
               76.5%
             </div>
           </div>
@@ -122,9 +122,10 @@ export default function DashboardOverview() {
               <path
                 d="M 10 50 A 40 40 0 0 1 90 50"
                 fill="none"
-                stroke="#E1EBE4"
+                stroke="currentColor"
                 strokeWidth="10"
                 strokeLinecap="round"
+                className="text-[#E1EBE4] dark:text-[#163832]"
               />
               <path
                 d="M 10 50 A 40 40 0 0 1 76 18"
@@ -136,8 +137,8 @@ export default function DashboardOverview() {
             </svg>
           </div>
 
-          <div className="text-[11px] text-[#6C837C] font-medium">
-            Cut-off Minimum: <strong className="text-[#0B201B]">75.0%</strong>
+          <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B] font-medium">
+            Cut-off Minimum: <strong className="text-[#0B201B] dark:text-[#DAF1DE]">75.0%</strong>
           </div>
         </div>
 
@@ -145,47 +146,47 @@ export default function DashboardOverview() {
         <div className="md:col-span-1 lg:col-span-4 clean-card p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold text-[#6C837C]">
+              <span className="text-xs font-semibold text-[#6C837C] dark:text-[#8EB69B]">
                 4D Scoring Dimensions
               </span>
-              <span className="text-lg font-bold text-[#0B201B]">86.2%</span>
+              <span className="text-lg font-bold text-[#0B201B] dark:text-[#DAF1DE]">86.2%</span>
             </div>
 
             <div className="mt-4 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#3D544E]">
+                <span className="flex items-center gap-2 text-[#3D544E] dark:text-[#DAF1DE]">
                   <span className="w-2 h-2 rounded-full bg-[#10B981]"></span>
                   <span>S_comp (Keahlian Inti)</span>
                 </span>
-                <span className="font-semibold text-[#0B201B]">88%</span>
+                <span className="font-semibold text-[#0B201B] dark:text-[#DAF1DE]">88%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#3D544E]">
-                  <span className="w-2 h-2 rounded-full bg-[#235347]"></span>
+                <span className="flex items-center gap-2 text-[#3D544E] dark:text-[#DAF1DE]">
+                  <span className="w-2 h-2 rounded-full bg-[#235347] dark:bg-[#8EB69B]"></span>
                   <span>S_port (Repositori GitHub)</span>
                 </span>
-                <span className="font-semibold text-[#0B201B]">82%</span>
+                <span className="font-semibold text-[#0B201B] dark:text-[#DAF1DE]">82%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#3D544E]">
+                <span className="flex items-center gap-2 text-[#3D544E] dark:text-[#DAF1DE]">
                   <span className="w-2 h-2 rounded-full bg-[#8EB69B]"></span>
                   <span>S_conf (Keyakinan Bukti)</span>
                 </span>
-                <span className="font-semibold text-[#0B201B]">91%</span>
+                <span className="font-semibold text-[#0B201B] dark:text-[#DAF1DE]">91%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#3D544E]">
+                <span className="flex items-center gap-2 text-[#3D544E] dark:text-[#DAF1DE]">
                   <span className="w-2 h-2 rounded-full bg-rose-400"></span>
                   <span>S_risk (Penalti Anomali)</span>
                 </span>
-                <span className="font-semibold text-[#0B201B]">18%</span>
+                <span className="font-semibold text-[#0B201B] dark:text-[#DAF1DE]">18%</span>
               </div>
             </div>
           </div>
 
           <button
             onClick={() => alert('Detail kalkulasi deterministik 4D PRD Bab 5.1')}
-            className="w-full mt-4 py-2 px-3 bg-[#EEF4F0] hover:bg-[#E1EBE4] text-[#0B2B26] text-xs font-semibold rounded-xl border border-[#E1EBE4] transition-colors"
+            className="w-full mt-4 py-2 px-3 bg-[#EEF4F0] dark:bg-[#163832] hover:bg-[#E1EBE4] dark:hover:bg-[#235347] text-[#0B2B26] dark:text-[#DAF1DE] text-xs font-semibold rounded-xl border border-[#E1EBE4] dark:border-[#235347] transition-colors btn-interactive"
           >
             Lihat Formula Matematis
           </button>
@@ -196,37 +197,37 @@ export default function DashboardOverview() {
           <div>
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-bold text-[#0B201B]">Distribusi Antrean Triage</h4>
-                <p className="text-[11px] text-[#6C837C]">Batch 1 Golden Dataset (5 Kandidat)</p>
+                <h4 className="text-sm font-bold text-[#0B201B] dark:text-[#DAF1DE]">Distribusi Antrean Triage</h4>
+                <p className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]">Batch 1 Golden Dataset (5 Kandidat)</p>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-[#DAF1DE] text-[#0B2B26] text-xs font-bold border border-[#C2E0C4]">
+              <span className="px-2.5 py-1 rounded-full bg-[#DAF1DE] dark:bg-[#163832] text-[#0B2B26] dark:text-[#DAF1DE] text-xs font-bold border border-[#C2E0C4] dark:border-[#235347]">
                 5 Active
               </span>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2.5 text-xs">
-              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
-                <div className="text-[11px] text-[#6C837C]">Strong Match</div>
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] dark:bg-[#072421] border border-[#E1EBE4] dark:border-[#163832]">
+                <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]">Strong Match</div>
                 <div className="text-base font-extrabold text-[#10B981] mt-0.5">2 (40%)</div>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
-                <div className="text-[11px] text-[#6C837C]">Review Required</div>
-                <div className="text-base font-extrabold text-amber-600 mt-0.5">1 (20%)</div>
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] dark:bg-[#072421] border border-[#E1EBE4] dark:border-[#163832]">
+                <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]">Review Required</div>
+                <div className="text-base font-extrabold text-amber-500 mt-0.5">1 (20%)</div>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
-                <div className="text-[11px] text-[#6C837C]">Weak Fit</div>
-                <div className="text-base font-extrabold text-[#3D544E] mt-0.5">1 (20%)</div>
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] dark:bg-[#072421] border border-[#E1EBE4] dark:border-[#163832]">
+                <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]">Weak Fit</div>
+                <div className="text-base font-extrabold text-[#3D544E] dark:text-[#8EB69B] mt-0.5">1 (20%)</div>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
-                <div className="text-[11px] text-[#6C837C]">Security Quarantine</div>
-                <div className="text-base font-extrabold text-rose-600 mt-0.5">1 (20%)</div>
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] dark:bg-[#072421] border border-[#E1EBE4] dark:border-[#163832]">
+                <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]">Security Quarantine</div>
+                <div className="text-base font-extrabold text-rose-500 mt-0.5">1 (20%)</div>
               </div>
             </div>
           </div>
 
-          <div className="text-[11px] text-[#6C837C] mt-3 flex items-center justify-between pt-2 border-t border-[#E1EBE4]">
-            <span>Audit GitHub IT: <strong className="text-[#0B201B]">3 Terverifikasi</strong></span>
-            <span>Non-IT: <strong className="text-[#0B201B]">1 N/A</strong></span>
+          <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B] mt-3 flex items-center justify-between pt-2 border-t border-[#E1EBE4] dark:border-[#163832]">
+            <span>Audit GitHub IT: <strong className="text-[#0B201B] dark:text-[#DAF1DE]">3 Terverifikasi</strong></span>
+            <span>Non-IT: <strong className="text-[#0B201B] dark:text-[#DAF1DE]">1 N/A</strong></span>
           </div>
         </div>
       </div>
@@ -234,7 +235,7 @@ export default function DashboardOverview() {
       {/* Row 3: 2 Pill Cards + Forest Feature Banner */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
         {/* Dark Pill Card */}
-        <div className="md:col-span-1 lg:col-span-3 bg-[#0B2B26] text-white rounded-3xl p-5 flex items-center gap-4 shadow-md">
+        <div className="md:col-span-1 lg:col-span-3 bg-[#0B2B26] dark:bg-[#072421] border border-transparent dark:border-[#163832] text-white rounded-3xl p-5 flex items-center gap-4 shadow-md">
           <div className="relative w-12 h-12 rounded-full border-2 border-[#8EB69B] flex items-center justify-center font-bold text-sm shrink-0">
             92.4
           </div>
@@ -248,12 +249,12 @@ export default function DashboardOverview() {
 
         {/* Light Pill Card */}
         <div className="md:col-span-1 lg:col-span-3 clean-card p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-[#10B981] flex items-center justify-center font-bold text-xs text-[#0B2B26] shrink-0 bg-[#DAF1DE]/60">
+          <div className="w-12 h-12 rounded-full border-2 border-[#10B981] flex items-center justify-center font-bold text-xs text-[#0B2B26] dark:text-[#DAF1DE] shrink-0 bg-[#DAF1DE]/60 dark:bg-[#163832]/60">
             5.7ms
           </div>
           <div className="min-w-0">
-            <h5 className="text-xs font-bold text-[#0B201B] truncate">Live Backend Latency</h5>
-            <p className="text-[10px] text-[#6C837C] leading-tight mt-0.5">
+            <h5 className="text-xs font-bold text-[#0B201B] dark:text-[#DAF1DE] truncate">Live Backend Latency</h5>
+            <p className="text-[10px] text-[#6C837C] dark:text-[#8EB69B] leading-tight mt-0.5">
               Vercel Edge &rarr; VPS MariaDB ACID
             </p>
           </div>
@@ -315,8 +316,8 @@ export default function DashboardOverview() {
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-[#0B201B]">Daftar Antrean Seleksi Kandidat</h3>
-            <p className="text-xs text-[#6C837C]">
+            <h3 className="text-lg font-bold text-[#0B201B] dark:text-[#DAF1DE]">Daftar Antrean Seleksi Kandidat</h3>
+            <p className="text-xs text-[#6C837C] dark:text-[#8EB69B]">
               Tampilan dossier anonim terenkripsi dengan rincian scoring multi-dimensi PRD Bab 8.2
             </p>
           </div>

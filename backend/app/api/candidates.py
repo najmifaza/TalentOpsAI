@@ -2,7 +2,7 @@ import hashlib
 import json
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -387,6 +387,64 @@ async def right_to_erasure_candidate(
 
     await db.commit()
     return result
+
+
+@router.post("/{candidate_id}/sse-ticket")
+async def issue_sse_stream_ticket(
+    candidate_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Issues single-use UUID ticket (TTL 60s) for authenticated SSE streaming
+    as specified in PRD Bab 8.2 Endpoint 15.
+    """
+    cand_res = await db.execute(
+        text("SELECT id, is_deleted FROM candidates WHERE id = :id"),
+        {"id": candidate_id},
+    )
+    cand = cand_res.mappings().first()
+    if not cand or cand["is_deleted"]:
+        raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_DELETED")
+
+    ticket = await sse_broadcaster.issue_ticket(candidate_id=candidate_id)
+    return {
+        "status": "success",
+        "candidate_id": candidate_id,
+        "ticket": ticket,
+        "expires_in_seconds": 60,
+    }
+
+
+@router.get("/{candidate_id}/trace-stream")
+async def trace_stream_agent_execution(
+    candidate_id: int,
+    ticket: Optional[str] = Query(None),
+):
+    """
+    PRD Bab 8.2 Endpoint 8:
+    Authenticated SSE endpoint for agent execution stream.
+    Requires single-use UUID ticket (burn-on-read).
+    """
+    if not ticket:
+        raise HTTPException(status_code=401, detail="MISSING_SSE_STREAM_TICKET")
+
+    is_valid = await sse_broadcaster.validate_and_burn_ticket(candidate_id=candidate_id, ticket=ticket)
+    if not is_valid:
+        raise HTTPException(status_code=403, detail="INVALID_OR_EXPIRED_SSE_TICKET")
+
+    async def event_generator():
+        async for event in sse_broadcaster.subscribe(candidate_id):
+            yield f"data: {json.dumps(event)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/stream/{candidate_id}")

@@ -18,10 +18,13 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
   const [filterRec, setFilterRec] = useState('ALL');
 
   const filtered = candidates.filter(c => {
-    const matchesSearch = c.masked_identifier.toLowerCase().includes(search.toLowerCase()) ||
-                          c.job_title.toLowerCase().includes(search.toLowerCase()) ||
-                          c.key_technologies.some(t => t.toLowerCase().includes(search.toLowerCase()));
-    const matchesRec = filterRec === 'ALL' || c.recommendation === filterRec;
+    const q = search.trim().toLowerCase();
+    const matchesSearch = !q ||
+                          (c.masked_identifier && c.masked_identifier.toLowerCase().includes(q)) ||
+                          (c.tracking_token && c.tracking_token.toLowerCase().includes(q)) ||
+                          (c.job_title && c.job_title.toLowerCase().includes(q)) ||
+                          (c.key_technologies && c.key_technologies.some(t => t.toLowerCase().includes(q)));
+    const matchesRec = filterRec === 'ALL' || c.recommendation === filterRec || (filterRec === 'QUEUED' && (!c.recommendation || c.status === 'queued'));
     return matchesSearch && matchesRec;
   });
 

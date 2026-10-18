@@ -48,7 +48,7 @@ async def list_candidates(
     Omits plaintext PII; displays masked_identifier and evaluation stats.
     """
     query_str = """
-        SELECT id, job_id, masked_identifier, overall_score, confidence_level,
+        SELECT id, job_id, masked_identifier, tracking_token, overall_score, confidence_level,
                unresolved_risk, recommendation, triage_priority, status,
                dimension_scores, is_deleted, created_at
         FROM candidates
@@ -79,6 +79,7 @@ async def list_candidates(
             "id": r["id"],
             "job_id": r["job_id"],
             "masked_identifier": r["masked_identifier"],
+            "tracking_token": r.get("tracking_token"),
             "overall_score": float(r["overall_score"]) if r["overall_score"] is not None else None,
             "confidence_level": r["confidence_level"],
             "unresolved_risk": r["unresolved_risk"],

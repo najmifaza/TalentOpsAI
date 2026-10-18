@@ -48,7 +48,7 @@ export default function DashboardOverview() {
             return {
               id: c.id,
               masked_identifier: c.masked_identifier,
-              tracking_token: match?.tracking_token || `tk-${c.id}`,
+              tracking_token: c.tracking_token || match?.tracking_token || `tk-${c.id}`,
               job_title: match?.job_title || 'Senior Backend Engineer',
               applied_date: c.created_at ? c.created_at.replace('T', ' ').slice(0, 16) : (match?.applied_date || '2026-10-18 10:00'),
               candidate_name_masked: match?.candidate_name_masked || 'K******** *******',

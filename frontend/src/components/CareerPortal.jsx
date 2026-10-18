@@ -19,22 +19,33 @@ import {
   Search,
   Check
 } from 'lucide-react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import DpaModal from './DpaModal';
 import TokenIssuedModal from './TokenIssuedModal';
 import ApplicationTracker from './ApplicationTracker';
 
 export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }) {
-  const [activeTab, setActiveTab] = useState(initialTab); // 'apply' | 'track'
+  const navigate = useNavigate();
+  const { token: urlToken } = useParams();
+  const location = useLocation();
+
+  const isTrackRoute = location.pathname.includes('/track') || initialTab === 'track';
+  const [activeTab, setActiveTab] = useState(isTrackRoute ? 'track' : 'apply');
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [loadingJobs, setLoadingJobs] = useState(true);
 
-  // Sync tab if parent changes initialTab prop
+  // Sync tab with URL route changes and params
   useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
+    if (location.pathname.includes('/track')) {
+      setActiveTab('track');
+      if (urlToken) {
+        setTrackerInitialToken(urlToken);
+      }
+    } else {
+      setActiveTab('apply');
     }
-  }, [initialTab]);
+  }, [location.pathname, urlToken]);
 
   // Form states
   const [name, setName] = useState('');
@@ -240,7 +251,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
 
   const handleTrackNow = (token) => {
     setTrackerInitialToken(token);
-    setActiveTab('track');
+    navigate(`/careers/track/${encodeURIComponent(token)}`);
   };
 
   return (
@@ -266,7 +277,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
           <div className="flex items-center gap-2">
             <div className="inline-flex p-1 rounded-xl bg-[#051F20]/60 border border-[#163832]">
               <button
-                onClick={() => setActiveTab('apply')}
+                onClick={() => navigate('/careers/apply')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'apply'
                     ? 'bg-[#163832] text-white shadow-sm'
@@ -276,7 +287,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                 Kirim Lamaran
               </button>
               <button
-                onClick={() => setActiveTab('track')}
+                onClick={() => navigate('/careers/track')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                   activeTab === 'track'
                     ? 'bg-[#163832] text-white shadow-sm'
@@ -288,15 +299,16 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
               </button>
             </div>
 
-            {onBackToDashboard && (
-              <button
-                onClick={onBackToDashboard}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#8EB69B]/30 bg-[#8EB69B]/10 hover:bg-[#8EB69B]/20 text-[#DAF1DE] text-xs font-semibold transition-all"
-              >
-                <Building2 className="w-3.5 h-3.5 text-[#8EB69B]" />
-                <span>Dashboard HR</span>
-              </button>
-            )}
+            <button
+              onClick={() => {
+                if (onBackToDashboard) onBackToDashboard();
+                else navigate('/dashboard');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#8EB69B]/30 bg-[#8EB69B]/10 hover:bg-[#8EB69B]/20 text-[#DAF1DE] text-xs font-semibold transition-all"
+            >
+              <Building2 className="w-3.5 h-3.5 text-[#8EB69B]" />
+              <span>Dashboard HR</span>
+            </button>
           </div>
         </div>
       </header>
@@ -305,8 +317,8 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === 'track' ? (
           <ApplicationTracker 
-            initialToken={trackerInitialToken} 
-            onBackToPortal={() => setActiveTab('apply')} 
+            initialToken={urlToken || trackerInitialToken} 
+            onBackToPortal={() => navigate('/careers/apply')} 
           />
         ) : (
           <div className="space-y-8 animate-fade-in">

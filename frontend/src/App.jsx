@@ -88,9 +88,7 @@ function DashboardLayout({ isDark, onToggleTheme }) {
       <div className={`flex-1 flex flex-col min-w-0 ${isOffline ? 'pt-8' : ''}`}>
         <Header 
           currentTitle={currentTitle} 
-          onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
-          isDark={isDark}
-          onToggleTheme={onToggleTheme}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)} 
         />
 
         <main id="main-content" tabIndex="-1" className="flex-1 px-4 sm:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto animate-fade-in focus:outline-none">

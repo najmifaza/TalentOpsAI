@@ -25,23 +25,23 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
       {/* Top Section */}
       <div>
         {/* Brand Header */}
-        <div className="p-6 pb-5 flex items-center justify-between border-b border-[#163832]/60">
+        <div className="p-6 pb-5 flex items-center justify-between border-b border-[#383a42]">
           <Link 
             to="/dashboard" 
             onClick={handleLinkClick}
             className="flex items-center gap-3 hover:opacity-95 transition-opacity"
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8EB69B] to-[#235347] flex items-center justify-center shadow-md text-[#051F20] font-extrabold text-base">
-              <svg className="w-5 h-5 text-[#051F20]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <div className="w-9 h-9 rounded-xl bg-[#1b55f5] flex items-center justify-center shadow-sm text-white font-extrabold text-base">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
               </svg>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-white tracking-tight text-lg">TalentOps</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#8EB69B]/20 text-[#8EB69B] font-semibold border border-[#8EB69B]/30">AI</span>
+                <span className="font-bold text-white tracking-tight text-lg font-display">TalentOps</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#1b55f5]/30 text-[#8ec0ff] font-semibold border border-[#1b55f5]/50">AI</span>
               </div>
-              <p className="text-[10px] text-[#8EB69B]/70 tracking-wide font-medium">Recruitment Platform</p>
+              <p className="text-[10px] text-[#8ec0ff]/80 tracking-wide font-medium">Observability &amp; Triage</p>
             </div>
           </Link>
 
@@ -49,7 +49,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
           <button
             type="button"
             onClick={onCloseMobile}
-            className="lg:hidden p-1.5 rounded-lg text-[#8EB69B] hover:text-white hover:bg-[#163832] transition-colors"
+            className="lg:hidden p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-[#34373e] transition-colors"
             title="Tutup Menu"
           >
             <X className="w-5 h-5" />
@@ -58,7 +58,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
 
         {/* Navigation Menu */}
         <div className="px-4 py-3 space-y-1">
-          <div className="px-3 pb-2 text-[10px] font-bold tracking-widest text-[#8EB69B]/60 uppercase">
+          <div className="px-3 pb-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
             Navigation
           </div>
 
@@ -70,22 +70,22 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
                 to={item.path}
                 onClick={handleLinkClick}
                 className={({ isActive }) =>
-                  `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 group ${
+                  `w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 group ${
                     isActive
-                      ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
-                      : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
+                      ? 'bg-[#1b55f5] text-white shadow-sm'
+                      : 'text-white/70 hover:text-white hover:bg-[#34373e]'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
                     <div className="flex items-center gap-3">
-                      <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
+                      <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-white/60 group-hover:text-white'}`} />
                       <span className="tracking-tight">{item.label}</span>
                     </div>
                     {item.badge && (
                       <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${
-                        isActive ? 'bg-[#8EB69B]/20 text-[#DAF1DE] border border-[#8EB69B]/30' : 'bg-[#051F20]/60 text-[#8EB69B]/80'
+                        isActive ? 'bg-white/20 text-white' : 'bg-black/30 text-white/70'
                       }`}>
                         {item.badge}
                       </span>
@@ -96,7 +96,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
             );
           })}
 
-          <div className="pt-5 px-3 pb-2 text-[10px] font-bold tracking-widest text-[#8EB69B]/60 uppercase">
+          <div className="pt-5 px-3 pb-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
             Public Portal
           </div>
 
@@ -104,20 +104,20 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
             to="/careers/apply"
             onClick={handleLinkClick}
             className={({ isActive }) =>
-              `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+              `w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group ${
                 isActive
-                  ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
-                  : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
+                  ? 'bg-[#1b55f5] text-white shadow-sm'
+                  : 'text-white/70 hover:text-white hover:bg-[#34373e]'
               }`
             }
           >
             {({ isActive }) => (
               <>
                 <div className="flex items-center gap-3">
-                  <Briefcase className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
+                  <Briefcase className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-white/60 group-hover:text-white'}`} />
                   <span className="tracking-tight">Portal Pelamar</span>
                 </div>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white font-semibold">
                   Pelamar
                 </span>
               </>
@@ -128,20 +128,20 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
             to="/careers/track"
             onClick={handleLinkClick}
             className={({ isActive }) =>
-              `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+              `w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group ${
                 isActive
-                  ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
-                  : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
+                  ? 'bg-[#1b55f5] text-white shadow-sm'
+                  : 'text-white/70 hover:text-white hover:bg-[#34373e]'
               }`
             }
           >
             {({ isActive }) => (
               <>
                 <div className="flex items-center gap-3">
-                  <FileCheck2 className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
+                  <FileCheck2 className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-white/60 group-hover:text-white'}`} />
                   <span className="tracking-tight">Lacak Berkas Lamaran</span>
                 </div>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white font-semibold">
                   Lacak
                 </span>
               </>
@@ -151,20 +151,20 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
       </div>
 
       {/* Bottom Section: User Account */}
-      <div className="p-4 border-t border-[#163832]/60">
-        <div className="px-2 pb-2 text-[10px] font-bold tracking-widest text-[#8EB69B]/60 uppercase">
+      <div className="p-4 border-t border-[#383a42]">
+        <div className="px-2 pb-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
           User Account
         </div>
-        <div className="p-2.5 rounded-xl bg-[#051F20]/70 border border-[#163832] flex items-center gap-3">
+        <div className="p-2.5 rounded-lg bg-[#202226] border border-[#383a42] flex items-center gap-3">
           <div className="relative">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#235347] to-[#8EB69B] flex items-center justify-center font-bold text-white text-xs shadow-inner">
+            <div className="w-9 h-9 rounded-full bg-[#1b55f5] flex items-center justify-center font-bold text-white text-xs shadow-inner">
               WN
             </div>
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#10B981] ring-2 ring-[#051F20]"></span>
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#10B981] ring-2 ring-[#202226]"></span>
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold text-white truncate">Willy Narendra</div>
-            <div className="text-[10px] text-[#8EB69B] font-mono truncate">#willy-dev3 &bull; Frontend</div>
+            <div className="text-[10px] text-[#8ec0ff] font-mono truncate">#willy-dev3 &bull; Frontend</div>
           </div>
         </div>
       </div>
@@ -174,7 +174,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   return (
     <>
       {/* 1. Desktop Persistent Sidebar (Visible on screens >= 1024px) */}
-      <aside className="hidden lg:flex w-64 bg-[#0B2B26] dark:bg-[#072421] text-white flex-col shrink-0 min-h-screen border-r border-[#163832]/60 select-none transition-colors duration-200">
+      <aside className="hidden lg:flex w-64 bg-[#2b2d32] text-white flex-col shrink-0 min-h-screen border-r border-[#383a42] select-none transition-colors duration-200">
         {navContent}
       </aside>
 
@@ -184,11 +184,11 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
           {/* Backdrop blur overlay */}
           <div 
             onClick={onCloseMobile}
-            className="fixed inset-0 bg-[#051F20]/75 backdrop-blur-sm transition-opacity animate-fade-in"
+            className="fixed inset-0 bg-[#000000]/70 backdrop-blur-sm transition-opacity animate-fade-in"
           />
 
           {/* Drawer Pane */}
-          <aside className="relative z-50 w-72 max-w-[80vw] bg-[#0B2B26] dark:bg-[#072421] text-white flex flex-col h-full shadow-2xl border-r border-[#163832] animate-slide-in">
+          <aside className="relative z-50 w-72 max-w-[80vw] bg-[#2b2d32] text-white flex flex-col h-full shadow-2xl border-r border-[#383a42] animate-slide-in">
             {navContent}
           </aside>
         </div>

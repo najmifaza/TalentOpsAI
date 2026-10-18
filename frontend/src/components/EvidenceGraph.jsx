@@ -677,17 +677,17 @@ export default function EvidenceGraph() {
   return (
     <div className="space-y-6 animate-fade-in select-none">
       {/* Top Header Card */}
-      <div className="forest-card p-6 sm:p-8 relative overflow-hidden shadow-xl">
+      <div className="bg-[#2b2d32] border border-[#383a42] p-6 sm:p-8 rounded-2xl relative overflow-hidden shadow-sm text-white">
         <div className="relative z-10 max-w-3xl space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB69B]/20 text-[#DAF1DE] border border-[#8EB69B]/30 text-xs font-semibold">
-            <GitBranch className="w-3.5 h-3.5 text-[#8EB69B]" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1b55f5]/30 text-[#8ec0ff] border border-[#1b55f5]/50 text-xs font-semibold">
+            <GitBranch className="w-3.5 h-3.5 text-[#8ec0ff]" />
             <span>Interactive Node-Link Architecture &bull; React Flow</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold font-display text-white tracking-tight">
             Candidate Evidence Graph Explorer
           </h2>
-          <p className="text-xs sm:text-sm text-[#8EB69B] leading-relaxed">
-            Menghubungkan klaim keahlian kandidat langsung ke <strong>kutipan teks asli resume</strong> (grounding validation) dan <strong>repositori GitHub terverifikasi</strong>. Untuk role non-programmer, graf secara otomatis menerapkan aturan status <code className="bg-[#051F20] px-1.5 py-0.5 rounded text-white">NOT_APPLICABLE</code> tanpa error.
+          <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
+            Menghubungkan klaim keahlian kandidat langsung ke <strong>kutipan teks asli resume</strong> (grounding validation) dan <strong>repositori GitHub terverifikasi</strong>. Untuk role non-programmer, graf secara otomatis menerapkan aturan status <code className="bg-black/40 px-1.5 py-0.5 rounded text-white font-mono">NOT_APPLICABLE</code> tanpa error.
           </p>
         </div>
       </div>
@@ -695,7 +695,7 @@ export default function EvidenceGraph() {
       {/* Candidate Selector Bar (Responsive Horizontal Scroll) */}
       <div className="clean-card p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0 scrollbar-none">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#6C837C] mr-1 shrink-0">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#67677e] mr-1 shrink-0">
             Pilih Kandidat:
           </span>
           {candidateList.map((cand) => {
@@ -704,19 +704,19 @@ export default function EvidenceGraph() {
               <button
                 key={cand.id}
                 onClick={() => handleSelectCandidate(cand)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all flex items-center gap-2 shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-2 shrink-0 ${
                   isSelected
-                    ? 'bg-[#0B2B26] text-white shadow-md ring-2 ring-[#8EB69B]'
-                    : 'bg-[#EEF4F0] hover:bg-[#C2E0C4]/60 text-[#0B201B] border border-[#E1EBE4]'
+                    ? 'bg-[#1b55f5] text-white shadow-sm ring-2 ring-[#8ec0ff]'
+                    : 'bg-white hover:bg-[#f4f4f6] text-[#000000] border border-[#d8d8df]'
                 }`}
               >
                 <span>{cand.masked_identifier}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded font-sans ${
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-sans font-bold ${
                   cand.recommendation === 'STRONG_MATCH' 
-                    ? 'bg-emerald-500/20 text-emerald-300' 
+                    ? (isSelected ? 'bg-white/20 text-white' : 'bg-[#eaf0ff] text-[#1b55f5]') 
                     : (cand.recommendation === 'SECURITY_QUARANTINE' 
-                        ? 'bg-rose-500/20 text-rose-300' 
-                        : 'bg-amber-500/20 text-amber-300')
+                        ? (isSelected ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-700') 
+                        : (isSelected ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'))
                 }`}>
                   {cand.recommendation}
                 </span>
@@ -725,9 +725,9 @@ export default function EvidenceGraph() {
           })}
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-[#6C837C] shrink-0 self-end sm:self-auto">
-          <Info className="w-4 h-4 text-[#235347]" />
-          <span>Geser & Zoom kanvas graf untuk inspeksi</span>
+        <div className="flex items-center gap-2 text-xs text-[#67677e] shrink-0 self-end sm:self-auto">
+          <Info className="w-4 h-4 text-[#1b55f5]" />
+          <span>Geser &amp; Zoom kanvas graf untuk inspeksi</span>
         </div>
       </div>
 

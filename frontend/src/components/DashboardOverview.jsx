@@ -87,91 +87,203 @@ export default function DashboardOverview() {
   const reviewRequired = candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length;
 
   return (
-    <div className="space-y-6">
-      {/* Top 3 KPI Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Metric 1 */}
-        <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-[#163832] tracking-wide">
-              Core Competency Index
+    <div className="space-y-8 pb-10">
+      {/* 1. Grafana Top Announcement Pill */}
+      <div className="flex items-center justify-center">
+        <a 
+          href="https://github.com/najmifaza/TalentOpsAI"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#e6e6ea] shadow-xs hover:border-[#1b55f5] text-xs transition-all group"
+        >
+          <span className="w-2 h-2 rounded-full bg-[#f97316] animate-pulse"></span>
+          <span className="font-semibold text-[#000000]">TalentOps AI: Observability &amp; Triage Platform</span>
+          <span className="text-[#67677e] hidden sm:inline">&bull; UINIC 8.0 &amp; GTNIC 2026 Ready</span>
+          <span className="text-[#1b55f5] font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
+            Pelajari PRD Master <ArrowRight className="w-3 h-3" />
+          </span>
+        </a>
+      </div>
+
+      {/* 2. Signature Grafana Hero Section */}
+      <div className="grafana-hero-mesh border border-[#e6e6ea] rounded-3xl p-8 sm:p-14 text-center relative overflow-hidden shadow-xs">
+        {/* Subtitle Pill */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#1b55f5] mb-5 shadow-2xs">
+          <Sparkles className="w-3.5 h-3.5 text-[#f97316]" />
+          <span>Human-Centric Agentic Recruitment Ecosystem</span>
+        </div>
+
+        {/* Big Bold Headline */}
+        <h1 className="text-3xl sm:text-5xl font-black text-[#000000] tracking-tight max-w-4xl mx-auto leading-[1.18] font-display">
+          AI untuk rekrutmen. Rekrutmen untuk AI. Satu platform untuk keduanya.
+        </h1>
+
+        {/* Descriptive Tagline */}
+        <p className="text-sm sm:text-base text-[#454554] max-w-2xl mx-auto mt-4 leading-relaxed font-normal">
+          Ekosistem seleksi otonom berbasis bukti kredensial: Triage instan multi-dimensi deterministik, verifikasi repositori kode GitHub, dan perlindungan privasi data pelamar berstandar UU PDP No. 27/2022.
+        </p>
+
+        {/* Two CTAs with (i) micro-copy */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-8">
+          <div className="flex flex-col items-center">
+            <span className="text-[11px] text-[#67677e] font-medium flex items-center gap-1 mb-1.5">
+              <span className="w-3 h-3 rounded-full bg-[#1b55f5]/10 text-[#1b55f5] flex items-center justify-center text-[9px] font-bold">i</span>
+              Evaluasi Berkas Otonom Real-Time
             </span>
-            <div className="text-3xl font-extrabold text-[#0B201B] tracking-tight">
-              88.45 <span className="text-xs font-bold text-[#3D544E]">/100</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-              <span>▲ 4.2%</span>
-              <span className="text-[#235347] font-semibold">vs standar industri</span>
-            </div>
+            <button
+              onClick={() => setTraceCandidate(candidates[0])}
+              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white font-bold text-xs shadow-sm transition-all btn-interactive flex items-center justify-center gap-2"
+            >
+              <Radio className="w-4 h-4 text-white animate-pulse" />
+              <span>Buka Live Trace Monitor</span>
+            </button>
           </div>
-          {/* Mini Bar Chart Graphic */}
-          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] rounded-xl border border-[#E1EBE4]">
-            <span className="w-1.5 bg-[#235347] rounded-full h-4"></span>
-            <span className="w-1.5 bg-[#0B2B26] rounded-full h-8"></span>
-            <span className="w-1.5 bg-[#235347] rounded-full h-5"></span>
-            <span className="w-1.5 bg-emerald-600 rounded-full h-9"></span>
-            <span className="w-1.5 bg-[#0B2B26] rounded-full h-7"></span>
+
+          <div className="flex flex-col items-center">
+            <span className="text-[11px] text-[#67677e] font-medium flex items-center gap-1 mb-1.5">
+              <span className="w-3 h-3 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[9px] font-bold">i</span>
+              Portal Karir Publik Tanpa Autentikasi
+            </span>
+            <a
+              href="/careers/apply"
+              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-white hover:bg-[#f4f4f6] text-[#000000] border border-[#d8d8df] font-bold text-xs shadow-sm transition-all btn-interactive flex items-center justify-center gap-2"
+            >
+              <ArrowUpRight className="w-4 h-4 text-[#67677e]" />
+              <span>Kirim Berkas Lamaran</span>
+            </a>
           </div>
         </div>
 
-        {/* Metric 2 */}
-        <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-[#163832] tracking-wide">
-              Determinism & Fairness
+        {/* Ask AI Search / Inquiry Floating Pill */}
+        <div className="max-w-xl mx-auto mt-8 bg-white border border-[#ffae70]/60 hover:border-[#f97316] rounded-full p-1.5 pl-4 sm:pl-5 flex items-center justify-between shadow-sm transition-all">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Sparkles className="w-4 h-4 text-[#f97316] shrink-0" />
+            <span className="text-xs font-bold text-[#000000] shrink-0">Tanya AI</span>
+            <span className="text-xs text-[#67677e] truncate text-left">
+              Bagaimana formula deterministik 4D mendeteksi hidden text pada resume?
             </span>
-            <div className="text-3xl font-extrabold text-[#0B201B] tracking-tight">
-              99.20 <span className="text-xs font-bold text-[#3D544E]">/100%</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-              <span>▲ 0.8%</span>
-              <span className="text-[#235347] font-semibold">zero demographic bias</span>
-            </div>
           </div>
-          {/* Mini Bar Chart Graphic */}
-          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] rounded-xl border border-[#E1EBE4]">
-            <span className="w-1.5 bg-[#235347] rounded-full h-3"></span>
-            <span className="w-1.5 bg-[#163832] rounded-full h-6"></span>
-            <span className="w-1.5 bg-[#0B2B26] rounded-full h-10"></span>
-            <span className="w-1.5 bg-[#235347] rounded-full h-7"></span>
-            <span className="w-1.5 bg-emerald-600 rounded-full h-9"></span>
-          </div>
+          <button 
+            onClick={() => alert('[Observability AI]: Formula 4D mengevaluasi S_comp, S_port, S_conf, dan S_risk secara deterministik (Suhu 0.0) tanpa halusinasi, memotong penalti 30 poin bila ditemukan w:vanish.')}
+            className="w-8 h-8 rounded-full bg-[#1b55f5] text-white flex items-center justify-center hover:bg-[#1545c7] transition-colors shrink-0 ml-2"
+            title="Kirim Pertanyaan AI"
+          >
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
 
-        {/* Metric 3 */}
-        <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-[#163832] tracking-wide">
-              UU PDP Privacy Compliance
+        {/* Social Proof & Architectural Standards */}
+        <div className="mt-10 pt-6 border-t border-[#e6e6ea]/60">
+          <p className="text-[11px] uppercase tracking-widest text-[#67677e] font-bold">
+            Standar Arsitektur &amp; Kepatuhan Regulasi Resmi
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mt-3">
+            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
+              Gemini 3.8 Flash
             </span>
-            <div className="text-3xl font-extrabold text-[#0B201B] tracking-tight">
-              100% <span className="text-xs font-bold text-[#3D544E]">AES-256</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-              <span>★ Verified</span>
-              <span className="text-[#235347] font-semibold">zero PII leakage</span>
-            </div>
-          </div>
-          {/* Mini Bar Chart Graphic */}
-          <div className="flex items-end gap-1 h-10 px-2 py-1 bg-[#EEF4F0] rounded-xl border border-[#E1EBE4]">
-            <span className="w-1.5 bg-[#235347] rounded-full h-5"></span>
-            <span className="w-1.5 bg-[#163832] rounded-full h-7"></span>
-            <span className="w-1.5 bg-[#0B2B26] rounded-full h-9"></span>
-            <span className="w-1.5 bg-emerald-600 rounded-full h-10"></span>
-            <span className="w-1.5 bg-[#0B2B26] rounded-full h-8"></span>
+            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
+              FastAPI Asynchronous
+            </span>
+            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
+              MariaDB ACID 12 Tabel
+            </span>
+            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
+              UU PDP No. 27/2022
+            </span>
+            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
+              Envelope AES-256-GCM
+            </span>
+            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
+              React Flow v12
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Row 2: Gauge + 4D Distribution + Queue Summary (Responsive for Tablet & Desktop) */}
+      {/* 3. Top 3 KPI Metric Cards (Grafana Style) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Metric 1 */}
+        <div className="clean-card clean-card-hover p-6 flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-[#67677e] tracking-wide">
+              Core Competency Index
+            </span>
+            <div className="text-3xl font-extrabold text-[#000000] tracking-tight">
+              88.45 <span className="text-xs font-semibold text-[#67677e]">/100</span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-bold text-[#1b55f5]">
+              <span>▲ 4.2%</span>
+              <span className="text-[#67677e] font-normal">vs standar industri</span>
+            </div>
+          </div>
+          {/* Mini Bar Chart Graphic */}
+          <div className="flex items-end gap-1.5 h-10 px-2.5 py-1.5 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea]">
+            <span className="w-1.5 bg-[#8ec0ff] rounded-full h-4"></span>
+            <span className="w-1.5 bg-[#1b55f5] rounded-full h-8"></span>
+            <span className="w-1.5 bg-[#8ec0ff] rounded-full h-5"></span>
+            <span className="w-1.5 bg-[#1b55f5] rounded-full h-9"></span>
+            <span className="w-1.5 bg-[#d8d8df] rounded-full h-7"></span>
+          </div>
+        </div>
+
+        {/* Metric 2 */}
+        <div className="clean-card clean-card-hover p-6 flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-[#67677e] tracking-wide">
+              Determinism &amp; Fairness
+            </span>
+            <div className="text-3xl font-extrabold text-[#000000] tracking-tight">
+              99.20 <span className="text-xs font-semibold text-[#67677e]">/100%</span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-bold text-[#10B981]">
+              <span>▲ 0.8%</span>
+              <span className="text-[#67677e] font-normal">zero demographic bias</span>
+            </div>
+          </div>
+          {/* Mini Bar Chart Graphic */}
+          <div className="flex items-end gap-1.5 h-10 px-2.5 py-1.5 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea]">
+            <span className="w-1.5 bg-[#c2e0c4] rounded-full h-3"></span>
+            <span className="w-1.5 bg-[#10B981] rounded-full h-6"></span>
+            <span className="w-1.5 bg-[#10B981] rounded-full h-10"></span>
+            <span className="w-1.5 bg-[#c2e0c4] rounded-full h-7"></span>
+            <span className="w-1.5 bg-[#10B981] rounded-full h-9"></span>
+          </div>
+        </div>
+
+        {/* Metric 3 */}
+        <div className="clean-card clean-card-hover p-6 flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-[#67677e] tracking-wide">
+              UU PDP Privacy Compliance
+            </span>
+            <div className="text-3xl font-extrabold text-[#000000] tracking-tight">
+              100% <span className="text-xs font-semibold text-[#67677e]">AES-256</span>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-bold text-[#1b55f5]">
+              <span>★ Verified</span>
+              <span className="text-[#67677e] font-normal">zero PII leakage</span>
+            </div>
+          </div>
+          {/* Mini Bar Chart Graphic */}
+          <div className="flex items-end gap-1.5 h-10 px-2.5 py-1.5 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea]">
+            <span className="w-1.5 bg-[#ffae70] rounded-full h-5"></span>
+            <span className="w-1.5 bg-[#f97316] rounded-full h-7"></span>
+            <span className="w-1.5 bg-[#ffae70] rounded-full h-9"></span>
+            <span className="w-1.5 bg-[#f97316] rounded-full h-10"></span>
+            <span className="w-1.5 bg-[#d8d8df] rounded-full h-8"></span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Row 2: Gauge + 4D Distribution + Queue Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
         {/* Semi-Circle Gauge Card */}
         <div className="md:col-span-1 lg:col-span-3 clean-card p-6 flex flex-col justify-between text-center">
           <div>
-            <span className="text-xs font-bold text-[#163832] block mb-2">
+            <span className="text-xs font-bold text-[#67677e] block mb-2">
               Average Match Rate
             </span>
-            <div className="text-4xl font-black text-[#0B201B]">
+            <div className="text-4xl font-black text-[#000000]">
               76.5%
             </div>
           </div>
@@ -185,20 +297,20 @@ export default function DashboardOverview() {
                 stroke="currentColor"
                 strokeWidth="10"
                 strokeLinecap="round"
-                className="text-[#E1EBE4]"
+                className="text-[#e6e6ea]"
               />
               <path
                 d="M 10 50 A 40 40 0 0 1 76 18"
                 fill="none"
-                stroke="#10B981"
+                stroke="#1b55f5"
                 strokeWidth="10"
                 strokeLinecap="round"
               />
             </svg>
           </div>
 
-          <div className="text-xs font-bold text-[#163832]">
-            Cut-off Minimum: <strong className="text-emerald-800 font-extrabold">75.0%</strong>
+          <div className="text-xs font-semibold text-[#67677e]">
+            Cut-off Minimum: <strong className="text-[#000000] font-bold">75.0%</strong>
           </div>
         </div>
 
@@ -206,47 +318,47 @@ export default function DashboardOverview() {
         <div className="md:col-span-1 lg:col-span-4 clean-card p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-bold text-[#163832]">
+              <span className="text-xs font-bold text-[#000000]">
                 4D Scoring Dimensions
               </span>
-              <span className="text-lg font-black text-[#0B201B]">86.2%</span>
+              <span className="text-lg font-black text-[#1b55f5]">86.2%</span>
             </div>
 
             <div className="mt-4 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#0B201B] font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                <span className="flex items-center gap-2 text-[#454554] font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#1b55f5]"></span>
                   <span>S_comp (Keahlian Inti)</span>
                 </span>
-                <span className="font-extrabold text-[#0B201B]">88%</span>
+                <span className="font-bold text-[#000000]">88%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#0B201B] font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#163832]"></span>
+                <span className="flex items-center gap-2 text-[#454554] font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
                   <span>S_port (Repositori GitHub)</span>
                 </span>
-                <span className="font-extrabold text-[#0B201B]">82%</span>
+                <span className="font-bold text-[#000000]">82%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#0B201B] font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
+                <span className="flex items-center gap-2 text-[#454554] font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#8ec0ff]"></span>
                   <span>S_conf (Keyakinan Bukti)</span>
                 </span>
-                <span className="font-extrabold text-[#0B201B]">91%</span>
+                <span className="font-bold text-[#000000]">91%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#0B201B] font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+                <span className="flex items-center gap-2 text-[#454554] font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
                   <span>S_risk (Penalti Anomali)</span>
                 </span>
-                <span className="font-extrabold text-[#0B201B]">18%</span>
+                <span className="font-bold text-[#000000]">18%</span>
               </div>
             </div>
           </div>
 
           <button
             onClick={() => alert('Detail kalkulasi deterministik 4D PRD Bab 5.1')}
-            className="w-full mt-4 py-2 px-3 bg-[#0B2B26] hover:bg-[#163832] text-white text-xs font-bold rounded-xl shadow-sm transition-all btn-interactive"
+            className="w-full mt-4 py-2 px-3 bg-[#f4f4f6] hover:bg-[#eaf0ff] hover:text-[#1b55f5] text-[#000000] text-xs font-bold rounded-lg border border-[#e6e6ea] transition-all btn-interactive"
           >
             Lihat Formula Matematis
           </button>
@@ -257,130 +369,116 @@ export default function DashboardOverview() {
           <div>
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-extrabold text-[#0B201B]">Distribusi Antrean Triage</h4>
-                <p className="text-xs font-semibold text-[#235347]">Batch 1 Golden Dataset (5 Kandidat)</p>
+                <h4 className="text-sm font-bold text-[#000000]">Distribusi Antrean Triage</h4>
+                <p className="text-xs text-[#67677e]">Batch 1 Golden Dataset (5 Kandidat)</p>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-[#0B2B26] text-white text-xs font-bold shadow-sm">
+              <span className="px-2.5 py-1 rounded-full bg-[#eaf0ff] text-[#1b55f5] text-xs font-bold border border-[#8ec0ff]">
                 5 Active
               </span>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2.5 text-xs">
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300">
-                <div className="text-xs font-bold text-emerald-950">Strong Match</div>
-                <div className="text-base font-black text-emerald-700 mt-0.5">2 (40%)</div>
+              <div className="p-3 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff]">
+                <div className="text-xs font-bold text-[#1b55f5]">Strong Match</div>
+                <div className="text-base font-black text-[#1b55f5] mt-0.5">2 (40%)</div>
               </div>
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-300">
-                <div className="text-xs font-bold text-amber-950">Review Required</div>
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                <div className="text-xs font-bold text-amber-800">Review Required</div>
                 <div className="text-base font-black text-amber-700 mt-0.5">1 (20%)</div>
               </div>
-              <div className="p-3 rounded-xl bg-slate-100 border border-slate-300">
-                <div className="text-xs font-bold text-slate-900">Weak Fit</div>
-                <div className="text-base font-black text-slate-700 mt-0.5">1 (20%)</div>
+              <div className="p-3 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea]">
+                <div className="text-xs font-bold text-[#454554]">Weak Fit</div>
+                <div className="text-base font-black text-[#454554] mt-0.5">1 (20%)</div>
               </div>
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-300">
-                <div className="text-xs font-bold text-rose-950">Security Quarantine</div>
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
+                <div className="text-xs font-bold text-rose-800">Security Quarantine</div>
                 <div className="text-base font-black text-rose-700 mt-0.5">1 (20%)</div>
               </div>
             </div>
           </div>
 
-          <div className="text-xs font-bold text-[#163832] mt-3 flex items-center justify-between pt-2 border-t border-[#E1EBE4]">
-            <span>Audit GitHub IT: <strong className="text-[#0B201B]">3 Terverifikasi</strong></span>
-            <span>Non-IT: <strong className="text-[#0B201B]">1 N/A</strong></span>
+          <div className="text-xs font-semibold text-[#67677e] mt-3 flex items-center justify-between pt-2 border-t border-[#e6e6ea]">
+            <span>Audit GitHub IT: <strong className="text-[#000000]">3 Terverifikasi</strong></span>
+            <span>Non-IT: <strong className="text-[#000000]">1 N/A</strong></span>
           </div>
         </div>
       </div>
 
-      {/* Row 3: 2 Pill Cards + Forest Feature Banner */}
+      {/* 5. Row 3: 2 Pill Cards + Charcoal Architecture Banner */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
-        {/* Dark Pill Card */}
-        <div className="md:col-span-1 lg:col-span-3 bg-[#0B2B26] text-white rounded-3xl p-5 flex items-center gap-4 shadow-md">
-          <div className="relative w-12 h-12 rounded-full border-2 border-white/60 bg-white/10 flex items-center justify-center font-extrabold text-sm text-white shrink-0">
+        {/* Charcoal Pill Card */}
+        <div className="md:col-span-1 lg:col-span-3 bg-[#2b2d32] text-white rounded-2xl p-5 flex items-center gap-4 shadow-sm border border-[#383a42]">
+          <div className="relative w-12 h-12 rounded-full border-2 border-[#1b55f5] bg-white/10 flex items-center justify-center font-extrabold text-sm text-white shrink-0">
             92.4
           </div>
           <div className="min-w-0">
             <h5 className="text-xs font-bold text-white truncate">Autonomous Agent Cycle</h5>
-            <p className="text-[11px] text-white/80 leading-tight mt-0.5">
-              Gemini 3.8 Single-Pass & Bounded Self-Healing
+            <p className="text-[11px] text-white/70 leading-tight mt-0.5">
+              Gemini 3.8 Single-Pass &amp; Bounded Self-Healing
             </p>
           </div>
         </div>
 
-        {/* Light Pill Card */}
+        {/* Latency Card */}
         <div className="md:col-span-1 lg:col-span-3 clean-card p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-emerald-600 bg-emerald-100 flex items-center justify-center font-black text-xs text-emerald-950 shrink-0">
+          <div className="w-12 h-12 rounded-full border-2 border-[#10B981] bg-emerald-50 flex items-center justify-center font-black text-xs text-[#10B981] shrink-0">
             5.7ms
           </div>
           <div className="min-w-0">
-            <h5 className="text-xs font-bold text-[#0B201B] truncate">Live Backend Latency</h5>
-            <p className="text-[11px] font-semibold text-[#235347] leading-tight mt-0.5">
+            <h5 className="text-xs font-bold text-[#000000] truncate">Live Backend Latency</h5>
+            <p className="text-[11px] text-[#67677e] leading-tight mt-0.5">
               Vercel Edge &rarr; VPS MariaDB ACID
             </p>
           </div>
         </div>
 
-        {/* Forest Feature Banner */}
-        <div className="md:col-span-2 lg:col-span-6 forest-card p-5 flex items-center justify-between relative overflow-hidden shadow-lg">
+        {/* Architecture Feature Banner */}
+        <div className="md:col-span-2 lg:col-span-6 bg-[#2b2d32] border border-[#383a42] rounded-2xl p-5 text-white flex items-center justify-between relative overflow-hidden shadow-sm">
           <div className="relative z-10 max-w-sm space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#8EB69B]/25 text-[#DAF1DE] font-semibold">
-                Sprint 1 Walking Skeleton
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1b55f5]/30 text-[#8ec0ff] font-semibold border border-[#1b55f5]/50">
+                Sprint 1-5 Certified
               </span>
-              <span className="text-[10px] text-[#8EB69B]">SDG 8 &bull; UU PDP</span>
+              <span className="text-[10px] text-white/60">SDG 8 &bull; UU PDP No. 27/2022</span>
             </div>
             <h3 className="text-base font-bold text-white">
-              Rekrutmen Beretika, Nondiskriminatif & Otonom
+              Rekrutmen Beretika, Nondiskriminatif &amp; Otonom
             </h3>
-            <p className="text-[11px] text-[#DAF1DE]/80 leading-relaxed">
-              Arsitektur terdistribusi live: Frontend Willy terhubung stabil ke backend Najmi & modul AI Fardizza.
+            <p className="text-[11px] text-white/70 leading-relaxed">
+              Arsitektur terdistribusi live: UI Vercel terhubung stabil ke backend VPS MariaDB &amp; modul scoring 4D.
             </p>
           </div>
 
           <div className="relative z-10 shrink-0 ml-4">
-            <div className="w-10 h-10 rounded-2xl bg-white/15 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer border border-white/20">
-              <ArrowUpRight className="w-5 h-5 text-[#DAF1DE]" />
-            </div>
+            <a 
+              href="/evidence-graph"
+              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer border border-white/20"
+              title="Buka Evidence Graph"
+            >
+              <ArrowUpRight className="w-5 h-5 text-white" />
+            </a>
           </div>
         </div>
       </div>
 
-      {/* Live Autonomous SSE Stream Banner */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-[#0B2B26] via-[#163832] to-[#235347] text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg border border-[#163832]">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white shrink-0">
-            <Radio className="w-5 h-5 text-emerald-300 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-sm text-white">Live Autonomous Agent Trace Stream</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400 text-[#051F20] font-mono font-bold">
-                SSE Active
-              </span>
-            </div>
-            <p className="text-xs text-white/90 mt-0.5">
-              Saksikan penyiaran real-time langkah otonom agen AI (<code className="bg-black/40 px-1.5 py-0.5 rounded text-emerald-200 font-mono font-bold">/api/candidates/stream/:id</code>) dari sanitasi PII hingga keputusan akhir deterministik.
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => setTraceCandidate(candidates[0])}
-          className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-emerald-50 text-[#0B2B26] font-extrabold text-xs shadow-md transition-all duration-200"
-        >
-          <Radio className="w-4 h-4 text-[#0B2B26]" />
-          <span>Buka Live Trace Monitor</span>
-        </button>
-      </div>
-
-      {/* Main Table Section: Candidate Queue */}
+      {/* 6. Main Table Section: Candidate Queue */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-extrabold text-[#0B201B]">Daftar Antrean Seleksi Kandidat</h3>
-            <p className="text-xs font-semibold text-[#235347]">
+            <h3 className="text-xl font-bold font-display text-[#000000]">Daftar Antrean Seleksi Kandidat</h3>
+            <p className="text-xs text-[#67677e]">
               Tampilan dossier anonim terenkripsi dengan rincian scoring multi-dimensi PRD Bab 8.2
             </p>
           </div>
+          <button
+            onClick={fetchCandidates}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#d8d8df] text-xs font-semibold text-[#000000] hover:bg-[#f4f4f6] transition-all shadow-2xs"
+            title="Refresh Data Pelamar dari Database"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#1b55f5]' : 'text-[#67677e]'}`} />
+            <span>Refresh Antrean</span>
+          </button>
         </div>
 
         <CandidateTable 

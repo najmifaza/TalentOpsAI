@@ -249,17 +249,17 @@ export default function WhatIfStudio() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="clean-card p-6 border-l-4 border-l-[#235347] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="clean-card p-6 border-l-4 border-l-[#1b55f5] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-[#DAF1DE] text-[#0B2B26] border border-[#C2E0C4]">
+            <span className="p-2 rounded-xl bg-[#eaf0ff] text-[#1b55f5] border border-[#8ec0ff]">
               <Sliders className="w-5 h-5" />
             </span>
             <div>
-              <h2 className="text-xl font-extrabold text-[#0B201B]">
+              <h2 className="text-xl font-bold font-display text-[#000000]">
                 What-If Policy Simulation Studio
               </h2>
-              <p className="text-xs text-[#6C837C] mt-0.5">
+              <p className="text-xs text-[#67677e] mt-0.5">
                 Simulasi penyesuaian bobot rubrik 4D in-memory (0 ms latensi, tanpa panggilan ulang LLM) &bull; PRD Bab 8.2 Endpoint 11
               </p>
             </div>
@@ -270,17 +270,17 @@ export default function WhatIfStudio() {
         <div className="flex items-center gap-2 self-stretch md:self-auto flex-wrap">
           <button
             onClick={handleReset}
-            className="px-3.5 py-2 rounded-xl bg-[#EEF4F0] hover:bg-[#E1EBE4] text-[#0B201B] text-xs font-semibold flex items-center gap-1.5 transition-colors border border-[#E1EBE4]"
+            className="px-3.5 py-2 rounded-lg bg-white hover:bg-[#f4f4f6] text-[#000000] text-xs font-semibold flex items-center gap-1.5 transition-colors border border-[#d8d8df]"
             title="Reset ke Standar PRD"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-[#235347]" />
+            <RotateCcw className="w-3.5 h-3.5 text-[#67677e]" />
             <span>Reset</span>
           </button>
           <button
             onClick={handleExport}
-            className="px-4 py-2 rounded-xl bg-[#0B2B26] hover:bg-[#163832] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+            className="px-4 py-2 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
           >
-            <Download className="w-3.5 h-3.5 text-[#8EB69B]" />
+            <Download className="w-3.5 h-3.5 text-white" />
             <span>Ekspor Hasil</span>
           </button>
         </div>
@@ -297,8 +297,8 @@ export default function WhatIfStudio() {
 
       {/* Preset Pill Buttons */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <span className="text-xs font-bold text-[#6C837C] uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-          <Sparkles className="w-3.5 h-3.5 text-[#235347]" />
+        <span className="text-xs font-bold text-[#67677e] uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+          <Sparkles className="w-3.5 h-3.5 text-[#1b55f5]" />
           Preset Kebijakan:
         </span>
         {Object.entries(PRESETS).map(([key, item]) => {
@@ -307,10 +307,10 @@ export default function WhatIfStudio() {
             <button
               key={key}
               onClick={() => handleApplyPreset(key)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-medium shrink-0 transition-all border ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
                 isActive
-                  ? 'bg-[#0B2B26] text-white border-[#0B2B26] shadow-sm font-semibold'
-                  : 'bg-white hover:bg-[#EEF4F0] text-[#3D544E] border-[#E1EBE4]'
+                  ? 'bg-[#1b55f5] text-white border-[#1b55f5] shadow-xs'
+                  : 'bg-white hover:bg-[#f4f4f6] text-[#454554] border-[#d8d8df]'
               }`}
             >
               {item.name}
@@ -323,14 +323,14 @@ export default function WhatIfStudio() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: 4D Weight Sliders & Cutoff (Span 2) */}
         <div className="lg:col-span-2 clean-card p-6 space-y-6">
-          <div className="flex items-center justify-between pb-3 border-b border-[#E1EBE4]">
-            <h3 className="text-sm font-bold text-[#0B201B] uppercase tracking-wider flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-[#235347]" />
+          <div className="flex items-center justify-between pb-3 border-b border-[#e6e6ea]">
+            <h3 className="text-xs font-bold text-[#000000] uppercase tracking-wider flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-[#1b55f5]" />
               <span>Kalibrasi Bobot Penilaian 4D Deterministik</span>
             </h3>
             <span className={`text-xs px-2.5 py-1 rounded-full font-mono font-bold ${
               totalWeightPercent === 100 
-                ? 'bg-[#DAF1DE] text-[#0B2B26] border border-[#C2E0C4]' 
+                ? 'bg-[#eaf0ff] text-[#1b55f5] border border-[#8ec0ff]' 
                 : 'bg-amber-100 text-amber-800 border border-amber-300'
             }`}>
               Total Alokasi: {totalWeightPercent}%
@@ -339,13 +339,13 @@ export default function WhatIfStudio() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {/* Slider 1: S_comp */}
-            <div className="p-4 rounded-2xl bg-[#F6FAF7] border border-[#E1EBE4] space-y-2">
+            <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-[#0B201B]">S_comp (Keahlian & Core Skills)</span>
-                  <p className="text-[10px] text-[#6C837C]">Coverage taksonomi & klaim teknis</p>
+                  <span className="text-xs font-bold text-[#000000]">S_comp (Keahlian & Core Skills)</span>
+                  <p className="text-[10px] text-[#67677e]">Coverage taksonomi &amp; klaim teknis</p>
                 </div>
-                <span className="font-mono text-sm font-extrabold text-[#0B2B26] bg-white px-2 py-0.5 rounded-lg border border-[#E1EBE4]">
+                <span className="font-mono text-sm font-extrabold text-[#1b55f5] bg-white px-2 py-0.5 rounded-md border border-[#e6e6ea]">
                   {weights.comp}%
                 </span>
               </div>
@@ -356,7 +356,7 @@ export default function WhatIfStudio() {
                 step="5"
                 value={weights.comp}
                 onChange={(e) => handleWeightChange('comp', e.target.value)}
-                className="w-full accent-[#235347] cursor-pointer"
+                className="w-full accent-[#1b55f5] cursor-pointer"
               />
               <div className="flex justify-between text-[10px] text-[#6C837C] font-mono">
                 <span>0%</span>
@@ -366,13 +366,13 @@ export default function WhatIfStudio() {
             </div>
 
             {/* Slider 2: S_port */}
-            <div className="p-4 rounded-2xl bg-[#F6FAF7] border border-[#E1EBE4] space-y-2">
+            <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-[#0B201B]">S_port (Repositori & Kode GitHub)</span>
-                  <p className="text-[10px] text-[#6C837C]">Audit kode terverifikasi GitHub v3</p>
+                  <span className="text-xs font-bold text-[#000000]">S_port (Repositori &amp; Kode GitHub)</span>
+                  <p className="text-[10px] text-[#67677e]">Audit kode terverifikasi GitHub v3</p>
                 </div>
-                <span className="font-mono text-sm font-extrabold text-[#235347] bg-white px-2 py-0.5 rounded-lg border border-[#E1EBE4]">
+                <span className="font-mono text-sm font-extrabold text-[#1b55f5] bg-white px-2 py-0.5 rounded-md border border-[#e6e6ea]">
                   {weights.port}%
                 </span>
               </div>
@@ -383,9 +383,9 @@ export default function WhatIfStudio() {
                 step="5"
                 value={weights.port}
                 onChange={(e) => handleWeightChange('port', e.target.value)}
-                className="w-full accent-[#235347] cursor-pointer"
+                className="w-full accent-[#1b55f5] cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-[#6C837C] font-mono">
+              <div className="flex justify-between text-[10px] text-[#67677e] font-mono">
                 <span>0%</span>
                 <span>Default: 20%</span>
                 <span>60%</span>
@@ -393,13 +393,13 @@ export default function WhatIfStudio() {
             </div>
 
             {/* Slider 3: S_conf */}
-            <div className="p-4 rounded-2xl bg-[#F6FAF7] border border-[#E1EBE4] space-y-2">
+            <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-[#0B201B]">S_conf (Keyakinan & Linieritas)</span>
-                  <p className="text-[10px] text-[#6C837C]">Tingkat bukti faktual & kronologi karier</p>
+                  <span className="text-xs font-bold text-[#000000]">S_conf (Keyakinan &amp; Linieritas)</span>
+                  <p className="text-[10px] text-[#67677e]">Tingkat bukti faktual &amp; kronologi karier</p>
                 </div>
-                <span className="font-mono text-sm font-extrabold text-[#10B981] bg-white px-2 py-0.5 rounded-lg border border-[#E1EBE4]">
+                <span className="font-mono text-sm font-extrabold text-[#10B981] bg-white px-2 py-0.5 rounded-md border border-[#e6e6ea]">
                   {weights.conf}%
                 </span>
               </div>
@@ -410,9 +410,9 @@ export default function WhatIfStudio() {
                 step="5"
                 value={weights.conf}
                 onChange={(e) => handleWeightChange('conf', e.target.value)}
-                className="w-full accent-[#235347] cursor-pointer"
+                className="w-full accent-[#10B981] cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-[#6C837C] font-mono">
+              <div className="flex justify-between text-[10px] text-[#67677e] font-mono">
                 <span>0%</span>
                 <span>Default: 25%</span>
                 <span>60%</span>
@@ -420,13 +420,13 @@ export default function WhatIfStudio() {
             </div>
 
             {/* Slider 4: S_risk */}
-            <div className="p-4 rounded-2xl bg-[#F6FAF7] border border-[#E1EBE4] space-y-2">
+            <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-[#0B201B]">S_risk (Sensitivitas Anomali)</span>
-                  <p className="text-[10px] text-[#6C837C]">Ketegasan penalti overlap & hidden text</p>
+                  <span className="text-xs font-bold text-[#000000]">S_risk (Sensitivitas Anomali)</span>
+                  <p className="text-[10px] text-[#67677e]">Ketegasan penalti overlap &amp; hidden text</p>
                 </div>
-                <span className="font-mono text-sm font-extrabold text-rose-600 bg-white px-2 py-0.5 rounded-lg border border-[#E1EBE4]">
+                <span className="font-mono text-sm font-extrabold text-rose-600 bg-white px-2 py-0.5 rounded-md border border-[#e6e6ea]">
                   {weights.risk}%
                 </span>
               </div>
@@ -439,7 +439,7 @@ export default function WhatIfStudio() {
                 onChange={(e) => handleWeightChange('risk', e.target.value)}
                 className="w-full accent-rose-600 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-[#6C837C] font-mono">
+              <div className="flex justify-between text-[10px] text-[#67677e] font-mono">
                 <span>0% (Longgar)</span>
                 <span>Default: 15%</span>
                 <span>50% (Ketat)</span>
@@ -448,15 +448,15 @@ export default function WhatIfStudio() {
           </div>
 
           {/* Dynamic Cutoff Threshold Slider */}
-          <div className="p-4 rounded-2xl bg-[#DAF1DE]/40 border border-[#C2E0C4] space-y-2">
+          <div className="p-4 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff] space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Gauge className="w-4 h-4 text-[#0B2B26]" />
-                <span className="text-xs font-bold text-[#0B2B26]">
+                <Gauge className="w-4 h-4 text-[#1b55f5]" />
+                <span className="text-xs font-bold text-[#000000]">
                   Ambang Batas Minimum Kelulusan (Passing Grade Cut-off)
                 </span>
               </div>
-              <span className="font-mono text-base font-extrabold text-[#0B2B26] bg-white px-3 py-0.5 rounded-xl border border-[#C2E0C4]">
+              <span className="font-mono text-base font-extrabold text-[#1b55f5] bg-white px-3 py-0.5 rounded-lg border border-[#8ec0ff]">
                 {cutoffScore} / 100
               </span>
             </div>
@@ -467,9 +467,9 @@ export default function WhatIfStudio() {
               step="1"
               value={cutoffScore}
               onChange={(e) => setCutoffScore(Number(e.target.value))}
-              className="w-full accent-[#0B2B26] cursor-pointer"
+              className="w-full accent-[#1b55f5] cursor-pointer"
             />
-            <div className="flex justify-between text-[10px] text-[#3D544E] font-medium">
+            <div className="flex justify-between text-[10px] text-[#454554] font-medium">
               <span>50 (Sangat Inklusif)</span>
               <span>Default PRD: 75</span>
               <span>85 (Standar Strong Match)</span>
@@ -481,47 +481,47 @@ export default function WhatIfStudio() {
         {/* Right Column: Policy Impact Analytics Cards */}
         <div className="clean-card p-6 flex flex-col justify-between space-y-5">
           <div>
-            <h3 className="text-sm font-bold text-[#0B201B] uppercase tracking-wider flex items-center gap-2 pb-3 border-b border-[#E1EBE4]">
-              <TrendingUp className="w-4 h-4 text-[#235347]" />
+            <h3 className="text-xs font-bold text-[#000000] uppercase tracking-wider flex items-center gap-2 pb-3 border-b border-[#e6e6ea]">
+              <TrendingUp className="w-4 h-4 text-[#1b55f5]" />
               <span>Dampak Kebijakan (Hiring Impact)</span>
             </h3>
 
             <div className="mt-4 space-y-4">
-              <div className="p-4 rounded-2xl bg-[#F6FAF7] border border-[#E1EBE4]">
-                <span className="text-[10px] text-[#6C837C] uppercase font-mono font-semibold">
+              <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea]">
+                <span className="text-[10px] text-[#67677e] uppercase font-mono font-semibold">
                   Tingkat Kelulusan Ambang Batas
                 </span>
                 <div className="flex items-baseline justify-between mt-1">
-                  <div className="text-2xl font-extrabold text-[#0B2B26]">
+                  <div className="text-2xl font-extrabold text-[#000000]">
                     {stats.passRate}%
                   </div>
-                  <span className="text-xs font-semibold text-[#235347]">
+                  <span className="text-xs font-semibold text-[#1b55f5]">
                     {stats.passedCount} dari {stats.total} lolos
                   </span>
                 </div>
-                <div className="w-full bg-[#E1EBE4] h-2 rounded-full overflow-hidden mt-2">
+                <div className="w-full bg-[#e6e6ea] h-2 rounded-full overflow-hidden mt-2">
                   <div 
-                    className="bg-[#235347] h-full transition-all duration-300"
+                    className="bg-[#1b55f5] h-full transition-all duration-300"
                     style={{ width: `${stats.passRate}%` }}
                   ></div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3.5 rounded-2xl bg-[#DAF1DE]/70 border border-[#C2E0C4]">
-                  <span className="text-[10px] text-[#0B2B26] uppercase font-mono font-bold">Strong Match</span>
-                  <div className="text-xl font-extrabold text-[#0B2B26] mt-0.5">{stats.strongCount}</div>
+                <div className="p-3.5 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff]">
+                  <span className="text-[10px] text-[#1b55f5] uppercase font-mono font-bold">Strong Match</span>
+                  <div className="text-xl font-extrabold text-[#1b55f5] mt-0.5">{stats.strongCount}</div>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-[#EEF4F0] border border-[#E1EBE4]">
-                  <span className="text-[10px] text-[#6C837C] uppercase font-mono font-semibold">Rerata Skor</span>
-                  <div className="text-xl font-extrabold text-[#0B201B] mt-0.5">{stats.avgScore}</div>
+                <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea]">
+                  <span className="text-[10px] text-[#67677e] uppercase font-mono font-semibold">Rerata Skor</span>
+                  <div className="text-xl font-extrabold text-[#000000] mt-0.5">{stats.avgScore}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-[#EEF4F0] border border-[#E1EBE4] text-[11px] text-[#3D544E] leading-relaxed">
-            <span className="font-bold text-[#0B2B26] block mb-0.5">Penjelasan Formula PRD:</span>
+          <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-[11px] text-[#454554] leading-relaxed">
+            <span className="font-bold text-[#000000] block mb-0.5">Penjelasan Formula PRD:</span>
             Skor total dihitung secara proporsional terhadap bobot normalisasi. Kandidat dengan anomali teks tersembunyi tetap dikarantina otomatis terlepas dari nilai skor.
           </div>
         </div>
@@ -529,30 +529,30 @@ export default function WhatIfStudio() {
 
       {/* Main Real-Time Re-Ranked Table */}
       <div className="clean-card overflow-hidden">
-        <div className="p-5 border-b border-[#E1EBE4] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white">
+        <div className="p-5 border-b border-[#e6e6ea] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white">
           <div>
-            <h3 className="text-base font-bold text-[#0B201B]">
+            <h3 className="text-base font-bold font-display text-[#000000]">
               Tabel Re-Ranking Pelamar Waktu Nyata
             </h3>
-            <p className="text-xs text-[#6C837C]">
+            <p className="text-xs text-[#67677e]">
               Posisi antrean diperbarui seketika mengikuti pergeseran parameter slider di atas.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs font-mono text-[#6C837C]">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <div className="flex items-center gap-2 text-xs font-mono text-[#67677e]">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse"></span>
             <span>In-Memory Recomputed</span>
           </div>
         </div>
 
         {/* Mobile Scroll Indicator */}
-        <div className="flex items-center justify-between px-4 py-2 bg-[#F6FAF7] border-b border-[#E1EBE4] text-[11px] text-[#6C837C] sm:hidden">
+        <div className="flex items-center justify-between px-4 py-2 bg-[#f4f4f6] border-b border-[#e6e6ea] text-[11px] text-[#67677e] sm:hidden">
           <span>Geser tabel ke samping untuk melihat seluruh skor 4D</span>
-          <span className="font-mono font-bold text-[#0B2B26]">&rarr;</span>
+          <span className="font-mono font-bold text-[#000000]">&rarr;</span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#0B201B] min-w-[700px]">
-            <thead className="bg-[#F6FAF7] border-b border-[#E1EBE4] text-[10px] font-bold uppercase font-mono text-[#6C837C] tracking-wider">
+          <table className="w-full text-left text-xs text-[#000000] min-w-[700px]">
+            <thead className="bg-[#f4f4f6] border-b border-[#e6e6ea] text-[10px] font-bold uppercase font-mono text-[#67677e] tracking-wider">
               <tr>
                 <th className="py-3 px-4 text-center">Rank</th>
                 <th className="py-3 px-4">Kandidat Dossier</th>
@@ -562,7 +562,7 @@ export default function WhatIfStudio() {
                 <th className="py-3 px-4">Breakdown 4D Asli</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E1EBE4]">
+            <tbody className="divide-y divide-[#e6e6ea]">
               {simulatedList.map((c) => {
                 const isRankUp = c.rankDelta > 0;
                 const isRankDown = c.rankDelta < 0;

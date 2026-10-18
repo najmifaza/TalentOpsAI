@@ -8,50 +8,75 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Grafana Labs Core Palette
+        grafana: {
+          canvas: '#f4f4f6',
+          surface: '#ffffff',
+          divider: '#e6e6ea',
+          steel: '#d8d8df',
+          panel: '#2b2d32',
+          ink: '#000000',
+          graphite: '#454554',
+          slate: '#67677e',
+          signal: '#1b55f5',
+          'signal-hover': '#1545c7',
+          'blue-mist': '#eaf0ff',
+          'peach-paper': '#f4e5d9',
+          'lilac-wash': '#f9e8ff',
+          'apricot-fill': '#fad8ac',
+          'orchid-edge': '#eeaafd',
+          'sky-edge': '#8ec0ff',
+          'tangerine-edge': '#ffae70',
+        },
+        // Compatibility aliasing to Grafana Labs system
         pine: {
-          950: '#051F20', // deep forest
-          900: '#0B2B26', // forest emerald
-          850: '#11322C',
-          800: '#163832', // muted pine
-          700: '#235347', // dark juniper
-          600: '#2F6B5C',
-          500: '#3D8271',
+          950: '#1b1d22',
+          900: '#2b2d32', // charcoal panel
+          850: '#34373e',
+          800: '#454554', // graphite copy
+          700: '#67677e', // slate navigation
+          600: '#1b55f5', // electric signal
+          500: '#1b55f5', // primary CTA
         },
         sage: {
-          500: '#759F83',
-          400: '#8EB69B', // soft sage accent
-          300: '#A8CCA8',
-          200: '#C2E0C4',
-          100: '#DAF1DE', // soft mint cream
-          50: '#F0F9F2',
+          500: '#1b55f5',
+          400: '#1b55f5', // accent blue
+          300: '#8ec0ff', // sky edge
+          200: '#d8d8df', // steel
+          100: '#eaf0ff', // blue mist
+          50: '#f4f4f6',  // cloud canvas
         },
         canvas: {
-          bg: '#EEF4F0',
-          subtle: '#F6FAF7',
-          card: '#FFFFFF',
-          border: '#E1EBE4',
-          muted: '#D0DFD5',
+          bg: '#f4f4f6',
+          subtle: '#ffffff',
+          card: '#ffffff',
+          border: '#e6e6ea',
+          muted: '#d8d8df',
         },
         ink: {
-          primary: '#0B201B',
-          secondary: '#3D544E',
-          muted: '#6C837C',
-          subtle: '#9BB0A9',
+          primary: '#000000',
+          secondary: '#454554',
+          muted: '#67677e',
+          subtle: '#8c8c9e',
         }
       },
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Poppins', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       boxShadow: {
-        'card': '0 2px 12px -2px rgba(11, 43, 38, 0.05), 0 1px 4px -1px rgba(11, 43, 38, 0.03)',
-        'card-hover': '0 12px 24px -4px rgba(11, 43, 38, 0.08), 0 4px 8px -2px rgba(11, 43, 38, 0.04)',
-        'elevated': '0 20px 35px -8px rgba(11, 43, 38, 0.12)',
+        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+        'card-hover': '0 8px 20px -4px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.04)',
+        'elevated': '0 20px 35px -8px rgba(0, 0, 0, 0.12)',
+        'subtle': '0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 3px 0px rgba(0, 0, 0, 0.08)',
       },
       borderRadius: {
         '2xl': '1rem',
-        '3xl': '1.5rem',
+        '3xl': '1.5rem', // 24px (cards standard in Grafana design)
         '4xl': '2rem',
+        'card': '24px',
+        'btn': '8px',
       }
     },
   },

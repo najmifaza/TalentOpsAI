@@ -303,46 +303,46 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
   };
 
   return (
-    <div className="min-h-screen bg-[#EEF4F0] text-[#0B201B] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#051F20]">
+    <div className="min-h-screen bg-[#f4f4f6] text-[#000000] font-sans antialiased selection:bg-[#1b55f5] selection:text-white">
       {/* Top Banner Navigation Bar */}
-      <header className="bg-[#0B2B26] text-white border-b border-[#163832] sticky top-0 z-40 shadow-sm">
+      <header className="bg-white/95 text-[#000000] border-b border-[#e6e6ea] sticky top-0 z-40 shadow-xs backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#8EB69B] to-[#235347] flex items-center justify-center text-[#051F20] font-bold shrink-0">
-              <Briefcase className="w-4 h-4 text-[#051F20]" />
+            <div className="w-8 h-8 rounded-lg bg-[#1b55f5] flex items-center justify-center text-white font-bold shrink-0 shadow-xs">
+              <Briefcase className="w-4 h-4 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-white text-sm sm:text-base">TalentOps Career</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#8EB69B]/20 text-[#8EB69B] font-semibold border border-[#8EB69B]/30">
+                <span className="font-bold text-[#000000] text-sm sm:text-base font-display">TalentOps Career</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#eaf0ff] text-[#1b55f5] font-semibold border border-[#8ec0ff]">
                   PUBLIC
                 </span>
               </div>
-              <p className="text-[10px] text-[#8EB69B]/70 hidden md:block">Zero-Bias &bull; End-to-End Privacy Guaranteed</p>
+              <p className="text-[10px] text-[#67677e] hidden md:block">Zero-Bias &bull; End-to-End Privacy Guaranteed</p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <div className="inline-flex p-1 rounded-xl bg-[#051F20]/60 border border-[#163832]">
+            <div className="inline-flex p-1 rounded-lg bg-[#f4f4f6] border border-[#e6e6ea]">
               <button
                 onClick={() => navigate('/careers/apply')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                   activeTab === 'apply'
-                    ? 'bg-[#163832] text-white shadow-sm'
-                    : 'text-[#8EB69B] hover:text-white'
+                    ? 'bg-white text-[#000000] shadow-xs'
+                    : 'text-[#67677e] hover:text-[#000000]'
                 }`}
               >
                 Kirim Lamaran
               </button>
               <button
                 onClick={() => navigate('/careers/track')}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
                   activeTab === 'track'
-                    ? 'bg-[#163832] text-white shadow-sm'
-                    : 'text-[#8EB69B] hover:text-white'
+                    ? 'bg-white text-[#000000] shadow-xs'
+                    : 'text-[#67677e] hover:text-[#000000]'
                 }`}
               >
-                <Search className="w-3 h-3 text-[#8EB69B]" />
+                <Search className="w-3 h-3 text-[#1b55f5]" />
                 <span>Lacak Status</span>
               </button>
             </div>
@@ -352,10 +352,10 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                 if (onBackToDashboard) onBackToDashboard();
                 else navigate('/dashboard');
               }}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#8EB69B]/30 bg-[#8EB69B]/10 hover:bg-[#8EB69B]/20 text-[#DAF1DE] text-xs font-semibold transition-all shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#d8d8df] bg-white hover:bg-[#f4f4f6] text-[#000000] text-xs font-semibold transition-all shrink-0 shadow-2xs"
               title="Kembali ke Dashboard HR"
             >
-              <Building2 className="w-3.5 h-3.5 text-[#8EB69B]" />
+              <Building2 className="w-3.5 h-3.5 text-[#1b55f5]" />
               <span className="hidden sm:inline">Dashboard HR</span>
               <span className="sm:hidden text-xs">HR</span>
             </button>
@@ -373,32 +373,32 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
         ) : (
           <div className="space-y-8 animate-fade-in">
             {/* Hero Section */}
-            <div className="forest-card p-6 sm:p-8 md:p-10 relative overflow-hidden shadow-xl">
+            <div className="bg-[#2b2d32] border border-[#383a42] p-6 sm:p-8 md:p-10 rounded-2xl relative overflow-hidden shadow-sm text-white">
               <div className="relative z-10 max-w-3xl space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB69B]/20 text-[#DAF1DE] border border-[#8EB69B]/30 text-xs font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#8EB69B]" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1b55f5]/30 text-[#8ec0ff] border border-[#1b55f5]/50 text-xs font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#8ec0ff]" />
                   <span>Kepatuhan Penuh UU PDP No. 27/2022 &bull; Zero-Demographic Bias</span>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
-                  Triage Otonom yang Berkeadilan & Terenkripsi
+                <h1 className="text-3xl sm:text-4xl font-bold font-display text-white tracking-tight leading-tight">
+                  Triage Otonom yang Berkeadilan &amp; Terenkripsi
                 </h1>
-                <p className="text-sm text-[#8EB69B] leading-relaxed max-w-2xl">
+                <p className="text-sm text-white/70 leading-relaxed max-w-2xl">
                   Unggah berkas lamaran Anda dengan rasa aman. Sistem TalentOps AI secara otomatis menyensor nama, gender, kontak, dan kampus asal sebelum dievaluasi secara obyektif berdasarkan kompetensi riil dan portofolio Anda.
                 </p>
               </div>
 
               {/* Badges Bar inside Hero */}
-              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 mt-6 border-t border-[#163832]/80 text-xs text-[#DAF1DE]">
+              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 mt-6 border-t border-white/10 text-xs text-white/80">
                 <div className="flex items-center gap-2.5">
-                  <Lock className="w-4 h-4 text-[#8EB69B] shrink-0" />
+                  <Lock className="w-4 h-4 text-[#8ec0ff] shrink-0" />
                   <span>Enkripsi Envelope AES-256-GCM</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <ShieldCheck className="w-4 h-4 text-[#8EB69B] shrink-0" />
+                  <ShieldCheck className="w-4 h-4 text-[#8ec0ff] shrink-0" />
                   <span>Two-Way PII Sanitizer &lt;20ms</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-4 h-4 text-[#8EB69B] shrink-0" />
+                  <Sparkles className="w-4 h-4 text-[#ffae70] shrink-0" />
                   <span>Scoring Deterministik 4 Dimensi</span>
                 </div>
               </div>

@@ -59,11 +59,11 @@ function DashboardLayout({ isDark, onToggleTheme }) {
   const currentTitle = getTitle();
 
   return (
-    <div className="flex min-h-screen bg-[#EEF4F0] text-[#0B201B] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#0B201B] relative">
+    <div className="flex min-h-screen bg-[#f4f4f6] text-[#000000] font-sans antialiased selection:bg-[#1b55f5] selection:text-white relative">
       {/* Accessibility Skip Link */}
       <a 
         href="#main-content" 
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 px-4 py-2 bg-[#0B2B26] text-white rounded-xl shadow-xl font-semibold text-xs border border-[#8EB69B] transition-all"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 px-4 py-2 bg-[#1b55f5] text-white rounded-lg shadow-xl font-semibold text-xs transition-all"
       >
         Lewati ke Konten Utama
       </a>
@@ -82,14 +82,14 @@ function DashboardLayout({ isDark, onToggleTheme }) {
         onCloseMobile={() => setIsMobileMenuOpen(false)} 
       />
 
-      {/* Main Content Canvas (Soft Mint-Tinted Off-White #EEF4F0 / Midnight Pine #051F20) */}
+      {/* Main Content Canvas (Grafana Sunrise Theme) */}
       <div className={`flex-1 flex flex-col min-w-0 ${isOffline ? 'pt-8' : ''}`}>
         <Header 
           currentTitle={currentTitle} 
           onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)} 
         />
 
-        <main id="main-content" tabIndex="-1" className="flex-1 px-4 sm:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto animate-fade-in focus:outline-none">
+        <main id="main-content" tabIndex="-1" className="flex-1 px-4 sm:px-8 py-5 max-w-7xl w-full mx-auto animate-fade-in focus:outline-none">
           <Suspense fallback={<ComponentLoader label="Menginisialisasi modul tampilan..." />}>
             <Routes>
               <Route index element={<DashboardOverview />} />
@@ -103,12 +103,12 @@ function DashboardLayout({ isDark, onToggleTheme }) {
         </main>
 
         {/* Global Footer */}
-        <footer className="border-t border-[#E1EBE4] dark:border-[#163832] bg-[#EEF4F0]/80 dark:bg-[#072421]/80 px-4 sm:px-8 py-4 text-xs text-[#6C837C] dark:text-[#8EB69B]/80 transition-colors duration-200">
+        <footer className="border-t border-[#e6e6ea] bg-white px-4 sm:px-8 py-4 text-xs text-[#67677e] transition-colors duration-200">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto text-center sm:text-left">
-            <span className="font-medium">
+            <span className="font-medium text-[#454554]">
               TalentOps AI &copy; 2026 &bull; Human-Centric Agentic Recruitment Web Ecosystem
             </span>
-            <span className="font-mono text-[11px] text-[#3D544E] font-semibold">
+            <span className="font-mono text-[11px] text-[#67677e] font-semibold">
               Production Hardened &bull; React 18 + Vite Code Splitting &bull; WCAG AA Compliant
             </span>
           </div>

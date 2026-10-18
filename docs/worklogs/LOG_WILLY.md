@@ -5,7 +5,25 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
-### 2026-10-17 - Willy - Fondasi Frontend & Walking Skeleton (Sprint 1)
+### 2026-10-19 - Willy - Penerapan Design System Grafana Labs Sunrise Control Room
+- **Komponen / File:**
+  - `frontend/index.html`
+  - `frontend/tailwind.config.js`
+  - `frontend/src/index.css`
+  - `frontend/src/components/Sidebar.jsx`
+  - `frontend/src/components/Header.jsx`
+  - `frontend/src/components/CandidateTable.jsx`
+- **Yang Dikerjakan:**
+  - Integrasi tipografi resmi Grafana Labs: Google Font **Poppins** (headings/display) dan **Inter** (body/UI/navigation).
+  - Pembaruan konfigurasi `tailwind.config.js` dengan palet inti Grafana Labs (`canvas: #f4f4f6`, `surface: #ffffff`, `divider: #e6e6ea`, `steel: #d8d8df`, `panel: #2b2d32`, `ink: #000000`, `electric signal: #1b55f5`, `blue-mist: #eaf0ff`).
+  - Pembaruan utilitas kelas CSS di `src/index.css`: `.clean-card` dengan border radius 24px (1.5rem), border ash, dan bayangan halus sesuai `DESIGN.md`.
+  - Refactor tampilan `Sidebar.jsx`: background `#2b2d32` (charcoal panel), aksen navigasi aktif `#1b55f5` (electric signal), border dividers `#383a42`.
+  - Refactor tampilan `Header.jsx`: background canvas `#f4f4f6`, divider `#e6e6ea`, tombol portal pelamar `#1b55f5`, heading font Poppins.
+  - Penyesuaian `CandidateTable.jsx`: filter bar, rounded buttons, dan badge status match rate (`#eaf0ff` & `#1b55f5`).
+- **Status & Verifikasi:** Selesai. Eksekusi `npm run build` sukses tanpa error (1778 modul tertransformasi).
+- **Rencana Selanjutnya:** Sinkronisasi visual modal dan simulator dengan developer tim bila diperlukan.
+
+---
 - **Komponen / File:**
   - `frontend/package.json`
   - `frontend/vite.config.js`

@@ -30,7 +30,7 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
 
   const getScoreBadge = (score) => {
     if (score >= 85) {
-      return 'bg-[#DAF1DE] text-[#0B2B26] border-[#C2E0C4]';
+      return 'bg-[#eaf0ff] text-[#1b55f5] border-[#8ec0ff]';
     } else if (score >= 60) {
       return 'bg-amber-50 text-amber-800 border-amber-200';
     } else {
@@ -42,7 +42,7 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
     switch (rec) {
       case 'STRONG_MATCH':
         return {
-          bg: 'bg-[#DAF1DE] text-[#0B2B26] border-[#C2E0C4]',
+          bg: 'bg-[#eaf0ff] text-[#1b55f5] border-[#8ec0ff]',
           icon: CheckCircle2,
           label: 'Strong Match'
         };
@@ -54,19 +54,19 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
         };
       case 'WEAK_FIT':
         return {
-          bg: 'bg-[#EEF4F0] dark:bg-[#072421] text-[#3D544E] dark:text-[#8EB69B] border-[#E1EBE4] dark:border-[#163832]',
+          bg: 'bg-[#f4f4f6] text-[#454554] border-[#e6e6ea]',
           icon: Info,
           label: 'Weak Fit'
         };
       case 'SECURITY_QUARANTINE':
         return {
-          bg: 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900',
+          bg: 'bg-rose-50 text-rose-800 border-rose-200',
           icon: XCircle,
           label: 'Quarantine'
         };
       default:
         return {
-          bg: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700',
+          bg: 'bg-slate-100 text-slate-800 border-slate-200',
           icon: Info,
           label: rec
         };
@@ -78,23 +78,23 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
       {/* Controls Bar */}
       <div className="clean-card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-[#163832] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#67677e] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Cari token, posisi, atau keahlian..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-[#C2E0C4] rounded-xl text-xs text-[#0B201B] placeholder-[#6C837C] font-semibold focus:outline-none focus:border-[#235347] focus:ring-1 focus:ring-[#235347]/20 transition-colors"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-[#d8d8df] rounded-lg text-xs text-[#000000] placeholder-[#67677e] font-medium focus:outline-none focus:border-[#1b55f5] focus:ring-1 focus:ring-[#1b55f5]/20 transition-colors"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-4 h-4 text-[#163832]" />
-          <span className="text-xs font-bold text-[#163832]">Filter:</span>
+          <Filter className="w-4 h-4 text-[#67677e]" />
+          <span className="text-xs font-bold text-[#454554]">Filter:</span>
           <select
             value={filterRec}
             onChange={(e) => setFilterRec(e.target.value)}
-            className="bg-white border border-[#C2E0C4] rounded-xl text-xs text-[#0B201B] font-bold px-3 py-2 focus:outline-none focus:border-[#235347]"
+            className="bg-white border border-[#d8d8df] rounded-lg text-xs text-[#000000] font-medium px-3 py-2 focus:outline-none focus:border-[#1b55f5]"
           >
             <option value="ALL">Semua Rekomendasi ({candidates.length})</option>
             <option value="STRONG_MATCH">Strong Match</option>
@@ -118,18 +118,18 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
       <div className="clean-card overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[700px]">
-            <thead className="bg-[#EEF4F0] text-[#0B2B26] font-extrabold uppercase tracking-wider text-xs border-b-2 border-[#C2E0C4]">
+            <thead className="bg-[#f4f4f6] text-[#454554] font-bold uppercase tracking-wider text-[11px] border-b border-[#e6e6ea]">
               <tr>
-                <th className="py-3.5 px-4 font-extrabold">Kandidat (Anonim UU PDP)</th>
-                <th className="py-3.5 px-4 font-extrabold">Posisi & Waktu</th>
-                <th className="py-3.5 px-4 text-center font-extrabold">Skor 4D</th>
-                <th className="py-3.5 px-4 font-extrabold">Rekomendasi AI</th>
-                <th className="py-3.5 px-4 font-extrabold">Audit GitHub</th>
-                <th className="py-3.5 px-4 font-extrabold">Keahlian Terverifikasi</th>
-                <th className="py-3.5 px-4 text-right font-extrabold">Aksi</th>
+                <th className="py-3.5 px-4 font-bold">Kandidat (Anonim UU PDP)</th>
+                <th className="py-3.5 px-4 font-bold">Posisi & Waktu</th>
+                <th className="py-3.5 px-4 text-center font-bold">Skor 4D</th>
+                <th className="py-3.5 px-4 font-bold">Rekomendasi AI</th>
+                <th className="py-3.5 px-4 font-bold">Audit GitHub</th>
+                <th className="py-3.5 px-4 font-bold">Keahlian Terverifikasi</th>
+                <th className="py-3.5 px-4 text-right font-bold">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E1EBE4]">
+            <tbody className="divide-y divide-[#e6e6ea] bg-white">
               {filtered.map((candidate) => {
                 const recInfo = getRecBadge(candidate.recommendation);
                 const RecIcon = recInfo.icon;
@@ -137,20 +137,20 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
                 return (
                   <tr 
                     key={candidate.id} 
-                    className="hover:bg-[#EEF4F0]/60 transition-colors group cursor-pointer"
+                    className="hover:bg-[#f8f9fc] transition-colors group cursor-pointer"
                     onClick={() => onSelectCandidate(candidate)}
                   >
                     {/* Identifier */}
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#0B2B26] text-white border border-[#0B2B26] flex items-center justify-center font-mono font-bold text-xs shadow-xs">
+                        <div className="w-8 h-8 rounded-lg bg-[#2b2d32] text-white flex items-center justify-center font-mono font-bold text-xs shadow-xs">
                           {candidate.id}
                         </div>
                         <div>
-                          <div className="font-mono font-black text-[#0B201B] text-xs">
+                          <div className="font-mono font-bold text-[#000000] text-xs">
                             {candidate.masked_identifier}
                           </div>
-                          <div className="text-[11px] font-semibold text-[#235347]">
+                          <div className="text-[11px] font-medium text-[#67677e]">
                             {candidate.candidate_name_masked}
                           </div>
                         </div>
@@ -159,8 +159,8 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
 
                     {/* Position */}
                     <td className="py-4 px-4">
-                      <div className="font-extrabold text-[#0B201B] text-xs">{candidate.job_title}</div>
-                      <div className="text-[11px] font-semibold text-[#235347]">{candidate.applied_date}</div>
+                      <div className="font-bold text-[#000000] text-xs">{candidate.job_title}</div>
+                      <div className="text-[11px] font-medium text-[#67677e]">{candidate.applied_date}</div>
                     </td>
 
                     {/* 4D Overall Score */}
@@ -169,7 +169,7 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
                         <Zap className="w-3 h-3" />
                         <span>{candidate.overall_score.toFixed(1)}</span>
                       </div>
-                      <div className="text-[10px] text-[#163832] font-bold mt-1 font-mono">
+                      <div className="text-[10px] text-[#67677e] font-semibold mt-1 font-mono">
                         Comp: {candidate.scores_4d.s_comp} | Risk: {candidate.scores_4d.s_risk}
                       </div>
                     </td>
@@ -199,14 +199,14 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
                           target="_blank" 
                           rel="noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#DAF1DE] text-[#0B2B26] border border-[#C2E0C4] hover:bg-[#C2E0C4] transition-colors"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#eaf0ff] text-[#1b55f5] border border-[#8ec0ff] hover:bg-[#d8e5ff] transition-colors"
                         >
                           <Github className="w-3.5 h-3.5" />
                           <span className="font-mono text-[11px] font-semibold">Verified</span>
-                          <ExternalLink className="w-3 h-3 text-[#235347]" />
+                          <ExternalLink className="w-3 h-3 text-[#1b55f5]" />
                         </a>
                       ) : candidate.github_status === 'NOT_APPLICABLE' ? (
-                        <span className="text-[11px] text-[#163832] font-mono bg-[#EEF4F0] px-2.5 py-1 rounded-full border border-[#C2E0C4] font-bold">
+                        <span className="text-[11px] text-[#67677e] font-mono bg-[#f4f4f6] px-2.5 py-1 rounded-full border border-[#e6e6ea] font-medium">
                           N/A (Non-IT)
                         </span>
                       ) : (
@@ -220,12 +220,12 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
                     <td className="py-4 px-4">
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
                         {candidate.key_technologies.slice(0, 3).map((tech, idx) => (
-                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-[#EEF4F0] text-[#0B201B] border border-[#C2E0C4] font-bold font-mono">
+                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-[#f4f4f6] text-[#454554] border border-[#e6e6ea] font-semibold font-mono">
                             {tech}
                           </span>
                         ))}
                         {candidate.key_technologies.length > 3 && (
-                          <span className="text-[10px] text-[#163832] font-extrabold px-1 py-0.5">
+                          <span className="text-[10px] text-[#67677e] font-bold px-1 py-0.5">
                             +{candidate.key_technologies.length - 3}
                           </span>
                         )}
@@ -240,11 +240,11 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
                             e.stopPropagation();
                             if (onStreamCandidate) onStreamCandidate(candidate);
                           }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#0B2B26] hover:bg-[#163832] text-white text-[11px] font-bold transition-all shadow-sm group btn-interactive"
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-[11px] font-bold transition-all shadow-sm group btn-interactive"
                           title="Saksikan Live SSE Agent Stream"
                           aria-label="Saksikan Live SSE Agent Stream"
                         >
-                          <Radio className="w-3.5 h-3.5 text-emerald-300 group-hover:animate-pulse" />
+                          <Radio className="w-3.5 h-3.5 text-white group-hover:animate-pulse" />
                           <span className="hidden xl:inline">Live SSE</span>
                         </button>
 
@@ -253,7 +253,7 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
                             e.stopPropagation();
                             onSelectCandidate(candidate);
                           }}
-                          className="p-1.5 rounded-xl bg-[#EEF4F0] hover:bg-[#DAF1DE] hover:text-[#0B2B26] text-[#0B2B26] border border-[#C2E0C4] transition-colors btn-interactive"
+                          className="p-1.5 rounded-lg bg-[#f4f4f6] hover:bg-[#eaf0ff] hover:text-[#1b55f5] text-[#000000] border border-[#d8d8df] transition-colors btn-interactive"
                           title="Lihat Rincian Dossier"
                           aria-label="Lihat Rincian Dossier"
                         >

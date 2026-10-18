@@ -89,8 +89,9 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
         });
         if (res.ok) {
           const data = await res.json();
-          if (data.uploaded_candidates && data.uploaded_candidates.length > 0) {
-            serverUploaded = data.uploaded_candidates[0];
+          const list = data.candidates || data.uploaded_candidates || [];
+          if (list.length > 0) {
+            serverUploaded = list[0];
           }
         }
       } catch (networkErr) {
@@ -106,7 +107,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
 
       const randomHex = Math.random().toString(16).substring(2, 8).toUpperCase();
       const newCandidate = {
-        id: serverUploaded?.candidate_id || Date.now(),
+        id: serverUploaded?.candidate_id || serverUploaded?.id || Date.now(),
         masked_identifier: serverUploaded?.masked_identifier || `#TK-${randomHex}`,
         tracking_token: serverUploaded?.tracking_token || `token-${Date.now()}-${randomHex}`,
         job_title: jobTitle,

@@ -113,20 +113,45 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
 
     // 1. Trigger live backend triage in background
     try {
-      fetch(`${API_BASE_URL}/api/candidates/${candidateId}/triage`, {
+      const triageRes = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}/triage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
-      }).catch(err => {
-        console.warn('Backend triage trigger notice:', err);
       });
+      if (!triageRes.ok) {
+        const errJson = await triageRes.json().catch(() => ({}));
+        setStreamStatus('ERROR');
+        setStreamError(
+          triageRes.status === 404
+            ? `Kandidat (ID: ${candidateId}) tidak ditemukan di basis data backend VPS (${API_BASE_URL}). Pastikan ID terdaftar.`
+            : `Backend Triage Galat (${triageRes.status}): ${errJson.detail || 'Gagal memulai triage di server.'}`
+        );
+        setIsStreaming(false);
+        cleanupConnections();
+        return;
+      }
     } catch (e) {
       console.warn('Triage POST failed:', e);
+      setStreamStatus('ERROR');
+      setStreamError(`Koneksi Backend Gagal: ${e.message}`);
+      setIsStreaming(false);
+      cleanupConnections();
+      return;
     }
 
     // 2. Open real SSE connection directly to backend broadcaster
     try {
       const sseSource = new EventSource(`${API_BASE_URL}/api/candidates/stream/${candidateId}`);
       sseRef.current = sseSource;
+
+      // Watchdog: If server stream gives no event within 6s
+      const streamWatchdog = setTimeout(() => {
+        if (!hasReceivedEvent) {
+          setStreamStatus('ERROR');
+          setStreamError(`Timeout: Backend di ${API_BASE_URL} belum mengirim data stream. Silakan coba tekan "Analisis Ulang".`);
+          setIsStreaming(false);
+          cleanupConnections();
+        }
+      }, 6000);
 
       sseSource.onopen = () => {
         setStreamStatus('STREAMING');
@@ -135,6 +160,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
 
       sseSource.onmessage = (event) => {
         hasReceivedEvent = true;
+        clearTimeout(streamWatchdog);
 
         try {
           const parsed = JSON.parse(event.data);

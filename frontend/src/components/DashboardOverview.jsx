@@ -86,6 +86,10 @@ export default function DashboardOverview() {
 
   const handleUploadSuccess = (newCandidate) => {
     setCandidates(prev => [newCandidate, ...prev]);
+    // Refresh candidates from backend so real DB ID and record are in sync
+    setTimeout(() => {
+      fetchCandidates();
+    }, 500);
   };
 
   const handleTriageComplete = (candidateId, updatedData) => {

@@ -70,6 +70,8 @@ class AnomalyFlags(BaseModel):
 class CandidateExtractionSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    github_url: str | None = Field(default=None, description="Candidate GitHub profile or primary repository URL")
+    portfolio_url: str | None = Field(default=None, description="Candidate personal portfolio website URL")
     claims: list[ClaimItem] = Field(default_factory=list)
     career_timeline: list[CareerTimelineItem] = Field(default_factory=list)
     education: EducationItem | None = None

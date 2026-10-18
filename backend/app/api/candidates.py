@@ -2,13 +2,14 @@ import hashlib
 import json
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import get_db, AsyncSessionLocal
+from app.core.triage_service import agent_triage_service
 from app.core.crypto import (
     generate_dek,
     encrypt_dek,
@@ -342,3 +343,81 @@ async def stream_agent_triage_trace(candidate_id: int):
             "X-Accel-Buffering": "no",  # Nginx SSE unbuffered
         },
     )
+
+
+async def _run_triage_background(candidate_id: int):
+    """Executes agent triage asynchronously in background task with dedicated DB session."""
+    async with AsyncSessionLocal() as session:
+        try:
+            await agent_triage_service.execute_triage(
+                candidate_id=candidate_id,
+                db=session,
+                use_cache=True,
+            )
+        except Exception as exc:
+            logger.error(f"Background triage failed for candidate {candidate_id}: {exc}")
+
+
+@router.post("/{candidate_id}/triage")
+async def trigger_single_candidate_triage(
+    candidate_id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    On-demand agentic triage trigger for a single candidate (PRD Bab 8.2).
+    Dispatches asynchronous autonomous evaluation via FastAPI BackgroundTasks.
+    """
+    cand_res = await db.execute(
+        text("SELECT id, masked_identifier, status, is_deleted FROM candidates WHERE id = :id"),
+        {"id": candidate_id},
+    )
+    cand = cand_res.mappings().first()
+    if not cand or cand["is_deleted"]:
+        raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND")
+
+    background_tasks.add_task(_run_triage_background, candidate_id)
+
+    return {
+        "status": "processing",
+        "message": "Autonomous agent triage dispatched in background.",
+        "candidate_id": candidate_id,
+        "masked_identifier": cand["masked_identifier"],
+        "stream_url": f"/api/candidates/stream/{candidate_id}",
+    }
+
+
+@router.post("/batch-triage")
+async def trigger_batch_candidates_triage(
+    background_tasks: BackgroundTasks,
+    job_id: Optional[int] = None,
+    candidate_ids: Optional[List[int]] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    On-demand batch triage trigger for multiple candidates (PRD Bab 8.2).
+    Dispatches autonomous triage pipeline with Semaphore concurrency control.
+    """
+    if candidate_ids:
+        query = "SELECT id FROM candidates WHERE id IN :cids AND is_deleted = FALSE"
+        params = {"cids": tuple(candidate_ids)}
+    elif job_id:
+        query = "SELECT id FROM candidates WHERE job_id = :jid AND status = 'queued' AND is_deleted = FALSE"
+        params = {"jid": job_id}
+    else:
+        query = "SELECT id FROM candidates WHERE status = 'queued' AND is_deleted = FALSE LIMIT 20"
+        params = {}
+
+    res = await db.execute(text(query), params)
+    targets = [r[0] for r in res.fetchall()]
+
+    for cid in targets:
+        background_tasks.add_task(_run_triage_background, cid)
+
+    return {
+        "status": "processing",
+        "message": f"Batch triage dispatched for {len(targets)} candidates.",
+        "dispatched_count": len(targets),
+        "candidate_ids": targets,
+    }
+

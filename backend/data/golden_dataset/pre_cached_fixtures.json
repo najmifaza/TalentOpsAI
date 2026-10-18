@@ -8,7 +8,7 @@
         "context_narrative": "Architected and built async REST microservices using FastAPI and Redis handling 2500 rps.",
         "metric_string": "2500 rps",
         "repo_url": null,
-        "source_location": "PENGALAMAN KERJA - Solusi Fintek Digital"
+        "source_location": "PENGALAMAN KERJA"
       },
       {
         "dimension": "SKILL",
@@ -17,25 +17,25 @@
         "context_narrative": "Architected and built async REST microservices using FastAPI and Redis handling 2500 rps.",
         "metric_string": "2500 rps",
         "repo_url": null,
-        "source_location": "PENGALAMAN KERJA - Solusi Fintek Digital"
+        "source_location": "PENGALAMAN KERJA"
       },
       {
         "dimension": "SKILL",
         "technology": "PostgreSQL",
         "has_implementation_detail": true,
         "context_narrative": "Reduced database query latency by 40% using composite indexing in PostgreSQL.",
-        "metric_string": "40%",
+        "metric_string": "40% latency reduction",
         "repo_url": null,
-        "source_location": "PENGALAMAN KERJA - Solusi Fintek Digital"
+        "source_location": "PENGALAMAN KERJA"
       },
       {
         "dimension": "SKILL",
-        "technology": "CI/CD",
+        "technology": "CI/CD GitHub Actions",
         "has_implementation_detail": true,
         "context_narrative": "Maintained open-source payment service repository https://github.com/candidate/payment-service with full CI/CD pipeline and automated tests.",
         "metric_string": null,
         "repo_url": "https://github.com/candidate/payment-service",
-        "source_location": "PENGALAMAN KERJA - Solusi Fintek Digital"
+        "source_location": "PENGALAMAN KERJA"
       },
       {
         "dimension": "SKILL",
@@ -44,16 +44,7 @@
         "context_narrative": "Built RESTful APIs using Python and PostgreSQL handling 500k daily transactions.",
         "metric_string": "500k daily transactions",
         "repo_url": null,
-        "source_location": "PENGALAMAN KERJA - PT Teknologi Nusantara"
-      },
-      {
-        "dimension": "SKILL",
-        "technology": "PostgreSQL",
-        "has_implementation_detail": true,
-        "context_narrative": "Built RESTful APIs using Python and PostgreSQL handling 500k daily transactions.",
-        "metric_string": "500k daily transactions",
-        "repo_url": null,
-        "source_location": "PENGALAMAN KERJA - PT Teknologi Nusantara"
+        "source_location": "PENGALAMAN KERJA"
       },
       {
         "dimension": "SKILL",
@@ -62,16 +53,7 @@
         "context_narrative": "Containerized services with Docker and streamlined deployment via GitHub Actions.",
         "metric_string": null,
         "repo_url": null,
-        "source_location": "PENGALAMAN KERJA - PT Teknologi Nusantara"
-      },
-      {
-        "dimension": "SKILL",
-        "technology": "GitHub Actions",
-        "has_implementation_detail": true,
-        "context_narrative": "Containerized services with Docker and streamlined deployment via GitHub Actions.",
-        "metric_string": null,
-        "repo_url": null,
-        "source_location": "PENGALAMAN KERJA - PT Teknologi Nusantara"
+        "source_location": "PENGALAMAN KERJA"
       },
       {
         "dimension": "SKILL",

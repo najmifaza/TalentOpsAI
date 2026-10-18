@@ -40,3 +40,47 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 - **Rencana Selanjutnya (Sprint 2):**
   - Implementasi modul kalkulasi matematis *Deterministic 4D Scoring Engine* ($S_{\text{comp}}, S_{\text{port}}, S_{\text{conf}}, S_{\text{risk}}$).
   - Logika evaluasi hierarkis *Agent Decision Points* (`STRONG_MATCH`, `REVIEW_REQUIRED`, `WEAK_FIT`).
+
+---
+
+### 2026-10-18 - Fardizza - Structured Prompt Hardening, 4D Scoring & Autonomous Agent Triage (Sprint 2 Selesai Penuh)
+- **Komponen / File:**
+  - `backend/app/core/prompt.py`
+  - `backend/app/schemas/extraction.py`
+  - `backend/app/core/scoring.py`
+  - `backend/app/core/triage_service.py`
+  - `backend/app/api/candidates.py`
+  - `backend/tests/test_scoring_engine.py`
+  - `backend/tests/test_triage_pipeline.py`
+- **Yang Dikerjakan:**
+  - **1. Penyempurnaan Structured Extraction System Prompt & Anti-Injection Guard:**
+    - Perkuatan delimiter XML `<candidate_resume_untrusted>` dengan sanitasi karakter penutup guna mencegah prompt breakout.
+    - Penegakan isolasi anti-bias almamater dan akreditasi pada instruksi system prompt.
+    - Penambahan parser pembersih luaran JSON model (`clean_llm_json_response`).
+    - Penambahan field ekstraksi profil `github_url` dan `portfolio_url` pada `CandidateExtractionSchema`.
+  - **2. Implementasi Deterministic 4D Scoring Engine (`scoring.py`):**
+    - $S_{\text{comp}}$: Coverage formula berbasis kompetensi wajib lowongan + tabel taksonomi teknologi (`SKILL_TAXONOMY_MAP`: Exact = 1.0, Ecosystem = 0.7, Irrelevant = 0.0) dan tiering rubric (Tier 1 = 20, Tier 2 = 60, Tier 3 = 100 via regex performa/fluff guard atau verifikasi repositori GitHub).
+    - $S_{\text{exp}}$: Algoritma *Interval Merging* untuk menggabungkan rentang tanggal kerja pada posisi bertumpuk (menghilangkan manipulasi double-counting overlap), dikonversi via formula piecewise linear PRD Bab 5.2.
+    - $S_{\text{edu}}$: Skalar jenjang linier pendidikan IT (Tier 1 = 20, Tier 2 = 60, Tier 3 = 100).
+    - $S_{\text{port}}$: Skor evaluasi top repositori terverifikasi (Tier 3 = 100, Tier 2 = 60, Tier 1 = 20), dengan *bypass* otomatis tanpa penalti untuk lowongan non-programmer.
+    - $OverallScore$: Pembobotan dinamis 4 dimensi ($\sum w_d = 1.0$, default: SKILL 0.4, EXP 0.3, EDU 0.1, PORT 0.2).
+    - Metrik *Confidence Level* (HIGH, MEDIUM, LOW) & *Unresolved Risk* (HIGH, MEDIUM, LOW).
+    - *Career Break Policy:* Jeda karier > 12 bulan dicatat sebagai flag informatif `CAREER_BREAK_FLAG` tanpa otomatis menaikkan penalti risiko ke MEDIUM.
+  - **3. Implementasi Agent Decision Points Otomatis:**
+    - Aturan 0 (Security Quarantine): Prompt injection / hidden text &rarr; status `REVIEW_REQUIRED`, risiko `HIGH`, prioritas `HIGH_ATTENTION`.
+    - Aturan 1 (Kandidat Unggul): Overall &ge; 85.0, Keyakinan `HIGH`, Risiko `LOW` &rarr; status `STRONG_MATCH`, prioritas `STANDARD`.
+    - Aturan 2 (Wajib Verifikasi Human / Ambang Kritis): Overall &ge; 60.0, (Risiko `HIGH`/`MEDIUM` atau Keyakinan `LOW`) &rarr; status `REVIEW_REQUIRED`, prioritas `HIGH_ATTENTION`.
+    - Aturan 3 (Kandidat Kompeten Standard): Overall &ge; 60.0, Risiko `LOW`, Keyakinan `HIGH`/`MEDIUM` &rarr; status `REVIEW_REQUIRED`, prioritas `STANDARD`.
+    - Aturan 4 (Eliminasi Kelayakan): Overall &lt; 60.0 &rarr; status `WEAK_FIT`, prioritas `STANDARD`.
+    - Sintesis soal asesmen teknis adaptif otomatis (L1/L2) jika kompetensi kunci memiliki gap/keyakinan rendah.
+  - **4. Implementasi Autonomous Agent Triage Service (`triage_service.py`) & Endpoint API:**
+    - Orkestrasi 7 siklus otonom agen: Verifikasi Ingestion &rarr; Scan Teks Tersembunyi &rarr; Ekstraksi Gemini 3.8 &rarr; Substring Guard Anti-Halusinasi &rarr; Audit GitHub API &rarr; Kalkulasi Skor 4D &rarr; Kunci Slot Kalender Tentative (ACID) & Commit Audit.
+    - Siaran real-time setiap tahapan eksekusi agen ke antarmuka pengguna via SSE Broadcaster (`AgentTraceModal.jsx` Willy).
+    - Implementasi endpoint FastAPI: `POST /api/candidates/{id}/triage` dan `POST /api/candidates/batch-triage` menggunakan background worker dan penguncian konkurensi `asyncio.Semaphore(3)`.
+- **Status & Verifikasi:** Selesai 100%. Test suite `test_scoring_engine.py` dan `test_triage_pipeline.py` lulus 100% tanpa kendala. Seluruh kriteria Definition of Done (DoD) Sprint 2 untuk Developer 2 (Fardizza) terpenuhi penuh.
+- **Catatan untuk Rekan Tim (Najmi & Willy):**
+  - *Trigger Triage Live:* Frontend dapat memicu triage on-demand via `POST /api/candidates/{id}/triage` lalu mendengarkan event stream di `/api/candidates/stream/{id}`.
+  - *Database Commit:* Seluruh hasil scoring ($S_{\text{comp}}, S_{\text{exp}}, S_{\text{edu}}, S_{\text{port}}$), evidence, anomalies, dan asesmen adaptif langsung tersimpan secara ACID di tabel MariaDB.
+- **Rencana Selanjutnya (Sprint 3):**
+  - Implementasi komputasi *What-If Policy Simulation* (re-scoring seketika berbasis modifikasi bobot slider tanpa memanggil ulang API LLM).
+  - Ekspansi dataset Golden Dataset dari 5 menjadi 20-30 resume sintetis lengkap.

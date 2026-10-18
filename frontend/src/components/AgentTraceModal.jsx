@@ -82,6 +82,9 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
   const [streamError, setStreamError] = useState(null);
   const logContainerRef = useRef(null);
   const sseRef = useRef(null);
+  const queueRef = useRef([]);
+  const isPlayingRef = useRef(false);
+  const playTimerRef = useRef(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
@@ -97,6 +100,48 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
       try { sseRef.current.close(); } catch (e) {}
       sseRef.current = null;
     }
+    if (playTimerRef.current) {
+      clearTimeout(playTimerRef.current);
+      playTimerRef.current = null;
+    }
+    queueRef.current = [];
+    isPlayingRef.current = false;
+  };
+
+  const processNextInQueue = () => {
+    if (queueRef.current.length === 0) {
+      isPlayingRef.current = false;
+      return;
+    }
+
+    isPlayingRef.current = true;
+    const item = queueRef.current.shift();
+
+    if (item.stepIdx !== -1) {
+      setActiveStepIndex(item.stepIdx);
+    }
+
+    setEvents(prev => [...prev, {
+      time: item.time,
+      step: item.stepTitle,
+      status: item.status,
+      details: item.details
+    }]);
+
+    if (item.isFinalStep) {
+      setStreamStatus('COMPLETED');
+      setIsStreaming(false);
+      isPlayingRef.current = false;
+
+      if (onTriageComplete && candidate) {
+        onTriageComplete(candidate.id, item.triageResult);
+      }
+      return;
+    }
+
+    playTimerRef.current = setTimeout(() => {
+      processNextInQueue();
+    }, 600);
   };
 
   // Connect to Real-time Backend SSE Stream
@@ -166,49 +211,46 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
           const parsed = JSON.parse(event.data);
           const stepKey = parsed.step;
           const stepIdx = STEP_INDEX_MAP[stepKey] !== undefined ? STEP_INDEX_MAP[stepKey] : -1;
-
-          if (stepIdx !== -1) {
-            setActiveStepIndex(stepIdx);
-          }
-
           const stepInfo = stepIdx >= 0 ? BACKEND_STEPS[stepIdx] : null;
           const stepTitle = stepInfo ? stepInfo.title : (parsed.step || 'Execution Trace');
 
-          // Log the actual real backend event
-          setEvents(prev => [...prev, {
+          const isFinalStep = (stepKey === 'triage_completed');
+          let triageResult = null;
+
+          if (isFinalStep) {
+            const details = parsed.details || {};
+            const dimScores = details.dimension_scores || {};
+            const s_comp = dimScores.SKILL !== undefined ? dimScores.SKILL : 80.0;
+            const s_port = dimScores.PORTFOLIO !== undefined ? dimScores.PORTFOLIO : 70.0;
+            const s_conf = dimScores.EXPERIENCE !== undefined ? dimScores.EXPERIENCE : 85.0;
+            const s_risk = details.risk === 'LOW' ? 10.0 : details.risk === 'MEDIUM' ? 25.0 : details.risk === 'HIGH' ? 45.0 : 15.0;
+
+            triageResult = {
+              overall_score: details.overall_score !== undefined ? details.overall_score : (parsed.overall_score || 75.0),
+              scores_4d: {
+                s_comp: Math.round(s_comp * 10) / 10,
+                s_port: Math.round(s_port * 10) / 10,
+                s_conf: Math.round(s_conf * 10) / 10,
+                s_risk: Math.round(s_risk * 10) / 10
+              },
+              recommendation: details.recommendation || parsed.recommendation || 'REVIEW_REQUIRED',
+              status: details.status || 'waiting_approval',
+              scan_status: 'SCANNED'
+            };
+          }
+
+          queueRef.current.push({
             time: new Date().toLocaleTimeString('id-ID'),
-            step: stepTitle,
+            stepTitle,
             status: parsed.status ? parsed.status.toUpperCase() : 'INFO',
-            details: parsed.details || parsed
-          }]);
+            details: parsed.details || parsed,
+            stepIdx,
+            isFinalStep,
+            triageResult
+          });
 
-          // Handle final completion
-          if (stepKey === 'triage_completed' || parsed.event === 'completed' || parsed.status === 'completed' || parsed.status === 'COMPLETED') {
-            setStreamStatus('COMPLETED');
-            setIsStreaming(false);
-            cleanupConnections();
-
-            if (onTriageComplete && candidate) {
-              const details = parsed.details || {};
-              const dimScores = details.dimension_scores || {};
-              const s_comp = dimScores.SKILL !== undefined ? dimScores.SKILL : 80.0;
-              const s_port = dimScores.PORTFOLIO !== undefined ? dimScores.PORTFOLIO : 70.0;
-              const s_conf = dimScores.EXPERIENCE !== undefined ? dimScores.EXPERIENCE : 85.0;
-              const s_risk = details.risk === 'LOW' ? 10.0 : details.risk === 'MEDIUM' ? 25.0 : details.risk === 'HIGH' ? 45.0 : 15.0;
-
-              onTriageComplete(candidate.id, {
-                overall_score: details.overall_score !== undefined ? details.overall_score : (parsed.overall_score || 75.0),
-                scores_4d: {
-                  s_comp: Math.round(s_comp * 10) / 10,
-                  s_port: Math.round(s_port * 10) / 10,
-                  s_conf: Math.round(s_conf * 10) / 10,
-                  s_risk: Math.round(s_risk * 10) / 10
-                },
-                recommendation: details.recommendation || parsed.recommendation || 'REVIEW_REQUIRED',
-                status: details.status || 'waiting_approval',
-                scan_status: 'SCANNED'
-              });
-            }
+          if (!isPlayingRef.current) {
+            processNextInQueue();
           }
         } catch (e) {
           console.warn('Non-JSON SSE event received:', event.data);
@@ -217,10 +259,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
 
       sseSource.onerror = (err) => {
         console.error('SSE Error occurred:', err);
-        if (hasReceivedEvent) {
-          setStreamStatus('COMPLETED');
-          setIsStreaming(false);
-        } else {
+        if (!hasReceivedEvent && !isPlayingRef.current) {
           setStreamStatus('ERROR');
           setStreamError('Koneksi ke SSE Broadcaster Backend VPS terputus. Pastikan endpoint stream dapat diakses.');
           setIsStreaming(false);

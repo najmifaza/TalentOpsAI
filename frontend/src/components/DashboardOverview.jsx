@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import CandidateTable from './CandidateTable';
 import CandidateModal from './CandidateModal';
 import AgentTraceModal from './AgentTraceModal';
@@ -15,13 +15,68 @@ import {
   Cpu,
   Layers,
   ArrowRight,
-  Radio
+  Radio,
+  RefreshCw
 } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+
 export default function DashboardOverview() {
-  const [candidates] = useState(MOCK_CANDIDATES);
+  const [candidates, setCandidates] = useState(MOCK_CANDIDATES);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [traceCandidate, setTraceCandidate] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+
+  const fetchCandidates = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/candidates?limit=50`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && json.data.length > 0) {
+          const mapped = json.data.map(c => {
+            const match = MOCK_CANDIDATES.find(
+              m => m.masked_identifier === c.masked_identifier || m.id === c.id
+            );
+            const dims = c.dimension_scores || {};
+            return {
+              id: c.id,
+              masked_identifier: c.masked_identifier,
+              tracking_token: match?.tracking_token || `tk-${c.id}`,
+              job_title: match?.job_title || 'Senior Backend Engineer',
+              applied_date: c.created_at ? c.created_at.replace('T', ' ').slice(0, 16) : (match?.applied_date || '2026-10-18 10:00'),
+              candidate_name_masked: match?.candidate_name_masked || 'K******** *******',
+              overall_score: c.overall_score !== null ? c.overall_score : (match?.overall_score || 0),
+              scores_4d: {
+                s_comp: dims.SKILL || match?.scores_4d?.s_comp || 0,
+                s_port: dims.PORTFOLIO || match?.scores_4d?.s_port || 0,
+                s_conf: dims.EDUCATION || (c.confidence_level === 'HIGH' ? 95 : 75),
+                s_risk: c.unresolved_risk === 'HIGH' ? 70 : (c.unresolved_risk === 'MEDIUM' ? 35 : 10),
+              },
+              recommendation: c.recommendation || match?.recommendation || 'REVIEW_REQUIRED',
+              status: c.status || 'queued',
+              confidence_level: c.confidence_level || 'MEDIUM',
+              verified_github: match?.verified_github || null,
+              github_status: match?.github_status || 'VERIFIED',
+              flags: match?.flags || [],
+              key_technologies: match?.key_technologies || ['Python', 'FastAPI', 'PostgreSQL', 'Docker'],
+            };
+          });
+          setCandidates(mapped);
+          setIsLiveConnected(true);
+        }
+      }
+    } catch (err) {
+      console.warn('Backend candidates fetch fallback to pre-cached fixtures:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCandidates();
+  }, [fetchCandidates]);
 
   const strongMatches = candidates.filter(c => c.recommendation === 'STRONG_MATCH').length;
   const reviewRequired = candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length;
@@ -335,6 +390,7 @@ export default function DashboardOverview() {
         <CandidateModal 
           candidate={selectedCandidate} 
           onClose={() => setSelectedCandidate(null)} 
+          onRefresh={fetchCandidates}
         />
       )}
 

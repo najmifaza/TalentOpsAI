@@ -27,23 +27,6 @@ function ComponentLoader({ label = "Memuat modul komponen..." }) {
   );
 }
 
-import { WifiOff, Sparkles } from 'lucide-react';
-
-// Loading Fallback Component with Natural Pine & Sage Aesthetics
-function ComponentLoader({ label = "Memuat modul komponen..." }) {
-  return (
-    <div className="flex flex-col items-center justify-center p-12 min-h-[350px] space-y-3" role="status" aria-live="polite">
-      <div className="relative flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#C2E0C4] dark:border-[#163832] border-t-[#0B2B26] dark:border-t-[#8EB69B] rounded-full animate-spin"></div>
-        <Sparkles className="w-4 h-4 text-[#235347] dark:text-[#8EB69B] absolute animate-pulse" />
-      </div>
-      <p className="text-xs font-semibold text-[#6C837C] dark:text-[#8EB69B] tracking-wide animate-pulse">
-        {label}
-      </p>
-    </div>
-  );
-}
-
 function DashboardLayout({ isDark, onToggleTheme }) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

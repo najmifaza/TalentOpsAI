@@ -14,14 +14,21 @@ htmlcov/
 
 # Environment files
 .env
+.env.*
 !.env.example
+*.local
 
 # Node / Frontend
 node_modules/
 .npm
 dist/
 dist-ssr/
-*.local
+
+# Certificates & Private Keys
+*.pem
+*.key
+*.crt
+*.pfx
 
 # System files
 .DS_Store

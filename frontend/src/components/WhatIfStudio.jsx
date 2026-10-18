@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Sliders, 
   RotateCcw, 
@@ -17,11 +17,13 @@ import {
   TrendingDown, 
   Info, 
   Check, 
-  ExternalLink,
-  ChevronRight,
-  Gauge
+  ExternalLink, 
+  ChevronRight, 
+  Gauge 
 } from 'lucide-react';
 import { MOCK_CANDIDATES } from '../data/mockCandidates';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
 // Preset Kebijakan Rekrutmen
 const PRESETS = {
@@ -52,6 +54,52 @@ const PRESETS = {
 };
 
 export default function WhatIfStudio() {
+  const [candidates, setCandidates] = useState(MOCK_CANDIDATES);
+
+  // Load candidate list from backend
+  useEffect(() => {
+    async function loadCandidates() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/candidates?limit=50`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && json.data.length > 0) {
+            const mapped = json.data.map((c, idx) => {
+              const match = MOCK_CANDIDATES.find(m => m.masked_identifier === c.masked_identifier || m.id === c.id);
+              const dims = c.dimension_scores || {};
+              return {
+                id: c.id,
+                masked_identifier: c.masked_identifier,
+                tracking_token: match?.tracking_token || `tk-${c.id}`,
+                job_title: match?.job_title || 'Senior Backend Engineer',
+                applied_date: c.created_at ? c.created_at.replace('T', ' ').slice(0, 16) : (match?.applied_date || '2026-10-18 10:00'),
+                candidate_name_masked: match?.candidate_name_masked || 'K******** *******',
+                overall_score: c.overall_score !== null ? c.overall_score : (match?.overall_score || 0),
+                scores_4d: {
+                  s_comp: dims.SKILL || match?.scores_4d?.s_comp || 0,
+                  s_port: dims.PORTFOLIO || match?.scores_4d?.s_port || 0,
+                  s_conf: dims.EDUCATION || (c.confidence_level === 'HIGH' ? 95 : 75),
+                  s_risk: c.unresolved_risk === 'HIGH' ? 70 : (c.unresolved_risk === 'MEDIUM' ? 35 : 10),
+                },
+                recommendation: c.recommendation || match?.recommendation || 'REVIEW_REQUIRED',
+                status: c.status || 'queued',
+                confidence_level: c.confidence_level || 'MEDIUM',
+                verified_github: match?.verified_github || null,
+                github_status: match?.github_status || 'VERIFIED',
+                flags: match?.flags || [],
+                key_technologies: match?.key_technologies || ['Python', 'FastAPI', 'PostgreSQL', 'Docker'],
+              };
+            });
+            setCandidates(mapped);
+          }
+        }
+      } catch (err) {
+        console.warn('Backend candidates fetch fallback for WhatIf:', err);
+      }
+    }
+    loadCandidates();
+  }, []);
+
   // State Bobot (%)
   const [weights, setWeights] = useState(PRESETS.balanced.weights);
   const [cutoffScore, setCutoffScore] = useState(PRESETS.balanced.cutoff);
@@ -89,7 +137,7 @@ export default function WhatIfStudio() {
     const wRiskNorm = weights.risk / totalW;
 
     // Hitung skor simulasi tiap kandidat
-    const evaluated = MOCK_CANDIDATES.map((cand, origIndex) => {
+    const evaluated = candidates.map((cand, origIndex) => {
       const sComp = cand.scores_4d.s_comp || 0;
       const sPort = cand.scores_4d.s_port || 0;
       const sConf = cand.scores_4d.s_conf || 0;

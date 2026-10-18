@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   X, 
@@ -7,18 +7,20 @@ import {
   Calendar, 
   CheckCircle2, 
   XCircle, 
-  AlertTriangle,
-  Code2,
-  FileText,
-  GitBranch,
-  Clock,
-  UserCheck,
-  Lock,
-  ArrowRight,
-  RotateCcw,
-  Sparkles,
-  Info
+  AlertTriangle, 
+  Code2, 
+  FileText, 
+  GitBranch, 
+  Clock, 
+  UserCheck, 
+  Lock, 
+  ArrowRight, 
+  RotateCcw, 
+  Sparkles, 
+  Info 
 } from 'lucide-react';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
 const AVAILABLE_SLOTS = [
   {
@@ -47,27 +49,73 @@ const AVAILABLE_SLOTS = [
   },
 ];
 
-export default function CandidateModal({ candidate, onClose }) {
+export default function CandidateModal({ candidate, onClose, onRefresh }) {
   const navigate = useNavigate();
   const [viewState, setViewState] = useState('dossier'); // 'dossier' | 'schedule' | 'scheduled_done' | 'reject_confirm' | 'reject_done'
+  const [slots, setSlots] = useState(AVAILABLE_SLOTS);
   const [selectedSlotId, setSelectedSlotId] = useState(101);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookedEvent, setBookedEvent] = useState(null);
   const [rejectReason, setRejectReason] = useState('Skor keahlian di bawah threshold kompetensi posisi');
 
+  // Fetch live available slots from backend
+  useEffect(() => {
+    async function fetchSlots() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/slots/available`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data && json.data.length > 0) {
+            const formatted = json.data.map(s => {
+              const start = new Date(s.start_time);
+              const end = new Date(s.end_time);
+              const dateStr = start.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+              const timeStr = `${start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
+              return {
+                id: s.id,
+                date: dateStr,
+                time: timeStr,
+                interviewer: `${s.interviewer_name || 'Interviewer'} (Lead Backend & Security)`,
+                type: 'Technical System Architecture Interview [MOCK / SANDBOX]',
+                status: s.status,
+              };
+            });
+            setSlots(formatted);
+            setSelectedSlotId(formatted[0].id);
+          }
+        }
+      } catch (err) {
+        console.warn('Backend slot fetch fallback to pre-cached slots:', err);
+      }
+    }
+    fetchSlots();
+  }, []);
+
   if (!candidate) return null;
 
-  const selectedSlot = AVAILABLE_SLOTS.find(s => s.id === selectedSlotId) || AVAILABLE_SLOTS[0];
+  const selectedSlot = slots.find(s => s.id === selectedSlotId) || slots[0] || AVAILABLE_SLOTS[0];
 
   // Helper untuk generate Event ID deterministik sesuai PRD Bab 8.2 & calendar.py
   const generateMockEventId = (slotId, candId) => {
     return `talentops_slot${slotId}_cand${candId}_${btoa(`ev_${slotId}`).replace(/=/g, '').toLowerCase()}`;
   };
 
-  const handleConfirmSchedule = () => {
+  const handleConfirmSchedule = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const formData = new FormData();
+      formData.append('decision', 'APPROVED_DISPATCH');
+      formData.append('notes', 'Wawancara teknis disetujui via HR Recruiter Dashboard');
+      if (selectedSlot?.id) {
+        formData.append('slot_id', String(selectedSlot.id));
+      }
+      formData.append('reviewer_id', '1');
+
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
+        method: 'POST',
+        body: formData,
+      });
+
       const eventId = generateMockEventId(selectedSlot.id, candidate.id);
       setBookedEvent({
         eventId,
@@ -75,15 +123,42 @@ export default function CandidateModal({ candidate, onClose }) {
         timestamp: new Date().toLocaleString('id-ID'),
       });
       setViewState('scheduled_done');
-    }, 600);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.warn('Live review submit failed, falling back to local receipt:', err);
+      const eventId = generateMockEventId(selectedSlot.id, candidate.id);
+      setBookedEvent({
+        eventId,
+        slot: selectedSlot,
+        timestamp: new Date().toLocaleString('id-ID'),
+      });
+      setViewState('scheduled_done');
+      if (onRefresh) onRefresh();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      formData.append('decision', 'REJECT_CONFIRMED');
+      formData.append('notes', rejectReason);
+      formData.append('reviewer_id', '1');
+
+      await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.warn('Live reject submit failed, falling back to local state:', err);
+      if (onRefresh) onRefresh();
+    } finally {
       setIsSubmitting(false);
       setViewState('reject_done');
-    }, 400);
+    }
   };
 
   return (

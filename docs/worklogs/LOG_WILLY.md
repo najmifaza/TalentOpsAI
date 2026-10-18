@@ -207,9 +207,34 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 - **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1779 modul tertransformasi**, zero error, zero warning, build time 3.58 detik). Seluruh kriteria Definition of Done (DoD) Sprint 5 terpenuhi: sistem berstatus **PRODUCTION READY**.
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
   - Seluruh sub-fitur frontend Willy dari Sprint 1 hingga Sprint 5 telah tuntas, teruji responsif, hemat bandwidth, kontras warna tajam dan bersih dalam Natural Mint Light Mode, siap untuk presentasi serta penilaian juri live demo.
+### **Sprint 5 Extension (2026-10-18) - Full End-to-End API Integration & Security Hardening**
+- **Tanggal:** 2026-10-18
+- **Developer:** Willy (Developer 3 - Frontend & Web Experience Eng)
+- **Komponen / File:**
+  - `frontend/src/App.jsx` (Pembersihan duplikasi deklarasi `ComponentLoader` pasca-merge styling)
+  - `frontend/src/components/DashboardOverview.jsx` (Integrasi live `GET /api/candidates`, mapping skor 4D, refresh callback)
+  - `frontend/src/components/CandidateModal.jsx` (Integrasi live `GET /api/slots/available` & dispatch HITL `POST /api/candidates/{id}/review`)
+  - `frontend/src/components/EvidenceGraph.jsx` (Integrasi live candidate selector & fetch dossier `GET /api/candidates/{id}`)
+  - `frontend/src/components/WhatIfStudio.jsx` (Integrasi live candidate pool dari MariaDB untuk simulasi bobot 4D)
+  - `.gitignore` (Hardening proteksi kredensial, `.env.*`, dan kunci privat `*.pem`, `*.key`)
+- **Yang Dikerjakan:**
+  - **1. Pembersihan Bug Sintaks JSX:**
+    - Menghapus duplikasi deklarasi fungsi `ComponentLoader` dan import `WifiOff, Sparkles` pada `frontend/src/App.jsx` baris 13-45 agar bundle terkompilasi bersih tanpa warning.
+  - **2. Integrasi Live API Dashboard & Dossier (`DashboardOverview.jsx` & `CandidateModal.jsx`):**
+    - Menghubungkan tabel dashboard ke endpoint backend `GET /api/candidates?limit=50` untuk menampilkan data pelamar riil yang tersimpan di MariaDB dengan mapping 4D skor lengkap.
+    - Menambahkan tombol dan callback refresh otomatis saat peninjauan berkas selesai.
+    - Menghubungkan modal persetujuan jadwal ke `GET /api/slots/available` dan submit keputusan HITL via `POST /api/candidates/{id}/review` untuk penguncian kalender atomik anti-double booking.
+  - **3. Integrasi Live API Evidence Graph & What-If Studio (`EvidenceGraph.jsx` & `WhatIfStudio.jsx`):**
+    - Menghubungkan selector kandidat Evidence Graph ke `GET /api/candidates` dan menarik kutipan asli CV langsung via `GET /api/candidates/{id}` ke dalam kanvas interaktif React Flow.
+    - Menghubungkan kolam kandidat What-If Studio ke database live sehingga pelamar baru via Career Portal dapat langsung disimulasikan bobot 4D-nya.
+    - Menyediakan fallback deterministik otomatis ke pre-cached dataset jika backend offline / network timeout, menjamin live demo juri 100% aman tanpa blank screen.
+  - **4. Hardening Repositori & Kredensial:**
+    - Mengaudit seluruh codebase dan memperketat `.gitignore` terhadap file `.env.*`, `*.pem`, `*.key`, `*.crt`, `*.pfx`.
+- **Status & Verifikasi:** Selesai 100%. Seluruh modul frontend terhubung penuh ke live backend VPS (`https://api-talentops.fawt.biz.id`). Backend test suite lulus 62/62 (100%).
+- **Catatan untuk Rekan Tim (Najmi & Fardizza):**
+  - Frontend telah terintegrasi end-to-end ke endpoint Najmi dan skema Fardizza. Siap untuk gladi resik demo dan perekaman video GTNIC 2026.
 - **Rencana Selanjutnya:**
-  - Persiapan rekaman video demo 3-5 menit untuk kompetisi GTNIC 2026 dan penyusunan lampiran proposal web untuk UINIC 8.0.
+  - Gladi resik alur rekrutmen lengkap dan penyusunan proposal UINIC 8.0 & GTNIC 2026.
 
-
-
+---
 

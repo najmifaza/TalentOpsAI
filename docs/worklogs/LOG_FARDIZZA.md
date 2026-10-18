@@ -84,3 +84,25 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 - **Rencana Selanjutnya (Sprint 3):**
   - Implementasi komputasi *What-If Policy Simulation* (re-scoring seketika berbasis modifikasi bobot slider tanpa memanggil ulang API LLM).
   - Ekspansi dataset Golden Dataset dari 5 menjadi 20-30 resume sintetis lengkap.
+
+---
+
+### 2026-10-18 - Fardizza - In-Memory What-If Policy Simulation Studio (Sprint 3 Task 1)
+- **Komponen / File:**
+  - `backend/app/api/jobs.py`
+  - `backend/app/main.py`
+  - `backend/tests/test_simulate_policy.py`
+- **Yang Dikerjakan:**
+  - Implementasi skema validasi Pydantic v2 `WeightConfigSchema` dengan penegakan batasan matematis ketat $\sum w_d = 1.0$ (SKILL, EXPERIENCE, EDUCATION, PORTFOLIO).
+  - Implementasi endpoint `POST /api/jobs/{id}/simulate-policy` selaras PRD Bab 8.2 (Item 11) & Bab 5.2:
+    - *Zero LLM Re-call:* Re-kalkulasi skor 4D in-memory seketika dari `dimension_scores` kandidat yang ada tanpa latensi external gateway.
+    - *Ambang Dinamis:* Parameter `min_overall_score` (default 75.0) menggantikan cut-off standar 85.0 untuk promosi status `STRONG_MATCH` (Aturan 1).
+    - *Isolasi Keamanan (Aturan 0):* Kandidat terinjeksi teks tersembunyi / prompt injection (misal Dewi Sartika) tetap terkunci pada status `REVIEW_REQUIRED` dengan prioritas `HIGH_ATTENTION` terlepas dari modifikasi bobot slider.
+    - *Analisis Komparasi:* Menghasilkan ringkasan pergeseran distribusi status (`baseline_distribution` vs `simulated_distribution`), perankingan ulang kandidat, dan nilai delta perubahan skor.
+  - Pendaftaran router jobs ke aplikasi FastAPI inti di `backend/app/main.py`.
+  - Penyiapan test suite otomatis `test_simulate_policy.py` yang memvalidasi validasi bobot, simulasi in-memory, dan isolasi keamanan Aturan 0.
+- **Status & Verifikasi:** Selesai 100%. Test suite `test_simulate_policy.py` lulus 100% tanpa kendala. Seluruh backend test suite (6 file test) berjalan serentak dan lulus.
+- **Catatan untuk Rekan Tim (Willy - Frontend):**
+  - Endpoint `POST /api/jobs/{id}/simulate-policy` siap dikonsumsi oleh komponen **What-If Policy Simulation Studio UI** (`what-if` view) dengan payload JSON: `{"weights": {"SKILL": 0.4, "EXPERIENCE": 0.3, "EDUCATION": 0.1, "PORTFOLIO": 0.2}, "min_overall_score": 75.0}`.
+- **Rencana Selanjutnya (Sprint 3 Task 2):**
+  - Ekspansi Golden Dataset dari 5 resume awal menjadi 20–30 resume sintetis lengkap (DOCX & PDF) mencakup variasi kasus *career gap*, *keyword stuffing*, font 0pt, dan pasangan demografi untuk *Counterfactual Fairness Test*.

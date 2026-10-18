@@ -4,6 +4,7 @@ from .core.config import settings
 from .api.health import router as health_router
 from .api.careers import router as careers_router
 from .api.candidates import router as candidates_router
+from .api.jobs import router as jobs_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -24,6 +25,7 @@ app.add_middleware(
 app.include_router(health_router, prefix="/api")
 app.include_router(careers_router, prefix="/api")
 app.include_router(candidates_router, prefix="/api")
+app.include_router(jobs_router, prefix="/api")
 
 
 @app.get("/", tags=["Root"])

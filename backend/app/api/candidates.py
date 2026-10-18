@@ -25,7 +25,9 @@ from app.core.file_parser import (
     generate_masked_identifier,
     generate_tracking_token,
 )
+from app.core.erasure import execute_talentops_erasure
 from app.core.broadcaster import sse_broadcaster
+from app.adapters.calendar import mock_calendar_adapter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/candidates", tags=["HR Recruiter Candidate Management"])
@@ -246,6 +248,121 @@ async def hr_direct_upload(
     return {"status": "success", "uploaded_count": len(uploaded), "candidates": uploaded}
 
 
+@router.post("/{candidate_id}/review")
+async def review_candidate(
+    candidate_id: int,
+    decision: str = Form(...),  # APPROVED_DISPATCH, REQUEST_INFO, OVERRIDE_REJECT, REJECT_CONFIRMED
+    notes: Optional[str] = Form(None),
+    slot_id: Optional[int] = Form(None),
+    reviewer_id: int = Form(1),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    HITL Candidate Review Decision Gatekeeper:
+    - Enforces strict transactional lock hierarchy: `users` -> `interview_slots` -> `candidates`.
+    - Handles interview slot confirmation if APPROVED_DISPATCH with slot_id.
+    - Updates candidate status & records append-only decision to human_reviews.
+    """
+    valid_decisions = {
+        "APPROVED_DISPATCH",
+        "REQUEST_INFO",
+        "OVERRIDE_REJECT",
+        "REJECT_CONFIRMED",
+    }
+    if decision not in valid_decisions:
+        raise HTTPException(status_code=400, detail=f"INVALID_DECISION_MUST_BE_ONE_OF_{list(valid_decisions)}")
+
+    # 1. Lock reviewer in users
+    user_res = await db.execute(
+        text("SELECT id, role FROM users WHERE id = :uid FOR UPDATE"),
+        {"uid": reviewer_id},
+    )
+    if not user_res.first():
+        raise HTTPException(status_code=404, detail="REVIEWER_USER_NOT_FOUND")
+
+    # 2. Lock target slot if slot confirmation requested
+    if slot_id is not None:
+        slot_res = await db.execute(
+            text("SELECT id, status, candidate_id FROM interview_slots WHERE id = :sid FOR UPDATE"),
+            {"sid": slot_id},
+        )
+        slot = slot_res.mappings().first()
+        if not slot:
+            raise HTTPException(status_code=404, detail="INTERVIEW_SLOT_NOT_FOUND")
+        if slot["status"] == "booked" and slot["candidate_id"] != candidate_id:
+            raise HTTPException(status_code=409, detail="SLOT_ALREADY_BOOKED_BY_ANOTHER_CANDIDATE")
+
+    # 3. Lock candidate
+    cand_res = await db.execute(
+        text("SELECT id, masked_identifier, status, is_deleted, version FROM candidates WHERE id = :cid FOR UPDATE"),
+        {"cid": candidate_id},
+    )
+    cand = cand_res.mappings().first()
+    if not cand or cand["is_deleted"]:
+        raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_DELETED")
+
+    # Determine next status
+    status_map = {
+        "APPROVED_DISPATCH": "approved",
+        "REQUEST_INFO": "request_info",
+        "OVERRIDE_REJECT": "rejected",
+        "REJECT_CONFIRMED": "rejected",
+    }
+    next_status = status_map[decision]
+
+    # If slot confirmed, transition slot to 'booked'
+    if slot_id is not None and decision == "APPROVED_DISPATCH":
+        await db.execute(
+            text("""
+                UPDATE interview_slots
+                SET status = 'booked',
+                    candidate_id = :cid,
+                    tentative_expires_at = NULL
+                WHERE id = :sid
+            """),
+            {"sid": slot_id, "cid": candidate_id},
+        )
+
+    # Update candidate status
+    await db.execute(
+        text("""
+            UPDATE candidates
+            SET status = :st,
+                version = version + 1
+            WHERE id = :cid
+        """),
+        {"st": next_status, "cid": candidate_id},
+    )
+
+    # Insert human review record
+    await db.execute(
+        text("""
+            INSERT INTO human_reviews (
+                candidate_id, reviewer_id, decision, notes, version
+            ) VALUES (
+                :cid, :rid, :dec, :notes, :ver
+            )
+        """),
+        {
+            "cid": candidate_id,
+            "rid": reviewer_id,
+            "dec": decision,
+            "notes": notes,
+            "ver": (cand["version"] or 1),
+        },
+    )
+
+    await db.commit()
+    return {
+        "status": "success",
+        "candidate_id": candidate_id,
+        "masked_identifier": cand["masked_identifier"],
+        "decision": decision,
+        "new_candidate_status": next_status,
+        "booked_slot_id": slot_id if decision == "APPROVED_DISPATCH" else None,
+    }
+
+
 @router.delete("/{candidate_id}")
 async def right_to_erasure_candidate(
     candidate_id: int,
@@ -254,74 +371,22 @@ async def right_to_erasure_candidate(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Executes UU PDP No. 27/2022 compliant Crypto-Shredding soft-erasure:
-    1. Overwrites DEK with destroyed zero-bytes.
-    2. Overwrites email_blind_index with random cryptographic tombstone hash.
-    3. Nulls out sanitized_resume_text, file_hash_sha256, resume_file_path.
-    4. Sets is_deleted = TRUE (non-physical deletion to preserve relational integrity).
-    5. Records append-only audit trail in pii_access_logs.
+    Executes UU PDP No. 27/2022 compliant Crypto-Shredding soft-erasure
+    via unified talentops_erasure service.
     """
-    cand_res = await db.execute(
-        text("SELECT id, masked_identifier, is_deleted FROM candidates WHERE id = :id"),
-        {"id": candidate_id},
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1")
+    result = await execute_talentops_erasure(
+        db=db,
+        candidate_id=candidate_id,
+        reason=reason,
+        ip_address=client_ip,
+        user_id=1,
     )
-    cand = cand_res.mappings().first()
-    if not cand or cand["is_deleted"]:
+    if not result.get("success"):
         raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_ALREADY_DELETED")
 
-    masked_id = cand["masked_identifier"]
-    tombstone = generate_tombstone_hash()
-    dead_dek = b"\x00" * 32
-
-    # 1. Soft-delete and shred candidate table
-    await db.execute(
-        text("""
-            UPDATE candidates
-            SET encrypted_name = :dead_dek,
-                encrypted_email = :dead_dek,
-                encrypted_phone = NULL,
-                encrypted_dek = :dead_dek,
-                email_blind_index = :tombstone,
-                file_hash_sha256 = NULL,
-                sanitized_resume_text = NULL,
-                resume_file_path = NULL,
-                github_url = NULL,
-                portfolio_url = NULL,
-                is_deleted = TRUE
-            WHERE id = :id
-        """),
-        {"id": candidate_id, "dead_dek": dead_dek, "tombstone": tombstone},
-    )
-
-    # 2. Clean candidate evidence & assessments
-    await db.execute(text("DELETE FROM candidate_evidence WHERE candidate_id = :id"), {"id": candidate_id})
-    await db.execute(text("DELETE FROM candidate_assessments WHERE candidate_id = :id"), {"id": candidate_id})
-
-    # 3. Append to pii_access_logs
-    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1")
-    await db.execute(
-        text("""
-            INSERT INTO pii_access_logs (
-                user_id, candidate_id, masked_identifier, reason, ip_address
-            ) VALUES (
-                1, :cand_id, :masked_id, :reason, :ip
-            )
-        """),
-        {
-            "cand_id": candidate_id,
-            "masked_id": masked_id,
-            "reason": reason,
-            "ip": client_ip,
-        },
-    )
-
     await db.commit()
-    return {
-        "status": "success",
-        "message": "Candidate crypto-shredded successfully under UU PDP No. 27/2022.",
-        "masked_identifier": masked_id,
-        "is_deleted": True,
-    }
+    return result
 
 
 @router.get("/stream/{candidate_id}")

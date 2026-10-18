@@ -13,7 +13,9 @@ from app.core.triage_service import agent_triage_service
 from app.core.crypto import (
     generate_dek,
     encrypt_dek,
+    decrypt_dek,
     encrypt_pii,
+    decrypt_pii,
     compute_blind_index,
     generate_tombstone_hash,
 )
@@ -542,5 +544,227 @@ async def trigger_batch_candidates_triage(
         "message": f"Batch triage dispatched for {len(targets)} candidates.",
         "dispatched_count": len(targets),
         "candidate_ids": targets,
+    }
+
+
+@router.get("/{candidate_id}/evidence-graph")
+async def get_candidate_evidence_graph(
+    candidate_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    PRD Bab 8.2 (Item 10) & Bab 1.2:
+    Retrieves interactive Evidence Graph schema (React Flow nodes and edges)
+    connecting candidate claims directly to verified CV substrings and GitHub metadata.
+    """
+    cand_res = await db.execute(
+        text("SELECT id, job_id, masked_identifier, overall_score, confidence_level, unresolved_risk, recommendation, github_url, portfolio_url, is_deleted FROM candidates WHERE id = :id AND is_deleted = FALSE"),
+        {"id": candidate_id},
+    )
+    cand = cand_res.mappings().first()
+    if not cand:
+        raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND")
+
+    # Fetch evidence
+    ev_res = await db.execute(
+        text("SELECT id, dimension, target_competency, claim_text, evidence_source, score_contribution, confidence FROM candidate_evidence WHERE candidate_id = :id ORDER BY dimension, id"),
+        {"id": candidate_id},
+    )
+    evidence_rows = [dict(r) for r in ev_res.mappings()]
+
+    # Fetch anomalies
+    anom_res = await db.execute(
+        text("SELECT id, anomaly_type, severity, description, suggested_verification FROM candidate_anomalies WHERE candidate_id = :id"),
+        {"id": candidate_id},
+    )
+    anomalies = [dict(a) for a in anom_res.mappings()]
+
+    # Construct React Flow nodes and edges
+    nodes = []
+    edges = []
+
+    # 1. Root Node (Candidate)
+    root_id = f"cand-{cand['id']}"
+    nodes.append({
+        "id": root_id,
+        "type": "candidateRoot",
+        "data": {
+            "label": cand["masked_identifier"],
+            "overall_score": float(cand["overall_score"]) if cand["overall_score"] is not None else 0.0,
+            "recommendation": cand["recommendation"],
+            "confidence_level": cand["confidence_level"],
+            "unresolved_risk": cand["unresolved_risk"],
+        },
+        "position": {"x": 400, "y": 50},
+    })
+
+    # 2. Dimension Nodes
+    dimensions = ["SKILL", "EXPERIENCE", "EDUCATION", "PORTFOLIO"]
+    dim_x = [100, 300, 500, 700]
+    for idx, dim in enumerate(dimensions):
+        dim_node_id = f"dim-{dim.lower()}"
+        dim_claims = [e for e in evidence_rows if e["dimension"] == dim]
+        nodes.append({
+            "id": dim_node_id,
+            "type": "dimensionNode",
+            "data": {
+                "label": dim,
+                "claims_count": len(dim_claims),
+                "is_empty": len(dim_claims) == 0,
+            },
+            "position": {"x": dim_x[idx], "y": 200},
+        })
+        edges.append({
+            "id": f"edge-root-{dim_node_id}",
+            "source": root_id,
+            "target": dim_node_id,
+            "animated": True,
+        })
+
+        # 3. Evidence Claim Nodes
+        for c_idx, claim in enumerate(dim_claims):
+            claim_id = f"ev-{claim['id']}"
+            nodes.append({
+                "id": claim_id,
+                "type": "evidenceClaimNode",
+                "data": {
+                    "competency": claim["target_competency"],
+                    "claim_text": claim["claim_text"],
+                    "source": claim["evidence_source"],
+                    "score": float(claim["score_contribution"]),
+                    "confidence": float(claim["confidence"]),
+                },
+                "position": {"x": dim_x[idx], "y": 320 + (c_idx * 110)},
+            })
+            edges.append({
+                "id": f"edge-{dim_node_id}-{claim_id}",
+                "source": dim_node_id,
+                "target": claim_id,
+            })
+
+    # 4. Anomaly Nodes (if any)
+    if anomalies:
+        anom_root_id = "anomalies-group"
+        nodes.append({
+            "id": anom_root_id,
+            "type": "riskNode",
+            "data": {"label": "DETECTED ANOMALIES", "count": len(anomalies)},
+            "position": {"x": 900, "y": 200},
+        })
+        edges.append({
+            "id": f"edge-root-{anom_root_id}",
+            "source": root_id,
+            "target": anom_root_id,
+            "style": {"stroke": "#ef4444"},
+        })
+        for a_idx, anom in enumerate(anomalies):
+            anom_id = f"anom-{anom['id']}"
+            nodes.append({
+                "id": anom_id,
+                "type": "anomalyDetailNode",
+                "data": {
+                    "type": anom["anomaly_type"],
+                    "severity": anom["severity"],
+                    "description": anom["description"],
+                },
+                "position": {"x": 900, "y": 320 + (a_idx * 110)},
+            })
+            edges.append({
+                "id": f"edge-{anom_root_id}-{anom_id}",
+                "source": anom_root_id,
+                "target": anom_id,
+                "style": {"stroke": "#ef4444"},
+            })
+
+    return {
+        "candidate_id": cand["id"],
+        "masked_identifier": cand["masked_identifier"],
+        "graph": {
+            "nodes": nodes,
+            "edges": edges,
+        },
+        "summary": {
+            "total_nodes": len(nodes),
+            "total_edges": len(edges),
+            "evidence_count": len(evidence_rows),
+            "anomaly_count": len(anomalies),
+        },
+    }
+
+
+@router.post("/{candidate_id}/unmask")
+async def unmask_candidate_pii(
+    candidate_id: int,
+    request: Request,
+    reason: str = Form(...),
+    reviewer_role: str = Form("recruiter"),
+    reviewer_id: int = Form(1),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    PRD Bab 8.1 & Bab 6.2 Item 4:
+    Governance-guarded unmasking of candidate direct PII.
+    Only permitted after final approval (status 'approved') OR by compliance officer/admin.
+    Mandatory reason is audit-logged into pii_access_logs.
+    """
+    cand_res = await db.execute(
+        text("SELECT id, masked_identifier, status, encrypted_name, encrypted_email, encrypted_phone, encrypted_dek, is_deleted FROM candidates WHERE id = :id"),
+        {"id": candidate_id},
+    )
+    cand = cand_res.mappings().first()
+    if not cand or cand["is_deleted"]:
+        raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_DELETED")
+
+    allowed_roles = {"compliance_officer", "admin"}
+    if cand["status"] != "approved" and reviewer_role not in allowed_roles:
+        raise HTTPException(
+            status_code=403,
+            detail="UNMASK_FORBIDDEN_DURING_BLIND_REVIEW: Candidate PII is protected under blind evaluation rules until decision is APPROVED_DISPATCH, unless authorized by Compliance Officer or Admin."
+        )
+
+    # Decrypt DEK then decrypt PII
+    try:
+        dek = decrypt_dek(cand["encrypted_dek"])
+        name = decrypt_pii(cand["encrypted_name"], dek) if cand["encrypted_name"] else ""
+        email = decrypt_pii(cand["encrypted_email"], dek) if cand["encrypted_email"] else ""
+        phone = decrypt_pii(cand["encrypted_phone"], dek) if cand["encrypted_phone"] else None
+    except Exception as exc:
+        logger.error(f"Failed to decrypt candidate PII: {exc}")
+        raise HTTPException(status_code=500, detail="DECRYPTION_FAILED_INTEGRITY_COMPROMISED")
+
+    # Record access log
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1")
+    await db.execute(
+        text("""
+            INSERT INTO pii_access_logs (
+                user_id, candidate_id, masked_identifier, reason, ip_address
+            ) VALUES (
+                :uid, :cid, :mid, :reason, :ip
+            )
+        """),
+        {
+            "uid": reviewer_id,
+            "cid": candidate_id,
+            "mid": cand["masked_identifier"],
+            "reason": f"[{reviewer_role.upper()}] {reason}",
+            "ip": client_ip,
+        },
+    )
+    await db.commit()
+
+    return {
+        "status": "success",
+        "candidate_id": cand["id"],
+        "masked_identifier": cand["masked_identifier"],
+        "unmasked_data": {
+            "name": name,
+            "email": email,
+            "phone": phone,
+        },
+        "governance": {
+            "authorized_by_role": reviewer_role,
+            "reason": reason,
+            "logged_to_audit_trail": True,
+        },
     }
 

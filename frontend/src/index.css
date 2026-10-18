@@ -4,8 +4,12 @@
 
 @layer base {
   body {
-    @apply bg-[#EEF4F0] text-[#0B201B] font-sans;
+    @apply bg-[#EEF4F0] text-[#0B201B] font-sans transition-colors duration-200;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  .dark body {
+    @apply bg-[#051F20] text-[#DAF1DE];
   }
 }
 
@@ -51,9 +55,17 @@
   background: #EEF4F0;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #051F20;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #C2E0C4;
   border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #163832;
 }
 
 ::-webkit-scrollbar-thumb:hover {

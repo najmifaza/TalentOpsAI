@@ -112,3 +112,46 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 - **Catatan untuk Rekan Tim (Willy & Fardizza):**
   - *Data Metrik Siap Pakai:* Angka latensi p50/p95 dan bukti zero double-booking kalender siap dicantumkan ke Bab 4 & 5 Proposal UINIC 8.0 dan GTNIC 2026.
 - **Rencana Selanjutnya (Sprint 5):** Hardening query MariaDB, optimasi Nginx reverse proxy VPS, dan finalisasi dokumentasi OpenAPI / Swagger.
+
+---
+
+### 2026-10-18 - Najmi - Production Hardening, Composite Indexing, Nginx Reverse Proxy & OpenAPI Finalization (Sprint 5 Selesai Penuh)
+- **Komponen / File:**
+  - `backend/migrations/002_performance_tuning_indexes.sql`
+  - `backend/scripts/init_db.py`
+  - `backend/app/api/candidates.py`
+  - `backend/app/api/jobs.py`
+  - `backend/app/api/slots.py`
+  - `backend/app/api/audit.py`
+  - `backend/app/main.py`
+  - `nginx/talentops.conf`
+  - `nginx/README.md`
+  - `backend/tests/test_sprint5_query_optimization.py`
+  - `backend/tests/test_sprint5_features.py`
+- **Yang Dikerjakan:**
+  - **1. Optimasi Query MariaDB & Composite Indexing (`002_performance_tuning_indexes.sql` & `init_db.py`):**
+    - Penambahan composite index pada tabel `candidates`: `(job_id, is_deleted, status, triage_priority, created_at)` untuk filtering & sorting dossier dashboard instan tanpa file sort; `(is_deleted, overall_score, confidence_level)` untuk ranking high-score What-If simulator; dan `(status, is_deleted, id)` untuk query batch queue triage.
+    - Penambahan composite index kalender pada `interview_slots`: `(interviewer_id, status, start_time, end_time)` untuk deteksi tabrakan waktu interval overlap; `(candidate_id, status)` untuk batasan 1 slot aktif per kandidat; dan `(status, tentative_expires_at)` untuk cleaner background worker.
+    - Penambahan composite index pada `candidate_evidence(candidate_id, dimension)` dan `candidate_anomalies(candidate_id, anomaly_type, severity)`.
+    - Peningkatan `init_db.py` untuk secara otomatis mengeksekusi seluruh migrasi DDL bertahap.
+    - Pembuatan suite uji `test_sprint5_query_optimization.py` yang memvalidasi sintaks DDL dan membuktikan via `EXPLAIN QUERY PLAN` bahwa index komposit terutilisasi penuh (zero full-table scan).
+  - **2. Hardening Reverse Proxy Nginx VPS (`nginx/talentops.conf` & `nginx/README.md`):**
+    - Konfigurasi upstream connection pooling `keepalive 64;` ke backend Uvicorn port 8002 untuk memangkas TCP handshake latency.
+    - Konfigurasi SSL Grade A+ (TLS v1.2 & v1.3 only, modern cipher suites, session cache shared 50MB, session timeout 1d, OCSP stapling aktif via resolver 1.1.1.1/8.8.8.8, dan HSTS 2 tahun `max-age=63072000; includeSubDomains; preload`).
+    - Penegakan HTTP security headers OWASP: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`.
+    - Rate limiting berbasis binary client IP di belakang proxy: proteksi endpoint pelamar `/api/careers/{id}/apply` maksimal 5 req/menit (`zone=talentops_apply_limit`), dan endpoint umum 30 req/detik dengan custom error JSON 429 elegan.
+    - Optimasi unbuffered streaming SSE untuk endpoint `/api/candidates/stream/:id` dan `/api/candidates/:id/trace-stream` (`proxy_buffering off; chunked_transfer_encoding off; proxy_cache off; proxy_read_timeout 300s; Connection "";`).
+  - **3. Finalisasi OpenAPI / Swagger & Implementasi PRD Missing Endpoints:**
+    - Implementasi `GET /api/candidates/{id}/evidence-graph`: representasi graf interaktif node & edges React Flow yang menghubungkan klaim kompetensi ke kutipan teks asli dan metadata GitHub.
+    - Implementasi `POST /api/candidates/{id}/unmask`: penegakan tata kelola pembukaan PII blind review sesuai PRD Bab 6.2 & UU PDP No. 27/2022 (hanya diizinkan setelah keputusan `APPROVED_DISPATCH` atau oleh peran `compliance_officer`/`admin` dengan alasan wajib yang dicatat append-only ke `pii_access_logs`).
+    - Implementasi `POST /api/jobs/{id}/analyze-bias`: modul FR-1 Job Analyzer untuk memindai istilah gender-exclusive, diskriminasi usia, dan bias almamater elitis dengan kalkulasi Inclusivity Score otomatis dan persistensi ke kolom `flagged_ambiguities`.
+    - Implementasi router terdedikasi `backend/app/api/slots.py` (`GET /api/slots/available` & `POST /api/slots/reserve`).
+    - Implementasi router terdedikasi `backend/app/api/audit.py` (`GET /api/audit-trail`) untuk inspeksi jejak append-only immutable logs.
+    - Perapian metadata OpenAPI di `backend/app/main.py`: tag metadata terstruktur, ringkasan arsitektur markdown, info kontak resmi, lisensi, dan registrasi router lengkap.
+- **Status & Verifikasi:** Selesai 100%. Seluruh test suite backend (`pytest backend/tests/`) lulus 54 dari 54 test (100% pass, zero failure). Build frontend (`npm run build`) sukses tanpa error.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - *Swagger OpenAPI Docs:* Dokumentasi interaktif OpenAPI lengkap dapat diakses di `/docs` dan `/redoc`.
+  - *Evidence Graph Endpoint:* Willy dapat langsung mengonsumsi `GET /api/candidates/{id}/evidence-graph` untuk rendering visual React Flow nodes & edges.
+  - *FR-1 Bias Analyzer:* Endpoint `POST /api/jobs/{id}/analyze-bias` siap dipakai untuk fitur pemindaian deskripsi lowongan.
+  - *Nginx Production Config:* Template siap pasang tersedia di `nginx/talentops.conf` untuk update reverse proxy VPS.
+- **Rencana Selanjutnya:** Penyelarasan submission lomba UINIC 8.0 & GTNIC 2026 dan gladi resik final demo.

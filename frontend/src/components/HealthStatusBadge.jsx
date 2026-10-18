@@ -55,7 +55,7 @@ export default function HealthStatusBadge() {
       >
         <span className="relative flex h-2.5 w-2.5 shrink-0">
           {loading ? (
-            <span className="animate-spin h-2.5 w-2.5 border-2 border-[#235347] border-t-transparent rounded-full"></span>
+            <span className="animate-spin h-2.5 w-2.5 border-2 border-[#235347] dark:border-[#8EB69B] border-t-transparent rounded-full"></span>
           ) : isHealthy && isConnected ? (
             <>
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
@@ -66,16 +66,16 @@ export default function HealthStatusBadge() {
           )}
         </span>
 
-        <span className="text-[#3D544E] flex items-center gap-1 sm:gap-1.5">
-          <Server className="w-3.5 h-3.5 text-[#235347] shrink-0" />
-          <span className="hidden sm:inline text-[#0B201B] font-semibold">VPS Cloud:</span>
+        <span className="text-[#3D544E] dark:text-[#DAF1DE] flex items-center gap-1 sm:gap-1.5">
+          <Server className="w-3.5 h-3.5 text-[#235347] dark:text-[#8EB69B] shrink-0" />
+          <span className="hidden sm:inline text-[#0B201B] dark:text-[#DAF1DE] font-semibold">VPS Cloud:</span>
           <span className={isHealthy ? 'text-[#10B981] font-bold' : 'text-rose-600 font-bold'}>
             {loading ? 'Pinging...' : isHealthy ? 'ONLINE' : 'OFFLINE'}
           </span>
         </span>
 
         {latency !== null && (
-          <span className="text-[#6C837C] border-l border-[#E1EBE4] pl-1.5 sm:pl-2 font-mono text-[10px] sm:text-[11px]">
+          <span className="text-[#6C837C] dark:text-[#8EB69B]/80 border-l border-[#E1EBE4] dark:border-[#163832] pl-1.5 sm:pl-2 font-mono text-[10px] sm:text-[11px]">
             {latency}ms
           </span>
         )}
@@ -91,8 +91,8 @@ export default function HealthStatusBadge() {
                   <Activity className="w-5 h-5 text-[#235347]" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-[#0B201B] text-sm">Walking Skeleton Pipeline Status</h3>
-                  <p className="text-[11px] text-[#6C837C]">Verifikasi DoD Sprint 1 (Vercel &rarr; VPS MariaDB)</p>
+                  <h3 className="font-bold text-[#0B201B] dark:text-white text-sm">Walking Skeleton Pipeline Status</h3>
+                  <p className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]/80">Verifikasi DoD Sprint 1 (Vercel &rarr; VPS MariaDB)</p>
                 </div>
               </div>
               <button
@@ -105,40 +105,40 @@ export default function HealthStatusBadge() {
             </div>
 
             <div className="mt-4 space-y-2.5">
-              <div className="p-3 bg-[#F6FAF7] rounded-xl border border-[#E1EBE4] flex items-center justify-between">
-                <span className="text-xs text-[#3D544E] flex items-center gap-2">
-                  <Server className="w-4 h-4 text-[#235347]" /> Backend Engine (VPS)
+              <div className="p-3 bg-[#F6FAF7] dark:bg-[#072421] rounded-xl border border-[#E1EBE4] dark:border-[#163832] flex items-center justify-between">
+                <span className="text-xs text-[#3D544E] dark:text-[#DAF1DE] flex items-center gap-2">
+                  <Server className="w-4 h-4 text-[#235347] dark:text-[#8EB69B]" /> Backend Engine (VPS)
                 </span>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white text-[#0B2B26] border border-[#E1EBE4]">
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white dark:bg-[#0B2B26] text-[#0B2B26] dark:text-[#DAF1DE] border border-[#E1EBE4] dark:border-[#163832]">
                   {apiBase}
                 </span>
               </div>
 
-              <div className="p-3 bg-[#F6FAF7] rounded-xl border border-[#E1EBE4] flex items-center justify-between">
-                <span className="text-xs text-[#3D544E] flex items-center gap-2">
+              <div className="p-3 bg-[#F6FAF7] dark:bg-[#072421] rounded-xl border border-[#E1EBE4] dark:border-[#163832] flex items-center justify-between">
+                <span className="text-xs text-[#3D544E] dark:text-[#DAF1DE] flex items-center gap-2">
                   <Activity className="w-4 h-4 text-[#10B981]" /> API Health Endpoint
                 </span>
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${isHealthy ? 'bg-[#DAF1DE] text-[#0B2B26] border border-[#C2E0C4]' : 'bg-rose-100 text-rose-700'}`}>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${isHealthy ? 'bg-[#DAF1DE] dark:bg-emerald-950/60 text-[#0B2B26] dark:text-emerald-300 border border-[#C2E0C4] dark:border-emerald-800' : 'bg-rose-100 text-rose-700'}`}>
                   {isHealthy ? <CheckCircle2 className="w-3 h-3 text-[#10B981]" /> : <XCircle className="w-3 h-3" />}
                   {health?.status?.toUpperCase() || 'UNKNOWN'}
                 </span>
               </div>
 
-              <div className="p-3 bg-[#F6FAF7] rounded-xl border border-[#E1EBE4] flex items-center justify-between">
-                <span className="text-xs text-[#3D544E] flex items-center gap-2">
-                  <Database className="w-4 h-4 text-[#235347]" /> Database ACID (MariaDB)
+              <div className="p-3 bg-[#F6FAF7] dark:bg-[#072421] rounded-xl border border-[#E1EBE4] dark:border-[#163832] flex items-center justify-between">
+                <span className="text-xs text-[#3D544E] dark:text-[#DAF1DE] flex items-center gap-2">
+                  <Database className="w-4 h-4 text-[#235347] dark:text-[#8EB69B]" /> Database ACID (MariaDB)
                 </span>
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${isConnected ? 'bg-[#DAF1DE] text-[#0B2B26] border border-[#C2E0C4]' : 'bg-rose-100 text-rose-700'}`}>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${isConnected ? 'bg-[#DAF1DE] dark:bg-emerald-950/60 text-[#0B2B26] dark:text-emerald-300 border border-[#C2E0C4] dark:border-emerald-800' : 'bg-rose-100 text-rose-700'}`}>
                   {isConnected ? <CheckCircle2 className="w-3 h-3 text-[#10B981]" /> : <AlertTriangle className="w-3 h-3" />}
                   {health?.database?.toUpperCase() || 'DISCONNECTED'}
                 </span>
               </div>
 
-              <div className="p-3 bg-[#F6FAF7] rounded-xl border border-[#E1EBE4] flex items-center justify-between">
-                <span className="text-xs text-[#3D544E] flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#235347]" /> Demo Mode Active
+              <div className="p-3 bg-[#F6FAF7] dark:bg-[#072421] rounded-xl border border-[#E1EBE4] dark:border-[#163832] flex items-center justify-between">
+                <span className="text-xs text-[#3D544E] dark:text-[#DAF1DE] flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#235347] dark:text-[#8EB69B]" /> Demo Mode Active
                 </span>
-                <span className="text-[11px] font-mono text-[#0B2B26] font-semibold">
+                <span className="text-[11px] font-mono text-[#0B2B26] dark:text-[#DAF1DE] font-semibold">
                   {health?.demo_mode ? 'ENABLED (Safe Sandbox)' : 'DISABLED'}
                 </span>
               </div>

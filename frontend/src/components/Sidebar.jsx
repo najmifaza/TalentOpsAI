@@ -176,7 +176,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   return (
     <>
       {/* 1. Desktop Persistent Sidebar (Visible on screens >= 1024px) */}
-      <aside className="hidden lg:flex w-64 bg-[#0B2B26] text-white flex-col shrink-0 min-h-screen border-r border-[#163832]/60 select-none">
+      <aside className="hidden lg:flex w-64 bg-[#0B2B26] dark:bg-[#072421] text-white flex-col shrink-0 min-h-screen border-r border-[#163832]/60 select-none transition-colors duration-200">
         {navContent}
       </aside>
 
@@ -190,7 +190,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
           />
 
           {/* Drawer Pane */}
-          <aside className="relative z-50 w-72 max-w-[80vw] bg-[#0B2B26] text-white flex flex-col h-full shadow-2xl border-r border-[#163832] animate-slide-in">
+          <aside className="relative z-50 w-72 max-w-[80vw] bg-[#0B2B26] dark:bg-[#072421] text-white flex flex-col h-full shadow-2xl border-r border-[#163832] animate-slide-in">
             {navContent}
           </aside>
         </div>

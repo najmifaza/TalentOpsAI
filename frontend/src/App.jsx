@@ -27,7 +27,24 @@ function ComponentLoader({ label = "Memuat modul komponen..." }) {
   );
 }
 
-function DashboardLayout() {
+import { WifiOff, Sparkles } from 'lucide-react';
+
+// Loading Fallback Component with Natural Pine & Sage Aesthetics
+function ComponentLoader({ label = "Memuat modul komponen..." }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-12 min-h-[350px] space-y-3" role="status" aria-live="polite">
+      <div className="relative flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-[#C2E0C4] dark:border-[#163832] border-t-[#0B2B26] dark:border-t-[#8EB69B] rounded-full animate-spin"></div>
+        <Sparkles className="w-4 h-4 text-[#235347] dark:text-[#8EB69B] absolute animate-pulse" />
+      </div>
+      <p className="text-xs font-semibold text-[#6C837C] dark:text-[#8EB69B] tracking-wide animate-pulse">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function DashboardLayout({ isDark, onToggleTheme }) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -84,11 +101,13 @@ function DashboardLayout() {
         onCloseMobile={() => setIsMobileMenuOpen(false)} 
       />
 
-      {/* Main Content Canvas (Soft Mint-Tinted Off-White #EEF4F0) */}
+      {/* Main Content Canvas (Soft Mint-Tinted Off-White #EEF4F0 / Midnight Pine #051F20) */}
       <div className={`flex-1 flex flex-col min-w-0 ${isOffline ? 'pt-8' : ''}`}>
         <Header 
           currentTitle={currentTitle} 
           onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
+          isDark={isDark}
+          onToggleTheme={onToggleTheme}
         />
 
         <main id="main-content" tabIndex="-1" className="flex-1 px-4 sm:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto animate-fade-in focus:outline-none">
@@ -106,7 +125,7 @@ function DashboardLayout() {
         </main>
 
         {/* Global Footer */}
-        <footer className="border-t border-[#E1EBE4] bg-[#EEF4F0]/80 px-4 sm:px-8 py-4 text-xs text-[#6C837C]">
+        <footer className="border-t border-[#E1EBE4] dark:border-[#163832] bg-[#EEF4F0]/80 dark:bg-[#072421]/80 px-4 sm:px-8 py-4 text-xs text-[#6C837C] dark:text-[#8EB69B]/80 transition-colors duration-200">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto text-center sm:text-left">
             <span className="font-medium">
               TalentOps AI &copy; 2026 &bull; Human-Centric Agentic Recruitment Web Ecosystem

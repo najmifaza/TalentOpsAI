@@ -28,7 +28,7 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-6">
-      {/* Top 3 KPI Metric Cards (Inspired by Row 1 in Reference Image) */}
+      {/* Top 3 KPI Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Metric 1 */}
         <div className="clean-card clean-card-hover p-5 flex items-center justify-between">
@@ -186,7 +186,7 @@ export default function DashboardOverview() {
 
           <button
             onClick={() => alert('Detail kalkulasi deterministik 4D PRD Bab 5.1')}
-            className="w-full mt-4 py-2 px-3 bg-[#EEF4F0] dark:bg-[#163832] hover:bg-[#E1EBE4] dark:hover:bg-[#235347] text-[#0B2B26] dark:text-[#DAF1DE] text-xs font-semibold rounded-xl border border-[#E1EBE4] dark:border-[#235347] transition-colors btn-interactive"
+            className="w-full mt-4 py-2 px-3 bg-[#EEF4F0] hover:bg-[#E1EBE4] text-[#0B2B26] text-xs font-semibold rounded-xl border border-[#E1EBE4] transition-colors btn-interactive"
           >
             Lihat Formula Matematis
           </button>
@@ -210,16 +210,16 @@ export default function DashboardOverview() {
                 <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]">Strong Match</div>
                 <div className="text-base font-extrabold text-[#10B981] mt-0.5">2 (40%)</div>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#F6FAF7] dark:bg-[#072421] border border-[#E1EBE4] dark:border-[#163832]">
-                <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]">Review Required</div>
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
+                <div className="text-[11px] text-[#6C837C]">Review Required</div>
                 <div className="text-base font-extrabold text-amber-500 mt-0.5">1 (20%)</div>
               </div>
               <div className="p-2.5 rounded-xl bg-[#F6FAF7] dark:bg-[#072421] border border-[#E1EBE4] dark:border-[#163832]">
                 <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]">Weak Fit</div>
                 <div className="text-base font-extrabold text-[#3D544E] dark:text-[#8EB69B] mt-0.5">1 (20%)</div>
               </div>
-              <div className="p-2.5 rounded-xl bg-[#F6FAF7] dark:bg-[#072421] border border-[#E1EBE4] dark:border-[#163832]">
-                <div className="text-[11px] text-[#6C837C] dark:text-[#8EB69B]">Security Quarantine</div>
+              <div className="p-2.5 rounded-xl bg-[#F6FAF7] border border-[#E1EBE4]">
+                <div className="text-[11px] text-[#6C837C]">Security Quarantine</div>
                 <div className="text-base font-extrabold text-rose-500 mt-0.5">1 (20%)</div>
               </div>
             </div>

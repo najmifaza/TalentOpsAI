@@ -50,7 +50,7 @@ export default function HealthStatusBadge() {
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs font-medium bg-white dark:bg-[#0B2B26] border border-[#E1EBE4] dark:border-[#163832] hover:border-[#8EB69B] shadow-sm hover:shadow transition-all duration-200 shrink-0 btn-interactive"
+        className="flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs font-medium bg-white border border-[#E1EBE4] hover:border-[#8EB69B] shadow-sm hover:shadow transition-all duration-200 shrink-0 btn-interactive"
         title="Klik untuk melihat detail koneksi VPS & Database (Sprint 1 Walking Skeleton)"
       >
         <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -84,11 +84,11 @@ export default function HealthStatusBadge() {
       {/* Detail Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#051F20]/70 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true">
-          <div className="bg-white dark:bg-[#0B2B26] border border-[#E1EBE4] dark:border-[#163832] rounded-3xl max-w-md w-full p-6 shadow-2xl relative transition-colors duration-200">
-            <div className="flex items-center justify-between pb-4 border-b border-[#E1EBE4] dark:border-[#163832]">
+          <div className="bg-white border border-[#E1EBE4] rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-[#E1EBE4]">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[#DAF1DE] dark:bg-[#163832] rounded-xl text-[#0B2B26] dark:text-[#DAF1DE]">
-                  <Activity className="w-5 h-5 text-[#235347] dark:text-[#8EB69B]" />
+                <div className="p-2.5 bg-[#DAF1DE] rounded-xl text-[#0B2B26]">
+                  <Activity className="w-5 h-5 text-[#235347]" />
                 </div>
                 <div>
                   <h3 className="font-bold text-[#0B201B] dark:text-white text-sm">Walking Skeleton Pipeline Status</h3>
@@ -97,7 +97,7 @@ export default function HealthStatusBadge() {
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-[#6C837C] hover:text-[#0B201B] dark:text-[#8EB69B] dark:hover:text-white p-1.5 rounded-lg hover:bg-[#EEF4F0] dark:hover:bg-[#163832] transition-colors"
+                className="text-[#6C837C] hover:text-[#0B201B] p-1.5 rounded-lg hover:bg-[#EEF4F0] transition-colors"
                 aria-label="Tutup modal status"
               >
                 <X className="w-4 h-4" />
@@ -144,9 +144,9 @@ export default function HealthStatusBadge() {
               </div>
             </div>
 
-            <div className="mt-5 flex items-center justify-between pt-4 border-t border-[#E1EBE4] dark:border-[#163832]">
-              <span className="text-xs text-[#6C837C] dark:text-[#8EB69B]/80">
-                Latensi RTT: <strong className="text-[#0B201B] dark:text-[#DAF1DE]">{latency} ms</strong>
+            <div className="mt-5 flex items-center justify-between pt-4 border-t border-[#E1EBE4]">
+              <span className="text-xs text-[#6C837C]">
+                Latensi RTT: <strong className="text-[#0B201B]">{latency} ms</strong>
               </span>
               <button
                 onClick={checkHealth}

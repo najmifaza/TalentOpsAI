@@ -13,7 +13,7 @@
   }
 }
 
-/* Modern Clean Card & Panel Utilities (Light Mode) */
+/* Modern Clean Card & Panel Utilities (Natural Mint Light Mode) */
 .clean-card {
   background-color: #FFFFFF;
   border: 1px solid #E1EBE4;
@@ -28,30 +28,12 @@
   transform: translateY(-2px);
 }
 
-/* Modern Clean Card Utilities (Deep Forest Dark Mode) */
-.dark .clean-card {
-  background-color: #0B2B26;
-  border-color: #163832;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
-}
-
-.dark .clean-card-hover:hover {
-  border-color: #235347;
-  box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.5);
-  transform: translateY(-2px);
-}
-
 /* Forest Banner Card */
 .forest-card {
   background: linear-gradient(135deg, #0B2B26 0%, #163832 60%, #235347 100%);
   color: #FFFFFF;
   border-radius: 1.25rem;
   transition: all 0.25s ease;
-}
-
-.dark .forest-card {
-  background: linear-gradient(135deg, #072421 0%, #0B2B26 60%, #163832 100%);
-  border: 1px solid #163832;
 }
 
 /* Micro-interaction Button Utilities */
@@ -90,6 +72,3 @@
   background: #8EB69B;
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #235347;
-}

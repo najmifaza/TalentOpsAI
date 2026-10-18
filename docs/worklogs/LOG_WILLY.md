@@ -176,38 +176,40 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
-### 2026-10-18 - Willy - Production Hardening, Bundle Code Splitting, Lighthouse SEO/A11y, & Dark Mode Polish (Sprint 5)
+### 2026-10-18 - Willy - Production Hardening, Bundle Code Splitting, Lighthouse SEO/A11y, & Natural Mint Light Mode Refinement (Sprint 5)
 - **Komponen / File:**
   - `frontend/vite.config.js` (Manual chunks code splitting: vendor-react, vendor-flow, vendor-icons)
-  - `frontend/src/App.jsx` (Dynamic imports React.lazy, Suspense fallback, dark mode state persistence & skip link)
-  - `frontend/src/components/Header.jsx` (Theme switcher Sun/Moon toggle & ARIA labels)
-  - `frontend/src/components/Sidebar.jsx` (Dark mode backdrop styling & modal accessibility attributes)
-  - `frontend/src/components/DashboardOverview.jsx` (Dark mode text contrasts & SVG gauge styling)
-  - `frontend/src/components/CandidateTable.jsx` (Dark mode table row contrasts & interactive button animations)
-  - `frontend/src/components/HealthStatusBadge.jsx` (Dark mode modal styling & badge accessibility)
+  - `frontend/src/App.jsx` (Dynamic imports React.lazy, Suspense fallback, Light Mode theme lock & accessibility skip link)
+  - `frontend/src/components/Header.jsx` (Clean header layout, organization pill, & ARIA attributes)
+  - `frontend/src/components/Sidebar.jsx` (High-contrast pine drawer, backdrop blur, & modal accessibility attributes)
+  - `frontend/src/components/DashboardOverview.jsx` (High-contrast typography, crisp SVG gauge styling, & clean cards)
+  - `frontend/src/components/CandidateTable.jsx` (High-contrast row contrasts, interactive badge indicators & micro-interactions)
+  - `frontend/src/components/HealthStatusBadge.jsx` (Modal pipeline status styling & badge accessibility)
   - `frontend/index.html` (Comprehensive SEO meta tags, OpenGraph, Twitter card, DNS prefetch & preconnect)
   - `frontend/vercel.json` (Static asset caching headers & Content Security Policy hardening)
-  - `frontend/tailwind.config.js` (Class-based dark mode configuration)
-  - `frontend/src/index.css` (Dark mode card styles, scrollbar styling, & button micro-interactions)
+  - `frontend/tailwind.config.js` (Brand palette Natural Mint & Pine Forest design tokens)
+  - `frontend/src/index.css` (Clean light mode card styles, scrollbar styling, & button micro-interactions)
 - **Yang Dikerjakan:**
   - **1. Optimasi Bundle Frontend & Code Splitting (Vite):**
     - Mengonfigurasi `manualChunks` di `vite.config.js` untuk memecah bundle menjadi `vendor-react` (179 kB), `vendor-flow` (185 kB), dan `vendor-icons` (25 kB).
     - Menerapkan dynamic import `React.lazy()` dan `<Suspense fallback={<ComponentLoader />}>` untuk komponen `EvidenceGraph`, `WhatIfStudio`, `CareerPortal`, dan `PlaceholderView`.
-    - Mengurangi ukuran initial bundle entry dari **542.98 kB** menjadi hanya **77.80 kB** (pemangkasan &gt; 85%), mengeliminasi peringatan bundle chunk size Vite 100%.
+    - Mengurangi ukuran initial bundle entry dari **542.98 kB** menjadi hanya **72.48 kB** (pemangkasan > 85%), mengeliminasi peringatan bundle chunk size Vite 100%.
   - **2. Audit Lighthouse: SEO, Performance & Aksesibilitas (WCAG AA):**
     - Menambahkan meta tag SEO lengkap di `index.html` (title, description, keywords, robots, canonical URL, OpenGraph, dan Twitter Card).
     - Mempercepat first paint dengan preconnect & DNS prefetch (`fonts.googleapis.com`, `fonts.gstatic.com`, dan `api-talentops.fawt.biz.id`).
     - Menambahkan caching header immutable 1 tahun (`Cache-Control: public, max-age=31536000, immutable`) di `vercel.json` untuk seluruh folder `/assets/*`.
     - Menyempurnakan aksesibilitas: skip-to-content link (`#main-content`), ARIA labels (`aria-label`, `aria-modal`, `role="status"`, `role="alert"`), dan fokus outline ramah keyboard.
-  - **3. Final Visual Polish & Deep Forest Dark Mode:**
-    - Mengintegrasikan Dark Mode interaktif berbasis Tailwind (`darkMode: 'class'`) dengan tombol toggle elegan (Sun/Moon) di Header, tersinkronisasi otomatis dengan `localStorage` dan preferensi sistem OS.
-    - Menghadirkan palet *Natural Pine & Midnight Forest* (`#051F20`, `#0B2B26`, `#DAF1DE`, `#8EB69B`) dengan kontras rasio tinggi memenuhi standar WCAG AA.
+  - **3. Final Visual Polish & Pure Natural Mint Light Mode Refinement:**
+    - Mengunci tema antarmuka secara presisi ke **Light Mode** tunggal berstandar korporat modern (Natural Mint & Pine Forest) untuk mengeliminasi risiko benturan kontras warna (color clashing) saat dipresentasikan di hadapan juri.
+    - Menghadirkan kanvas berlatar belakang mint lembut (`#EEF4F0`), kartu kontainer putih bersih (`#FFFFFF` dengan border tipis `#E1EBE4`), serta tipografi teks bertingkat kontras tinggi (`#0B201B` untuk heading utama dan `#6C837C` untuk label sekunder) yang memenuhi standar rasio kontras WCAG AA.
+    - Menghilangkan semua utilitas warna gelap yang bertabrakan dan menstabilkan tampilan seluruh komponen (Top KPI Cards, Semi-Circle Gauge, 4D Dimension Distribution, Antrean Triage, dan Candidate Table).
     - Menambahkan kelancaran micro-interactions pada tombol (`active:scale-[0.97]`, cubic-bezier easing).
-- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1779 modul tertransformasi**, zero error, zero warning). Seluruh kriteria Definition of Done (DoD) Sprint 5 terpenuhi: sistem berstatus **PRODUCTION READY**.
+- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1779 modul tertransformasi**, zero error, zero warning, build time 3.58 detik). Seluruh kriteria Definition of Done (DoD) Sprint 5 terpenuhi: sistem berstatus **PRODUCTION READY**.
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
-  - Seluruh sub-fitur frontend Willy dari Sprint 1 hingga Sprint 5 telah tuntas, teruji responsif, hemat bandwidth, dan siap untuk presentasi serta penilaian juri live demo.
+  - Seluruh sub-fitur frontend Willy dari Sprint 1 hingga Sprint 5 telah tuntas, teruji responsif, hemat bandwidth, kontras warna tajam dan bersih dalam Natural Mint Light Mode, siap untuk presentasi serta penilaian juri live demo.
 - **Rencana Selanjutnya:**
   - Persiapan rekaman video demo 3-5 menit untuk kompetisi GTNIC 2026 dan penyusunan lampiran proposal web untuk UINIC 8.0.
+
 
 
 

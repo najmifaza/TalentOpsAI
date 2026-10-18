@@ -217,7 +217,7 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
                     <td className="py-4 px-4">
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
                         {candidate.key_technologies.slice(0, 3).map((tech, idx) => (
-                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-[#EEF4F0] dark:bg-[#072421] text-[#3D544E] dark:text-[#DAF1DE] border border-[#E1EBE4] dark:border-[#163832] font-medium font-mono">
+                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-md bg-[#EEF4F0] text-[#3D544E] border border-[#E1EBE4] font-medium font-mono">
                             {tech}
                           </span>
                         ))}
@@ -237,7 +237,7 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
                             e.stopPropagation();
                             if (onStreamCandidate) onStreamCandidate(candidate);
                           }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#0B2B26] dark:bg-[#163832] hover:bg-[#163832] dark:hover:bg-[#235347] text-white text-[11px] font-semibold transition-all shadow-sm group btn-interactive"
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#0B2B26] hover:bg-[#163832] text-white text-[11px] font-semibold transition-all shadow-sm group btn-interactive"
                           title="Saksikan Live SSE Agent Stream"
                           aria-label="Saksikan Live SSE Agent Stream"
                         >
@@ -250,7 +250,7 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
                             e.stopPropagation();
                             onSelectCandidate(candidate);
                           }}
-                          className="p-1.5 rounded-xl bg-[#EEF4F0] dark:bg-[#072421] hover:bg-[#DAF1DE] dark:hover:bg-[#163832] hover:text-[#0B2B26] dark:hover:text-[#DAF1DE] text-[#6C837C] dark:text-[#8EB69B] transition-colors btn-interactive"
+                          className="p-1.5 rounded-xl bg-[#EEF4F0] hover:bg-[#DAF1DE] hover:text-[#0B2B26] text-[#6C837C] transition-colors btn-interactive"
                           title="Lihat Rincian Dossier"
                           aria-label="Lihat Rincian Dossier"
                         >

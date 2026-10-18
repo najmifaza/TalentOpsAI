@@ -17,6 +17,23 @@ function ComponentLoader({ label = "Memuat modul komponen..." }) {
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[350px] space-y-3" role="status" aria-live="polite">
       <div className="relative flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-[#C2E0C4] border-t-[#0B2B26] rounded-full animate-spin"></div>
+        <Sparkles className="w-4 h-4 text-[#235347] absolute animate-pulse" />
+      </div>
+      <p className="text-xs font-semibold text-[#6C837C] tracking-wide animate-pulse">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+import { WifiOff, Sparkles } from 'lucide-react';
+
+// Loading Fallback Component with Natural Pine & Sage Aesthetics
+function ComponentLoader({ label = "Memuat modul komponen..." }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-12 min-h-[350px] space-y-3" role="status" aria-live="polite">
+      <div className="relative flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-[#C2E0C4] dark:border-[#163832] border-t-[#0B2B26] dark:border-t-[#8EB69B] rounded-full animate-spin"></div>
         <Sparkles className="w-4 h-4 text-[#235347] dark:text-[#8EB69B] absolute animate-pulse" />
       </div>
@@ -61,7 +78,7 @@ function DashboardLayout({ isDark, onToggleTheme }) {
   const currentTitle = getTitle();
 
   return (
-    <div className="flex min-h-screen bg-[#EEF4F0] dark:bg-[#051F20] text-[#0B201B] dark:text-[#DAF1DE] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#051F20] relative transition-colors duration-200">
+    <div className="flex min-h-screen bg-[#EEF4F0] text-[#0B201B] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#0B201B] relative">
       {/* Accessibility Skip Link */}
       <a 
         href="#main-content" 
@@ -113,7 +130,7 @@ function DashboardLayout({ isDark, onToggleTheme }) {
             <span className="font-medium">
               TalentOps AI &copy; 2026 &bull; Human-Centric Agentic Recruitment Web Ecosystem
             </span>
-            <span className="font-mono text-[11px] text-[#3D544E] dark:text-[#8EB69B] font-semibold">
+            <span className="font-mono text-[11px] text-[#3D544E] font-semibold">
               Production Hardened &bull; React 18 + Vite Code Splitting &bull; WCAG AA Compliant
             </span>
           </div>
@@ -124,25 +141,11 @@ function DashboardLayout({ isDark, onToggleTheme }) {
 }
 
 export default function App() {
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('talentops-theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
-
+  // Enforce pristine Light Mode
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('talentops-theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('talentops-theme', 'light');
-    }
-  }, [isDark]);
-
-  const toggleTheme = () => {
-    setIsDark(prev => !prev);
-  };
+    document.documentElement.classList.remove('dark');
+    localStorage.removeItem('talentops-theme');
+  }, []);
 
   return (
     <BrowserRouter>
@@ -155,7 +158,7 @@ export default function App() {
           <Route path="/careers/track/:token" element={<CareerPortal initialTab="track" />} />
 
           {/* Internal HR Dashboard Routes */}
-          <Route path="/*" element={<DashboardLayout isDark={isDark} onToggleTheme={toggleTheme} />} />
+          <Route path="/*" element={<DashboardLayout />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

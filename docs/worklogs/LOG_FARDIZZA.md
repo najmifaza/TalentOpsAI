@@ -186,3 +186,22 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 - **Status & Verifikasi:** Selesai 100%. Test suite `test_prompt_token_efficiency.py` lulus 100%. Total test suite backend meningkat menjadi **49 test case lulus**.
 - **Rencana Selanjutnya (Sprint 5 Task 2):**
   - Pengetesan skenario kegagalan koneksi LLM untuk memvalidasi sirkuit Bounded Self-Healing fallback dan safe offline pre-cached mode.
+
+---
+
+### 2026-10-18 - Fardizza - Bounded Self-Healing & Fallback Resilience Suite (Sprint 5 Selesai Penuh)
+- **Komponen / File:**
+  - `backend/app/core/llm_adapter.py`
+  - `backend/app/core/triage_service.py`
+  - `backend/tests/test_self_healing_fallback.py`
+  - `docs/worklogs/LOG_FARDIZZA.md`
+- **Yang Dikerjakan:**
+  - **1. Pengujian & Validasi Sirkuit Bounded Self-Healing (PRD Bab 5.1 & 5.3):**
+    - *Model Failover:* Memvalidasi kegagalan model utama (429 Throttling / 503 Overloaded) otomatis memicu fallback transparan ke `LLM_FALLBACK_MODEL` (`ag/gemini-3.8-flash-high`) sebelum batas retry habis.
+    - *Safe Pre-Cached Offline Fallback:* Memvalidasi kegagalan koneksi total gateway (network connection refusal / timeout) otomatis mengaktifkan fallback ke store `[PRE-CACHED]` berbasis `file_hash` SHA-256 tanpa melempar runtime exception / 500 error ke antarmuka pengguna.
+    - *Corrupted / Malformed Output Resilience:* Memvalidasi penanganan respon LLM yang terpotong atau bukan JSON valid. Pipeline triage otomatis mengaktifkan skema heuristik darurat, menjaga integritas proses evaluasi kandidat tanpa memicu crash server.
+  - **2. Penyiapan Test Suite Resiliensi (`test_self_healing_fallback.py`):**
+    - 4 skenario uji kegagalan jaringan, throttling, output malformed, dan unrecoverable exception handling terverifikasi lulus 100%.
+- **Status & Verifikasi:** Selesai 100%. Seluruh test suite backend mencapai **53 test case PASSED (100% zero failure)**. Seluruh kriteria Definition of Done (DoD) Sprint 5 untuk Developer 2 (Fardizza) terpenuhi penuh. Sistem berstatus **PRODUCTION READY**.
+- **Catatan untuk Rekan Tim (Najmi & Willy):**
+  - AI Engine, Adapter 9router, skema ekstraksi, deterministic scoring, dan sirkuit self-healing telah terkunci stabil dan siap 100% untuk Live Demo juri lomba serta penyusunan proposal akhir.

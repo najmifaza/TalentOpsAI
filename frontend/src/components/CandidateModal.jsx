@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   X, 
   ShieldCheck, 
@@ -8,10 +9,12 @@ import {
   XCircle, 
   AlertTriangle,
   Code2,
-  FileText
+  FileText,
+  GitBranch
 } from 'lucide-react';
 
 export default function CandidateModal({ candidate, onClose }) {
+  const navigate = useNavigate();
   if (!candidate) return null;
 
   return (
@@ -116,6 +119,18 @@ export default function CandidateModal({ candidate, onClose }) {
               Rekomendasi Keputusan AI: <strong className="text-[#0B201B]">{candidate.recommendation}</strong>
             </span>
             <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate(`/evidence-graph/${candidate.id}`);
+                  onClose();
+                }}
+                className="px-4 py-2.5 bg-[#DAF1DE] hover:bg-[#C2E0C4] text-[#0B2B26] font-semibold text-xs rounded-xl border border-[#8EB69B]/40 transition-colors flex items-center justify-center gap-1.5"
+                title="Buka Candidate Evidence Graph di React Flow"
+              >
+                <GitBranch className="w-3.5 h-3.5 text-[#235347]" />
+                <span>Evidence Graph</span>
+              </button>
               <button
                 onClick={() => {
                   alert(`[Simulasi Review HR]: Kandidat ${candidate.masked_identifier} dijadwalkan wawancara (Atomic Calendar Lock).`);

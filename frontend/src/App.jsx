@@ -18,7 +18,14 @@ function DashboardLayout() {
     '/security-pdp': 'UU PDP No. 27/2022 Privacy Governance',
   };
 
-  const currentTitle = titles[location.pathname] || 'Dashboard & Triage Queue';
+  const getTitle = () => {
+    if (location.pathname.startsWith('/evidence-graph')) {
+      return 'Evidence Graph Explorer (React Flow)';
+    }
+    return titles[location.pathname] || 'Dashboard & Triage Queue';
+  };
+
+  const currentTitle = getTitle();
 
   return (
     <div className="flex min-h-screen bg-[#EEF4F0] text-[#0B201B] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#051F20]">
@@ -34,6 +41,7 @@ function DashboardLayout() {
             <Route index element={<DashboardOverview />} />
             <Route path="dashboard" element={<DashboardOverview />} />
             <Route path="evidence-graph" element={<EvidenceGraph />} />
+            <Route path="evidence-graph/:candidateId" element={<EvidenceGraph />} />
             <Route path="what-if" element={<PlaceholderView tabId="what-if" />} />
             <Route path="security-pdp" element={<PlaceholderView tabId="security-pdp" />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

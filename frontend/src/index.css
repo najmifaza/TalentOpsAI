@@ -7,10 +7,6 @@
     @apply bg-[#EEF4F0] text-[#0B201B] font-sans transition-colors duration-200;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
-
-  .dark body {
-    @apply bg-[#051F20] text-[#DAF1DE];
-  }
 }
 
 /* Modern Clean Card & Panel Utilities (Natural Mint Light Mode) */

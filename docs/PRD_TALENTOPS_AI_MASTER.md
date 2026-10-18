@@ -16,7 +16,7 @@
    - _Focus Area:_ Enterprise & Industry (AI Recruitment Agent)
    - _Deliverables:_ Proposal 15 Halaman + Video Demo 3–5 Menit + Live Interface & Repo
 
-**Document Version:** 2.5.2 (Final Locked Master: Ready for Implementation & Submission)  
+**Document Version:** 2.5.3 (Final Locked Master: Ready for Implementation & Submission)  
 **Status:** Approved for Implementation & Competition Submission  
 **Authors:** Tim Pengembang TalentOps AI (System Architecture, AI Engineering, Full-Stack Web & Compliance)
 
@@ -34,6 +34,7 @@
 | **v2.5.0** | 2026-10-17 | Core Team | Hardening Menuju Kemenangan (Pre-Code Lock): Non-overlap kalender transaksional, skema JSON `has_implementation_detail`, CSP vercel.json, perapian jadwal.                                                                                                                                                                                                                                                                                     |
 | **v2.5.1** | 2026-10-17 | Core Team | Final Structural & Concurrency Closure: Resolusi Erasure vs Append-Only, serialisasi kunci pewawancara, sinkronisasi cleaner task, pembersihan rujukan pasal UU PDP, baseline dataset 20-30 resume sintetis.                                                                                                                                                                                                                                   |
 | **v2.5.2** | 2026-10-17 | Core Team | **Implementation Consistency Lock:** <br>1. Harmonisasi urutan kunci transaksional baku (`users` -> `interview_slots` -> `candidates`) pada seluruh alur termasuk `POST /api/candidates/{id}/review`.<br>2. Integrasi endpoint `DELETE /api/candidates/{id}` ke service terpadu `talentops_erasure`.<br>3. Penegasan soft deletion kriptografis (`is_deleted = TRUE` tanpa physical delete).<br>4. Perapian visual diagram arsitektur Bab 3.1. |
+| **v2.5.3** | 2026-10-18 | Core Team | **Production Deployment & Driver Compatibility Hardening:** <br>1. Integrasi Vercel Edge Serverless Proxy Rewrite (`/api/(.*)` -> VPS Backend `https://api-talentops.fawt.biz.id`) untuk mengeliminasi latensi CORS preflight pada custom domain `https://talentops.fawt.biz.id`.<br>2. Resolusi kompatibilitas driver biner `aiomysql` + `pymysql<=1.1.1` dengan runtime adapter `escape_bytes_prefixed` untuk penanganan parameter biner AES-256-GCM (`VARBINARY(255)`).<br>3. Penegakan format baku RFC 4122 UUIDv4 36-karakter untuk `tracking_token` dengan mekanisme client auto-healing.<br>4. Resiliensi modal Live SSE Agent Trace via Watchdog Timer 1.5s dengan auto-fallback deterministik.<br>5. Integrasi langsung tata kelola privasi UU PDP No. 27/2022 pada Public Career Portal (`/careers/apply` & `/careers/track`) dan Candidate Dossier modal. |
 
 ---
 
@@ -95,16 +96,19 @@ TalentOps AI menghubungkan simpul ekosistem digital rekrutmen enterprise secara 
                       +---------------------------------------+
                       |       TALENT ECOSYSTEM CLIENT         |
                       |   React 18 SPA (Vercel Edge Network)  |
+                      |   https://talentops.fawt.biz.id       |
                       |   - Public Career Portal (/careers)   |
                       |   - Evidence Graph (React Flow)       |
                       |   - What-If Simulation Studio         |
                       |   - HITL Review & Calendar Dashboard  |
                       +-------------------+-------------------+
                                           |
-               HTTPS REST (JWT / Ticket)  |  SSE Stream (Replay + Live)
+                Vercel Edge Proxy Rewrite |  SSE Stream (Replay + Live)
+                /api/* -> VPS Backend     |  (Watchdog Fail-Safe 1.5s)
                                           v
 +-----------------------------------------------------------------------------+
 |                  TALENTOPS AGENTIC BACKEND (FastAPI Core)                   |
+|                  https://api-talentops.fawt.biz.id                          |
 |                                                                             |
 |  [Dual Ingestion Engine] [Governed Agent State Machine]  [Outbound Notif]   |
 |  - Career Portal Apply   - On-Demand Single/Batch Trigger- Mock Dispatch    |

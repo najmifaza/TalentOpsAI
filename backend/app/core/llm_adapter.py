@@ -47,7 +47,7 @@ class LLMAdapter:
         self.api_key = (
             api_key
             or settings.LLM_API_KEY
-            or (settings.LLM_ROUTER_API_KEY if settings.LLM_ROUTER_API_KEY != "dummy-key" else "")
+            or settings.LLM_ROUTER_API_KEY
             or os.getenv("CUSTOM_API_KEY", "")
         )
         self.headers: dict[str, str] = {
@@ -96,7 +96,8 @@ class LLMAdapter:
 
         last_err: Exception | None = None
 
-        async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT) as client:
+        # trust_env=False prevents local loopback calls from being intercepted by global SOCKS/HTTP proxies
+        async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT, trust_env=False) as client:
             for current_model in models_to_try:
                 payload["model"] = current_model
                 for attempt in range(1, settings.LLM_MAX_RETRIES + 1):

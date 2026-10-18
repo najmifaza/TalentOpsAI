@@ -2,17 +2,31 @@ import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardOverview from './components/DashboardOverview';
+import CareerPortal from './components/CareerPortal';
+import EvidenceGraph from './components/EvidenceGraph';
 import PlaceholderView from './components/PlaceholderView';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const titles = {
-    'dashboard': 'Dashboard',
-    'evidence-graph': 'Evidence Graph Explorer',
+    'dashboard': 'Dashboard & Triage Queue',
+    'evidence-graph': 'Evidence Graph Explorer (React Flow)',
     'what-if': 'What-If Simulation Studio',
-    'security-pdp': 'UU PDP No. 27/2022 Privacy Governance'
+    'security-pdp': 'UU PDP No. 27/2022 Privacy Governance',
+    'careers-apply': 'Public Career Portal',
+    'careers-track': 'Public Application Tracker',
   };
+
+  // If user is accessing the Public Career Portal, render authentic full-screen public view
+  if (activeTab === 'careers-apply' || activeTab === 'careers-track') {
+    return (
+      <CareerPortal 
+        initialTab={activeTab === 'careers-track' ? 'track' : 'apply'}
+        onBackToDashboard={() => setActiveTab('dashboard')} 
+      />
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-[#EEF4F0] text-[#0B201B] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#051F20]">
@@ -26,6 +40,8 @@ export default function App() {
         <main className="flex-1 px-8 py-6 max-w-7xl w-full mx-auto animate-fade-in">
           {activeTab === 'dashboard' ? (
             <DashboardOverview />
+          ) : activeTab === 'evidence-graph' ? (
+            <EvidenceGraph />
           ) : (
             <PlaceholderView tabId={activeTab} />
           )}

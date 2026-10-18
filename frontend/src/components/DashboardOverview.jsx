@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import CandidateTable from './CandidateTable';
 import CandidateModal from './CandidateModal';
+import AgentTraceModal from './AgentTraceModal';
 import { MOCK_CANDIDATES } from '../data/mockCandidates';
 import { 
   Users, 
@@ -13,12 +14,14 @@ import {
   Sparkles,
   Cpu,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Radio
 } from 'lucide-react';
 
 export default function DashboardOverview() {
   const [candidates] = useState(MOCK_CANDIDATES);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [traceCandidate, setTraceCandidate] = useState(null);
 
   const strongMatches = candidates.filter(c => c.recommendation === 'STRONG_MATCH').length;
   const reviewRequired = candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length;
@@ -281,6 +284,33 @@ export default function DashboardOverview() {
         </div>
       </div>
 
+      {/* Live Autonomous SSE Stream Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-[#0B2B26] via-[#163832] to-[#235347] text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg border border-[#163832]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#8EB69B]/20 border border-[#8EB69B]/30 flex items-center justify-center text-[#DAF1DE] shrink-0">
+            <Radio className="w-5 h-5 text-[#8EB69B] animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-white">Live Autonomous Agent Trace Stream</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 font-mono font-semibold border border-emerald-400/30">
+                SSE Active
+              </span>
+            </div>
+            <p className="text-xs text-[#8EB69B]">
+              Saksikan penyiaran real-time langkah otonom agen AI (<code className="text-white font-mono">/api/candidates/stream/:id</code>) dari sanitasi PII hingga keputusan akhir deterministik.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setTraceCandidate(candidates[0])}
+          className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8EB69B] hover:bg-[#DAF1DE] text-[#051F20] font-bold text-xs shadow-md transition-all duration-200"
+        >
+          <Radio className="w-4 h-4 text-[#051F20]" />
+          <span>Buka Live Trace Monitor</span>
+        </button>
+      </div>
+
       {/* Main Table Section: Candidate Queue */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
@@ -295,16 +325,24 @@ export default function DashboardOverview() {
         <CandidateTable 
           candidates={candidates} 
           onSelectCandidate={setSelectedCandidate} 
+          onStreamCandidate={setTraceCandidate}
         />
       </div>
 
-      {/* Modal */}
+      {/* Candidate Dossier Detail Modal */}
       {selectedCandidate && (
         <CandidateModal 
           candidate={selectedCandidate} 
           onClose={() => setSelectedCandidate(null)} 
         />
       )}
+
+      {/* Live Agentic Trace SSE Modal */}
+      <AgentTraceModal
+        candidate={traceCandidate}
+        isOpen={!!traceCandidate}
+        onClose={() => setTraceCandidate(null)}
+      />
     </div>
   );
 }

@@ -155,3 +155,20 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
   - *FR-1 Bias Analyzer:* Endpoint `POST /api/jobs/{id}/analyze-bias` siap dipakai untuk fitur pemindaian deskripsi lowongan.
   - *Nginx Production Config:* Template siap pasang tersedia di `nginx/talentops.conf` untuk update reverse proxy VPS.
 - **Rencana Selanjutnya:** Penyelarasan submission lomba UINIC 8.0 & GTNIC 2026 dan gladi resik final demo.
+
+---
+
+### 2026-10-18 - Najmi - Hotfix Resolusi aiomysql Binary Escape Crash & PyMySQL Upstream Compatibility
+- **Komponen / File:**
+  - `backend/app/core/database.py` (Monkeypatch adaptasi `escape_bytes_prefixed` untuk PyMySQL 1.2+)
+  - `backend/requirements.txt` (Penguncian versi `pymysql<=1.1.1`)
+- **Yang Dikerjakan:**
+  - **1. Investigasi & Resolusi Crash TypeError 500 saat Ingestion CV:**
+    - Mendiagnosis error `TypeError: 'str' object is not callable` yang muncul pada `POST /api/careers/{id}/apply` dan `POST /api/candidates/upload`.
+    - Menemukan akar masalah (upstream breaking change): library `aiomysql 0.2.0` memanggil `escape_bytes_prefixed(obj)` saat mengeksekusi parameter biner (seperti kolom enkripsi AES-256-GCM `enc_name`, `enc_email`, `enc_dek`). Pada PyMySQL >= 1.2.0, variabel tersebut telah didefinisikan sebagai string konstan alih-alih fungsi callable.
+    - Menambahkan patch adapter dinamis di `backend/app/core/database.py`: jika `escape_bytes_prefixed` bukan fungsi callable, otomatis dipetakan ulang ke `pymysql.converters.escape_bytes` sebelum engine database aktif.
+    - Mengunci dependensi di `backend/requirements.txt` ke `pymysql<=1.1.1` untuk kompatibilitas native jangka panjang.
+- **Status & Verifikasi:** Selesai 100%. Live endpoint `POST /api/careers/1/apply` di VPS Ubuntu terverifikasi sukses HTTP 200 OK. Berkas lamaran terenkripsi AES-256-GCM tersimpan nyata di MariaDB, menghasilkan tracking token valid, dan status pelacakan `/api/careers/track/{token}` aktif.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - Ingestion berkas publik dan HR dropzone telah berfungsi normal tanpa kendala driver database.
+

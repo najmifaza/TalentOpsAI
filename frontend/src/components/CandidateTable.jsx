@@ -102,10 +102,19 @@ export default function CandidateTable({ candidates, onSelectCandidate, onStream
         </div>
       </div>
 
+      {/* Mobile Scroll Indicator */}
+      <div className="flex items-center justify-between px-2 text-[11px] text-[#6C837C] sm:hidden">
+        <span className="flex items-center gap-1">
+          <Info className="w-3.5 h-3.5 text-[#235347]" />
+          <span>Geser tabel ke samping untuk melihat kolom lengkap</span>
+        </span>
+        <span className="font-mono font-bold text-[#0B2B26]">&rarr;</span>
+      </div>
+
       {/* Clean Light Table */}
       <div className="clean-card overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[700px]">
             <thead className="bg-[#F6FAF7] text-[#6C837C] uppercase tracking-wider text-[11px] border-b border-[#E1EBE4]">
               <tr>
                 <th className="py-3.5 px-4 font-bold">Kandidat (Anonim UU PDP)</th>

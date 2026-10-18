@@ -87,8 +87,8 @@ export default function CandidateModal({ candidate, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#051F20]/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white border border-[#E1EBE4] rounded-[2rem] max-w-2xl w-full p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#051F20]/60 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white border border-[#E1EBE4] rounded-2xl sm:rounded-[2rem] max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-[#E1EBE4]">
@@ -185,18 +185,18 @@ export default function CandidateModal({ candidate, onClose }) {
             )}
 
             {/* Actions Bar */}
-            <div className="pt-4 border-t border-[#E1EBE4] flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-xs text-[#6C837C]">
+            <div className="pt-4 border-t border-[#E1EBE4] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <span className="text-xs text-[#6C837C] text-center sm:text-left">
                 Rekomendasi Keputusan AI: <strong className="text-[#0B201B]">{candidate.recommendation}</strong>
               </span>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => {
                     navigate(`/evidence-graph/${candidate.id}`);
                     onClose();
                   }}
-                  className="px-4 py-2.5 bg-[#DAF1DE] hover:bg-[#C2E0C4] text-[#0B2B26] font-semibold text-xs rounded-xl border border-[#8EB69B]/40 transition-colors flex items-center justify-center gap-1.5"
+                  className="px-3.5 py-2.5 bg-[#DAF1DE] hover:bg-[#C2E0C4] text-[#0B2B26] font-semibold text-xs rounded-xl border border-[#8EB69B]/40 transition-colors flex items-center justify-center gap-1.5"
                   title="Buka Candidate Evidence Graph di React Flow"
                 >
                   <GitBranch className="w-3.5 h-3.5 text-[#235347]" />
@@ -204,14 +204,14 @@ export default function CandidateModal({ candidate, onClose }) {
                 </button>
                 <button
                   onClick={() => setViewState('schedule')}
-                  className="flex-1 sm:flex-initial px-5 py-2.5 bg-[#0B2B26] hover:bg-[#163832] text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 bg-[#0B2B26] hover:bg-[#163832] text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
                 >
                   <Calendar className="w-3.5 h-3.5 text-[#8EB69B]" />
-                  Approve & Schedule
+                  <span>Approve & Schedule</span>
                 </button>
                 <button
                   onClick={() => setViewState('reject_confirm')}
-                  className="px-5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl border border-rose-200 transition-colors"
+                  className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl border border-rose-200 transition-colors text-center"
                 >
                   Reject
                 </button>
@@ -299,11 +299,11 @@ export default function CandidateModal({ candidate, onClose }) {
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-4 border-t border-[#E1EBE4] flex items-center justify-between gap-3">
+            <div className="pt-4 border-t border-[#E1EBE4] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setViewState('dossier')}
-                className="px-4 py-2.5 rounded-xl bg-[#EEF4F0] hover:bg-[#E1EBE4] text-[#0B201B] text-xs font-semibold transition-colors"
+                className="px-4 py-2.5 rounded-xl bg-[#EEF4F0] hover:bg-[#E1EBE4] text-[#0B201B] text-xs font-semibold transition-colors text-center"
               >
                 Kembali ke Dossier
               </button>
@@ -312,7 +312,7 @@ export default function CandidateModal({ candidate, onClose }) {
                 type="button"
                 disabled={isSubmitting}
                 onClick={handleConfirmSchedule}
-                className="px-6 py-2.5 bg-[#0B2B26] hover:bg-[#163832] text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-2.5 bg-[#0B2B26] hover:bg-[#163832] text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-center"
               >
                 {isSubmitting ? (
                   <>
@@ -417,11 +417,11 @@ export default function CandidateModal({ candidate, onClose }) {
               </select>
             </div>
 
-            <div className="pt-4 border-t border-[#E1EBE4] flex items-center justify-between gap-3">
+            <div className="pt-4 border-t border-[#E1EBE4] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setViewState('dossier')}
-                className="px-4 py-2.5 rounded-xl bg-[#EEF4F0] hover:bg-[#E1EBE4] text-[#0B201B] text-xs font-semibold transition-colors"
+                className="px-4 py-2.5 rounded-xl bg-[#EEF4F0] hover:bg-[#E1EBE4] text-[#0B201B] text-xs font-semibold transition-colors text-center"
               >
                 Batal
               </button>
@@ -429,7 +429,7 @@ export default function CandidateModal({ candidate, onClose }) {
                 type="button"
                 disabled={isSubmitting}
                 onClick={handleConfirmReject}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50"
+                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 text-center"
               >
                 {isSubmitting ? 'Memproses Penolakan...' : 'Konfirmasi Penolakan Berkas'}
               </button>

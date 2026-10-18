@@ -36,6 +36,15 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
       return;
     }
 
+    // Edge-Case Validation: Check format & guide user if using public display identifier (#TK-)
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isPublicId = token.startsWith('#TK-') || token.startsWith('TK-');
+
+    if (!UUID_REGEX.test(token) && !isPublicId) {
+      setError('Format token tidak valid. Tracking Token wajib berupa 36 karakter UUIDv4 (contoh: 7c9e6679-7425-40de-944b-e07fc1f90ae7).');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -207,32 +216,32 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12 animate-fade-in select-none">
       {/* Top Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <button
           onClick={onBackToPortal}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-[#E1EBE4] hover:bg-[#EEF4F0] text-xs font-semibold text-[#0B2B26] transition-all shadow-sm"
+          className="self-start flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white border border-[#E1EBE4] hover:bg-[#EEF4F0] text-xs font-semibold text-[#0B2B26] transition-all shadow-sm"
         >
           <ArrowLeft className="w-4 h-4 text-[#235347]" />
           <span>Kembali ke Portal Karir</span>
         </button>
 
-        <div className="flex items-center gap-2 text-xs text-[#6C837C]">
-          <ShieldCheck className="w-4 h-4 text-[#235347]" />
+        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-[#6C837C]">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#235347] shrink-0" />
           <span>Pelacakan Anonim Terenkripsi &bull; UU PDP No. 27/2022</span>
         </div>
       </div>
 
       {/* Hero Header */}
-      <div className="p-8 forest-card relative overflow-hidden shadow-xl">
+      <div className="p-6 sm:p-8 forest-card relative overflow-hidden shadow-xl">
         <div className="relative z-10 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB69B]/20 text-[#DAF1DE] border border-[#8EB69B]/30 text-xs font-semibold mb-3">
             <KeyRound className="w-3.5 h-3.5 text-[#8EB69B]" />
             <span>Kandidat Tracking Portal</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-tight">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-tight">
             Pantau Status Lamaran Secara Transparan
           </h2>
-          <p className="text-sm text-[#8EB69B] mt-2 leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#8EB69B] mt-2 leading-relaxed">
             Masukkan <strong>Secret Tracking Token</strong> yang Anda peroleh saat mengirimkan lamaran untuk melihat perkembangan analisis agen AI secara real-time.
           </p>
         </div>

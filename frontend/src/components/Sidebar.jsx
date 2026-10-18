@@ -6,10 +6,11 @@ import {
   Sliders, 
   ShieldAlert, 
   Briefcase, 
-  FileCheck2
+  FileCheck2,
+  X
 } from 'lucide-react';
 
-export default function Sidebar() {
+export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {} }) {
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard & Triage', icon: LayoutDashboard, badge: '5 Antrean' },
     { path: '/evidence-graph', label: 'Evidence Graph (React Flow)', icon: GitBranch, badge: 'Sprint 2-3' },
@@ -17,25 +18,45 @@ export default function Sidebar() {
     { path: '/security-pdp', label: 'UU PDP & Erasure Guard', icon: ShieldAlert, badge: 'AES-256' },
   ];
 
-  return (
-    <aside className="w-64 bg-[#0B2B26] text-white flex flex-col shrink-0 min-h-screen justify-between border-r border-[#163832]/60 select-none">
+  const handleLinkClick = () => {
+    if (onCloseMobile) onCloseMobile();
+  };
+
+  const navContent = (
+    <div className="flex flex-col justify-between h-full select-none">
       {/* Top Section */}
       <div>
         {/* Brand Header */}
-        <Link to="/dashboard" className="p-6 pb-5 flex items-center gap-3 hover:opacity-95 transition-opacity">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8EB69B] to-[#235347] flex items-center justify-center shadow-md text-[#051F20] font-extrabold text-base">
-            <svg className="w-5 h-5 text-[#051F20]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-white tracking-tight text-lg">TalentOps</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#8EB69B]/20 text-[#8EB69B] font-semibold border border-[#8EB69B]/30">AI</span>
+        <div className="p-6 pb-5 flex items-center justify-between border-b border-[#163832]/60">
+          <Link 
+            to="/dashboard" 
+            onClick={handleLinkClick}
+            className="flex items-center gap-3 hover:opacity-95 transition-opacity"
+          >
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8EB69B] to-[#235347] flex items-center justify-center shadow-md text-[#051F20] font-extrabold text-base">
+              <svg className="w-5 h-5 text-[#051F20]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
             </div>
-            <p className="text-[10px] text-[#8EB69B]/70 tracking-wide font-medium">Recruitment Platform</p>
-          </div>
-        </Link>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-white tracking-tight text-lg">TalentOps</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[#8EB69B]/20 text-[#8EB69B] font-semibold border border-[#8EB69B]/30">AI</span>
+              </div>
+              <p className="text-[10px] text-[#8EB69B]/70 tracking-wide font-medium">Recruitment Platform</p>
+            </div>
+          </Link>
+
+          {/* Close button for Mobile Drawer */}
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="lg:hidden p-1.5 rounded-lg text-[#8EB69B] hover:text-white hover:bg-[#163832] transition-colors"
+            title="Tutup Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         {/* Navigation Menu */}
         <div className="px-4 py-3 space-y-1">
@@ -49,6 +70,7 @@ export default function Sidebar() {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={handleLinkClick}
                 className={({ isActive }) =>
                   `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 group ${
                     isActive
@@ -82,6 +104,7 @@ export default function Sidebar() {
 
           <NavLink
             to="/careers/apply"
+            onClick={handleLinkClick}
             className={({ isActive }) =>
               `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
                 isActive
@@ -105,6 +128,7 @@ export default function Sidebar() {
 
           <NavLink
             to="/careers/track"
+            onClick={handleLinkClick}
             className={({ isActive }) =>
               `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
                 isActive
@@ -128,7 +152,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Bottom Section: User Account (Inspired by Alex Williamson in Example) */}
+      {/* Bottom Section: User Account */}
       <div className="p-4 border-t border-[#163832]/60">
         <div className="px-2 pb-2 text-[10px] font-bold tracking-widest text-[#8EB69B]/60 uppercase">
           User Account
@@ -146,6 +170,31 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* 1. Desktop Persistent Sidebar (Visible on screens >= 1024px) */}
+      <aside className="hidden lg:flex w-64 bg-[#0B2B26] text-white flex-col shrink-0 min-h-screen border-r border-[#163832]/60 select-none">
+        {navContent}
+      </aside>
+
+      {/* 2. Mobile / Tablet Slide-over Drawer (Visible on screens < 1024px) */}
+      {isOpenMobile && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          {/* Backdrop blur overlay */}
+          <div 
+            onClick={onCloseMobile}
+            className="fixed inset-0 bg-[#051F20]/70 backdrop-blur-sm transition-opacity animate-fade-in"
+          />
+
+          {/* Drawer Pane */}
+          <aside className="relative z-50 w-72 max-w-[80vw] bg-[#0B2B26] text-white flex flex-col h-full shadow-2xl border-r border-[#163832] animate-slide-in">
+            {navContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

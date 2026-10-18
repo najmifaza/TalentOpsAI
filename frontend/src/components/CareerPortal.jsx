@@ -138,6 +138,18 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
       return;
     }
 
+    // Edge-Case Check 1: Zero-byte / corrupt file check
+    if (file.size === 0) {
+      setFileError('Berkas kosong (0 bytes) atau terkorupsi. Harap unggah berkas dokumen yang valid.');
+      return;
+    }
+
+    // Edge-Case Check 2: Dangerous script / executable double-extension detection
+    if (fileName.includes('.exe') || fileName.includes('.sh') || fileName.includes('.bat') || fileName.includes('.js')) {
+      setFileError('Ekstensi berkas mencurigakan terdeteksi. Sistem keamanan menolak berkas executable.');
+      return;
+    }
+
     // Size limit: 10MB
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
@@ -258,27 +270,27 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
     <div className="min-h-screen bg-[#EEF4F0] text-[#0B201B] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#051F20]">
       {/* Top Banner Navigation Bar */}
       <header className="bg-[#0B2B26] text-white border-b border-[#163832] sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#8EB69B] to-[#235347] flex items-center justify-center text-[#051F20] font-bold">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#8EB69B] to-[#235347] flex items-center justify-center text-[#051F20] font-bold shrink-0">
               <Briefcase className="w-4 h-4 text-[#051F20]" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-white text-base">TalentOps Career</span>
+                <span className="font-bold text-white text-sm sm:text-base">TalentOps Career</span>
                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#8EB69B]/20 text-[#8EB69B] font-semibold border border-[#8EB69B]/30">
                   PUBLIC
                 </span>
               </div>
-              <p className="text-[10px] text-[#8EB69B]/70">Zero-Bias &bull; End-to-End Privacy Guaranteed</p>
+              <p className="text-[10px] text-[#8EB69B]/70 hidden md:block">Zero-Bias &bull; End-to-End Privacy Guaranteed</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="inline-flex p-1 rounded-xl bg-[#051F20]/60 border border-[#163832]">
               <button
                 onClick={() => navigate('/careers/apply')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'apply'
                     ? 'bg-[#163832] text-white shadow-sm'
                     : 'text-[#8EB69B] hover:text-white'
@@ -288,7 +300,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
               </button>
               <button
                 onClick={() => navigate('/careers/track')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                   activeTab === 'track'
                     ? 'bg-[#163832] text-white shadow-sm'
                     : 'text-[#8EB69B] hover:text-white'
@@ -304,17 +316,19 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                 if (onBackToDashboard) onBackToDashboard();
                 else navigate('/dashboard');
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#8EB69B]/30 bg-[#8EB69B]/10 hover:bg-[#8EB69B]/20 text-[#DAF1DE] text-xs font-semibold transition-all"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#8EB69B]/30 bg-[#8EB69B]/10 hover:bg-[#8EB69B]/20 text-[#DAF1DE] text-xs font-semibold transition-all shrink-0"
+              title="Kembali ke Dashboard HR"
             >
               <Building2 className="w-3.5 h-3.5 text-[#8EB69B]" />
-              <span>Dashboard HR</span>
+              <span className="hidden sm:inline">Dashboard HR</span>
+              <span className="sm:hidden text-xs">HR</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Body */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {activeTab === 'track' ? (
           <ApplicationTracker 
             initialToken={urlToken || trackerInitialToken} 
@@ -323,7 +337,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
         ) : (
           <div className="space-y-8 animate-fade-in">
             {/* Hero Section */}
-            <div className="forest-card p-8 sm:p-10 relative overflow-hidden shadow-xl">
+            <div className="forest-card p-6 sm:p-8 md:p-10 relative overflow-hidden shadow-xl">
               <div className="relative z-10 max-w-3xl space-y-3">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8EB69B]/20 text-[#DAF1DE] border border-[#8EB69B]/30 text-xs font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#8EB69B]" />

@@ -50,10 +50,10 @@ export default function HealthStatusBadge() {
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-white border border-[#E1EBE4] hover:border-[#8EB69B] shadow-sm hover:shadow transition-all duration-200"
+        className="flex items-center gap-1.5 sm:gap-2.5 px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs font-medium bg-white border border-[#E1EBE4] hover:border-[#8EB69B] shadow-sm hover:shadow transition-all duration-200 shrink-0"
         title="Klik untuk melihat detail koneksi VPS & Database (Sprint 1 Walking Skeleton)"
       >
-        <span className="relative flex h-2.5 w-2.5">
+        <span className="relative flex h-2.5 w-2.5 shrink-0">
           {loading ? (
             <span className="animate-spin h-2.5 w-2.5 border-2 border-[#235347] border-t-transparent rounded-full"></span>
           ) : isHealthy && isConnected ? (
@@ -66,16 +66,16 @@ export default function HealthStatusBadge() {
           )}
         </span>
 
-        <span className="text-[#3D544E] flex items-center gap-1.5">
-          <Server className="w-3.5 h-3.5 text-[#235347]" />
-          <span className="text-[#0B201B] font-semibold">VPS Cloud:</span>
+        <span className="text-[#3D544E] flex items-center gap-1 sm:gap-1.5">
+          <Server className="w-3.5 h-3.5 text-[#235347] shrink-0" />
+          <span className="hidden sm:inline text-[#0B201B] font-semibold">VPS Cloud:</span>
           <span className={isHealthy ? 'text-[#10B981] font-bold' : 'text-rose-600 font-bold'}>
             {loading ? 'Pinging...' : isHealthy ? 'ONLINE' : 'OFFLINE'}
           </span>
         </span>
 
         {latency !== null && (
-          <span className="text-[#6C837C] border-l border-[#E1EBE4] pl-2 font-mono text-[11px]">
+          <span className="text-[#6C837C] border-l border-[#E1EBE4] pl-1.5 sm:pl-2 font-mono text-[10px] sm:text-[11px]">
             {latency}ms
           </span>
         )}

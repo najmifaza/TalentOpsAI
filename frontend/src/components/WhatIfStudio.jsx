@@ -136,12 +136,13 @@ export default function WhatIfStudio() {
     const wConfNorm = weights.conf / totalW;
     const wRiskNorm = weights.risk / totalW;
 
-    // Hitung skor simulasi tiap kandidat
-    const evaluated = candidates.map((cand, origIndex) => {
-      const sComp = cand.scores_4d.s_comp || 0;
-      const sPort = cand.scores_4d.s_port || 0;
-      const sConf = cand.scores_4d.s_conf || 0;
-      const sRisk = cand.scores_4d.s_risk || 0;
+    // Hitung skor simulasi tiap kandidat yang sudah di-scan
+    const scannableCandidates = candidates.filter(c => c.scores_4d && c.overall_score !== null);
+    const evaluated = scannableCandidates.map((cand, origIndex) => {
+      const sComp = cand.scores_4d?.s_comp || 0;
+      const sPort = cand.scores_4d?.s_port || 0;
+      const sConf = cand.scores_4d?.s_conf || 0;
+      const sRisk = cand.scores_4d?.s_risk || 0;
 
       // S_risk berperan sebagai penalti terbalik (100 - risk)
       const invertedRisk = Math.max(0, 100 - sRisk);
@@ -166,7 +167,7 @@ export default function WhatIfStudio() {
         newRec = 'WEAK_FIT';
       }
 
-      const scoreDelta = Math.round((simulatedScore - cand.overall_score) * 10) / 10;
+      const scoreDelta = Math.round((simulatedScore - (cand.overall_score || 0)) * 10) / 10;
       const isPassed = simulatedScore >= cutoffScore && newRec !== 'SECURITY_QUARANTINE';
 
       return {
@@ -676,20 +677,24 @@ export default function WhatIfStudio() {
 
                     {/* Breakdown 4D */}
                     <td className="py-4 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2 font-mono text-[10px]">
-                        <span className="bg-[#EEF4F0] px-1.5 py-0.5 rounded border border-[#E1EBE4]" title="S_comp">
-                          C: <strong>{c.scores_4d.s_comp}</strong>
-                        </span>
-                        <span className="bg-[#EEF4F0] px-1.5 py-0.5 rounded border border-[#E1EBE4]" title="S_port">
-                          P: <strong>{c.scores_4d.s_port}</strong>
-                        </span>
-                        <span className="bg-[#EEF4F0] px-1.5 py-0.5 rounded border border-[#E1EBE4]" title="S_conf">
-                          Cf: <strong>{c.scores_4d.s_conf}</strong>
-                        </span>
-                        <span className="bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded border border-rose-200" title="S_risk">
-                          R: <strong>{c.scores_4d.s_risk}</strong>
-                        </span>
-                      </div>
+                      {c.scores_4d ? (
+                        <div className="flex items-center gap-2 font-mono text-[10px]">
+                          <span className="bg-[#f4f4f6] px-1.5 py-0.5 rounded border border-[#e6e6ea]" title="Keahlian Inti">
+                            C: <strong>{c.scores_4d.s_comp}</strong>
+                          </span>
+                          <span className="bg-[#f4f4f6] px-1.5 py-0.5 rounded border border-[#e6e6ea]" title="Portofolio Kode">
+                            P: <strong>{c.scores_4d.s_port}</strong>
+                          </span>
+                          <span className="bg-[#f4f4f6] px-1.5 py-0.5 rounded border border-[#e6e6ea]" title="Keyakinan Bukti">
+                            Cf: <strong>{c.scores_4d.s_conf}</strong>
+                          </span>
+                          <span className="bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded border border-rose-200" title="Indikator Resiko">
+                            R: <strong>{c.scores_4d.s_risk}</strong>
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-[#67677e]">Belum Dianalisis</span>
+                      )}
                     </td>
                   </tr>
                 );

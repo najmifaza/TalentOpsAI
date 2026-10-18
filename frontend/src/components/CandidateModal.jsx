@@ -205,27 +205,33 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
 
             {/* 4D Scoring Grid */}
             <div>
-              <h4 className="text-xs font-bold text-[#6C837C] uppercase tracking-wider mb-2.5">
-                Breakdown Skor 4D Deterministik
+              <h4 className="text-xs font-bold text-[#67677e] uppercase tracking-wider mb-2.5">
+                4 Dimensi Evaluasi Obyektif
               </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-2xl bg-[#F6FAF7] border border-[#E1EBE4] text-center">
-                  <span className="text-[10px] text-[#6C837C] uppercase font-mono font-semibold">S_comp (Keahlian)</span>
-                  <div className="text-xl font-extrabold text-[#0B2B26] mt-0.5">{candidate.scores_4d.s_comp}</div>
+              {candidate.scores_4d ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
+                    <span className="text-[10px] text-[#67677e] uppercase font-semibold">Keahlian Inti</span>
+                    <div className="text-xl font-extrabold text-[#1b55f5] mt-0.5">{candidate.scores_4d.s_comp}%</div>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
+                    <span className="text-[10px] text-[#67677e] uppercase font-semibold">Portofolio Kode</span>
+                    <div className="text-xl font-extrabold text-[#10B981] mt-0.5">{candidate.scores_4d.s_port}%</div>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
+                    <span className="text-[10px] text-[#67677e] uppercase font-semibold">Keyakinan Bukti</span>
+                    <div className="text-xl font-extrabold text-[#1b55f5] mt-0.5">{candidate.scores_4d.s_conf}%</div>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
+                    <span className="text-[10px] text-[#67677e] uppercase font-semibold">Indikator Resiko</span>
+                    <div className="text-xl font-extrabold text-rose-600 mt-0.5">{candidate.scores_4d.s_risk}%</div>
+                  </div>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-[#F6FAF7] border border-[#E1EBE4] text-center">
-                  <span className="text-[10px] text-[#6C837C] uppercase font-mono font-semibold">S_port (GitHub)</span>
-                  <div className="text-xl font-extrabold text-[#235347] mt-0.5">{candidate.scores_4d.s_port}</div>
+              ) : (
+                <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-xs text-[#67677e] text-center">
+                  Berkas belum dianalisis oleh AI. Klik tombol <strong>"Mulai Analisis AI"</strong> pada tabel antrean untuk mengevaluasi kompetensi kandidat ini.
                 </div>
-                <div className="p-3.5 rounded-2xl bg-[#F6FAF7] border border-[#E1EBE4] text-center">
-                  <span className="text-[10px] text-[#6C837C] uppercase font-mono font-semibold">S_conf (Keyakinan)</span>
-                  <div className="text-xl font-extrabold text-[#10B981] mt-0.5">{candidate.scores_4d.s_conf}</div>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-[#F6FAF7] border border-[#E1EBE4] text-center">
-                  <span className="text-[10px] text-[#6C837C] uppercase font-mono font-semibold">S_risk (Penalti)</span>
-                  <div className="text-xl font-extrabold text-rose-600 mt-0.5">{candidate.scores_4d.s_risk}</div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Key Technologies */}

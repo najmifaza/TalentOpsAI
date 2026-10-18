@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import CandidateTable from './CandidateTable';
 import CandidateModal from './CandidateModal';
 import AgentTraceModal from './AgentTraceModal';
+import UploadCandidateModal from './UploadCandidateModal';
 import { MOCK_CANDIDATES } from '../data/mockCandidates';
 import { 
   Users, 
@@ -16,7 +17,8 @@ import {
   Layers,
   ArrowRight,
   Radio,
-  RefreshCw
+  RefreshCw,
+  UploadCloud
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
@@ -27,6 +29,7 @@ export default function DashboardOverview() {
   const [traceCandidate, setTraceCandidate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const fetchCandidates = useCallback(async () => {
     setIsLoading(true);
@@ -45,6 +48,7 @@ export default function DashboardOverview() {
               m => m.masked_identifier === c.masked_identifier || m.id === c.id
             );
             const dims = c.dimension_scores || {};
+            const isUnscanned = c.overall_score === null || c.recommendation === 'PENDING_SCAN' || c.status === 'queued';
             return {
               id: c.id,
               masked_identifier: c.masked_identifier,
@@ -52,18 +56,19 @@ export default function DashboardOverview() {
               job_title: match?.job_title || 'Senior Backend Engineer',
               applied_date: c.created_at ? c.created_at.replace('T', ' ').slice(0, 16) : (match?.applied_date || '2026-10-18 10:00'),
               candidate_name_masked: match?.candidate_name_masked || 'K******** *******',
-              overall_score: c.overall_score !== null ? c.overall_score : (match?.overall_score || 0),
-              scores_4d: {
+              overall_score: c.overall_score !== null ? c.overall_score : null,
+              scores_4d: c.overall_score !== null ? {
                 s_comp: dims.SKILL || match?.scores_4d?.s_comp || 0,
                 s_port: dims.PORTFOLIO || match?.scores_4d?.s_port || 0,
                 s_conf: dims.EDUCATION || (c.confidence_level === 'HIGH' ? 95 : 75),
                 s_risk: c.unresolved_risk === 'HIGH' ? 70 : (c.unresolved_risk === 'MEDIUM' ? 35 : 10),
-              },
-              recommendation: c.recommendation || match?.recommendation || 'REVIEW_REQUIRED',
-              status: c.status || 'queued',
-              confidence_level: c.confidence_level || 'MEDIUM',
+              } : null,
+              recommendation: isUnscanned ? 'PENDING_SCAN' : (c.recommendation || match?.recommendation || 'REVIEW_REQUIRED'),
+              status: c.status || (isUnscanned ? 'queued' : 'waiting_approval'),
+              scan_status: isUnscanned ? 'UNSCANNED' : 'SCANNED',
+              confidence_level: isUnscanned ? null : (c.confidence_level || 'MEDIUM'),
               verified_github: match?.verified_github || null,
-              github_status: match?.github_status || 'VERIFIED',
+              github_status: isUnscanned ? 'PENDING_SCAN' : (match?.github_status || 'VERIFIED'),
               flags: match?.flags || [],
               key_technologies: match?.key_technologies || ['Python', 'FastAPI', 'PostgreSQL', 'Docker'],
             };
@@ -78,6 +83,24 @@ export default function DashboardOverview() {
       setIsLoading(false);
     }
   }, []);
+
+  const handleUploadSuccess = (newCandidate) => {
+    setCandidates(prev => [newCandidate, ...prev]);
+  };
+
+  const handleTriageComplete = (candidateId, updatedData) => {
+    setCandidates(prev => prev.map(c => {
+      if (c.id === candidateId) {
+        return { 
+          ...c, 
+          ...updatedData,
+          scan_status: 'SCANNED',
+          status: 'waiting_approval'
+        };
+      }
+      return c;
+    }));
+  };
 
   useEffect(() => {
     fetchCandidates();
@@ -319,7 +342,7 @@ export default function DashboardOverview() {
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-bold text-[#000000]">
-                4D Scoring Dimensions
+                4 Dimensi Penilaian Obyektif
               </span>
               <span className="text-lg font-black text-[#1b55f5]">86.2%</span>
             </div>
@@ -328,28 +351,28 @@ export default function DashboardOverview() {
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-2 text-[#454554] font-medium">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#1b55f5]"></span>
-                  <span>S_comp (Keahlian Inti)</span>
+                  <span>Kesesuaian Keahlian Inti</span>
                 </span>
                 <span className="font-bold text-[#000000]">88%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-2 text-[#454554] font-medium">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
-                  <span>S_port (Repositori GitHub)</span>
+                  <span>Portofolio &amp; Repositori Proyek</span>
                 </span>
                 <span className="font-bold text-[#000000]">82%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-2 text-[#454554] font-medium">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#8ec0ff]"></span>
-                  <span>S_conf (Keyakinan Bukti)</span>
+                  <span>Tingkat Keyakinan Bukti CV</span>
                 </span>
                 <span className="font-bold text-[#000000]">91%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-2 text-[#454554] font-medium">
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                  <span>S_risk (Penalti Anomali)</span>
+                  <span>Indikator Resiko / Anomali</span>
                 </span>
                 <span className="font-bold text-[#000000]">18%</span>
               </div>
@@ -357,10 +380,10 @@ export default function DashboardOverview() {
           </div>
 
           <button
-            onClick={() => alert('Detail kalkulasi deterministik 4D PRD Bab 5.1')}
+            onClick={() => alert('Detail kalkulasi deterministik 4 Dimensi TalentOps AI: Bobot dihitung matematis murni tanpa halusinasi LLM.')}
             className="w-full mt-4 py-2 px-3 bg-[#f4f4f6] hover:bg-[#eaf0ff] hover:text-[#1b55f5] text-[#000000] text-xs font-bold rounded-lg border border-[#e6e6ea] transition-all btn-interactive"
           >
-            Lihat Formula Matematis
+            Lihat Formula Rubrik Penilaian
           </button>
         </div>
 
@@ -369,37 +392,45 @@ export default function DashboardOverview() {
           <div>
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-bold text-[#000000]">Distribusi Antrean Triage</h4>
-                <p className="text-xs text-[#67677e]">Batch 1 Golden Dataset (5 Kandidat)</p>
+                <h4 className="text-sm font-bold text-[#000000]">Distribusi Antrean Seleksi</h4>
+                <p className="text-xs text-[#67677e]">Ringkasan Status Kelulusan Pelamar</p>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-[#eaf0ff] text-[#1b55f5] text-xs font-bold border border-[#8ec0ff]">
-                5 Active
+                {candidates.length} Berkas
               </span>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2.5 text-xs">
               <div className="p-3 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff]">
-                <div className="text-xs font-bold text-[#1b55f5]">Strong Match</div>
-                <div className="text-base font-black text-[#1b55f5] mt-0.5">2 (40%)</div>
+                <div className="text-xs font-bold text-[#1b55f5]">Sangat Sesuai</div>
+                <div className="text-base font-black text-[#1b55f5] mt-0.5">
+                  {candidates.filter(c => c.recommendation === 'STRONG_MATCH').length} ({candidates.length > 0 ? Math.round((candidates.filter(c => c.recommendation === 'STRONG_MATCH').length / candidates.length) * 100) : 0}%)
+                </div>
               </div>
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                <div className="text-xs font-bold text-amber-800">Review Required</div>
-                <div className="text-base font-black text-amber-700 mt-0.5">1 (20%)</div>
+                <div className="text-xs font-bold text-amber-800">Perlu Ditinjau HR</div>
+                <div className="text-base font-black text-amber-700 mt-0.5">
+                  {candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length} ({candidates.length > 0 ? Math.round((candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length / candidates.length) * 100) : 0}%)
+                </div>
               </div>
               <div className="p-3 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea]">
-                <div className="text-xs font-bold text-[#454554]">Weak Fit</div>
-                <div className="text-base font-black text-[#454554] mt-0.5">1 (20%)</div>
+                <div className="text-xs font-bold text-[#454554]">Kurang Sesuai</div>
+                <div className="text-base font-black text-[#454554] mt-0.5">
+                  {candidates.filter(c => c.recommendation === 'WEAK_FIT').length} ({candidates.length > 0 ? Math.round((candidates.filter(c => c.recommendation === 'WEAK_FIT').length / candidates.length) * 100) : 0}%)
+                </div>
               </div>
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
-                <div className="text-xs font-bold text-rose-800">Security Quarantine</div>
-                <div className="text-base font-black text-rose-700 mt-0.5">1 (20%)</div>
+                <div className="text-xs font-bold text-rose-800">Karantina Dokumen</div>
+                <div className="text-base font-black text-rose-700 mt-0.5">
+                  {candidates.filter(c => c.recommendation === 'SECURITY_QUARANTINE').length} ({candidates.length > 0 ? Math.round((candidates.filter(c => c.recommendation === 'SECURITY_QUARANTINE').length / candidates.length) * 100) : 0}%)
+                </div>
               </div>
             </div>
           </div>
 
           <div className="text-xs font-semibold text-[#67677e] mt-3 flex items-center justify-between pt-2 border-t border-[#e6e6ea]">
-            <span>Audit GitHub IT: <strong className="text-[#000000]">3 Terverifikasi</strong></span>
-            <span>Non-IT: <strong className="text-[#000000]">1 N/A</strong></span>
+            <span>Audit Portofolio IT: <strong className="text-[#000000]">{candidates.filter(c => c.github_status === 'VERIFIED').length} Terverifikasi</strong></span>
+            <span>Non-IT: <strong className="text-[#000000]">{candidates.filter(c => c.github_status === 'NOT_APPLICABLE').length} N/A</strong></span>
           </div>
         </div>
       </div>
@@ -462,29 +493,41 @@ export default function DashboardOverview() {
       </div>
 
       {/* 6. Main Table Section: Candidate Queue */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-xl font-bold font-display text-[#000000]">Daftar Antrean Seleksi Kandidat</h3>
+            <h3 className="text-xl font-bold font-display text-[#000000]">Antrean Evaluasi Pelamar</h3>
             <p className="text-xs text-[#67677e]">
-              Tampilan dossier anonim terenkripsi dengan rincian scoring multi-dimensi PRD Bab 8.2
+              Daftar pelamar dengan kendali manual analisis AI, perlindungan data pribadi, dan audit bukti portofolio
             </p>
           </div>
-          <button
-            onClick={fetchCandidates}
-            disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-[#d8d8df] text-xs font-semibold text-[#000000] hover:bg-[#f4f4f6] transition-all shadow-2xs"
-            title="Refresh Data Pelamar dari Database"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#1b55f5]' : 'text-[#67677e]'}`} />
-            <span>Refresh Antrean</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-bold transition-all shadow-xs"
+              title="Upload Berkas CV Kandidat Baru"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>+ Upload CV Kandidat</span>
+            </button>
+
+            <button
+              onClick={fetchCandidates}
+              disabled={isLoading}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-[#d8d8df] text-xs font-semibold text-[#000000] hover:bg-[#f4f4f6] transition-all shadow-2xs"
+              title="Refresh Data Pelamar dari Database"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#1b55f5]' : 'text-[#67677e]'}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+          </div>
         </div>
 
         <CandidateTable 
           candidates={candidates} 
           onSelectCandidate={setSelectedCandidate} 
           onStreamCandidate={setTraceCandidate}
+          onStartTriage={(cand) => setTraceCandidate(cand)}
         />
       </div>
 
@@ -502,6 +545,14 @@ export default function DashboardOverview() {
         candidate={traceCandidate}
         isOpen={!!traceCandidate}
         onClose={() => setTraceCandidate(null)}
+        onTriageComplete={handleTriageComplete}
+      />
+
+      {/* HR Direct Upload Candidate Modal */}
+      <UploadCandidateModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUploadSuccess={handleUploadSuccess}
       />
     </div>
   );

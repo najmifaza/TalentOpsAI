@@ -5,6 +5,27 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-19 - Willy - Fitur On-Demand AI Triage & Direct CV Upload HR
+- **Komponen / File:**
+  - `frontend/src/components/UploadCandidateModal.jsx` (Komponen Baru)
+  - `frontend/src/components/CandidateTable.jsx`
+  - `frontend/src/components/DashboardOverview.jsx`
+  - `frontend/src/components/AgentTraceModal.jsx`
+  - `frontend/src/components/CandidateModal.jsx`
+  - `frontend/src/components/ApplicationTracker.jsx`
+  - `frontend/src/data/mockCandidates.js`
+- **Yang Dikerjakan:**
+  - Mengimplementasikan fitur HR Direct Upload: Tombol `+ Upload CV Kandidat` membuka modal dropzone untuk memasukkan berkas lamaran langsung ke antrean tanpa langsung diproses otomatis.
+  - Mengimplementasikan arsitektur kendali manual (On-Demand AI Triage): Berkas masuk dalam status `Belum Di-scan`. HR memiliki kendali penuh untuk menekan tombol aksi `▶ Mulai Analisis AI`.
+  - Menghubungkan eksekusi analisis ke `AgentTraceModal`: Menampilkan visualisasi real-time alur kerja AI 7 tahap (Sensor UU PDP, Cek Teks Tersembunyi, Ekstraksi Skill, Validasi Bukti CV, Audit Portofolio, Penilaian 4D, Rekomendasi).
+  - Menyimpan hasil evaluasi: Ketika analisis selesai, skor dan rekomendasi langsung disimpan, dan status kandidat berpindah otomatis ke `Sudah Di-scan`.
+  - Menambahkan segmented tabs di tabel pelamar: `Semua Pelamar`, `Belum Di-scan` (dengan badge counter amber), dan `Sudah Di-scan` (dengan badge centang hijau).
+  - Humanisasi tampilan & bahasa rekruter: Mengganti istilah teknis koding (`S_comp`, `S_port`, `w:vanish`, dll.) menjadi bahasa HR profesional (`Kesesuaian Keahlian Inti`, `Portofolio & Repositori Proyek`, `Keyakinan Bukti`, `Indikator Resiko/Anomali`).
+- **Status & Verifikasi:** Selesai 100%. 62/62 unit test backend tetap lolos.
+- **Rencana Selanjutnya:** Presentasi fungsionalitas On-Demand AI Triage ke dewan juri/tim evaluasi.
+
+---
+
 ### 2026-10-19 - Willy - Penerapan Design System Grafana Labs Sunrise Control Room
 - **Komponen / File:**
   - `frontend/index.html`

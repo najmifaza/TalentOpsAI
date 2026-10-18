@@ -103,10 +103,10 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* Row 2: Gauge + 4D Distribution + Queue Summary (Inspired by Row 2 in Reference Image) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        {/* Semi-Circle Gauge Card (Inspired by 'Waste Processing Level 72%') */}
-        <div className="md:col-span-3 clean-card p-6 flex flex-col justify-between text-center">
+      {/* Row 2: Gauge + 4D Distribution + Queue Summary (Responsive for Tablet & Desktop) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
+        {/* Semi-Circle Gauge Card */}
+        <div className="md:col-span-1 lg:col-span-3 clean-card p-6 flex flex-col justify-between text-center">
           <div>
             <span className="text-xs font-semibold text-[#6C837C] block mb-2">
               Average Match Rate
@@ -141,8 +141,8 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* 4D Dimension Distribution Card (Inspired by 'Renewable Energy 86%') */}
-        <div className="md:col-span-4 clean-card p-6 flex flex-col justify-between">
+        {/* 4D Dimension Distribution Card */}
+        <div className="md:col-span-1 lg:col-span-4 clean-card p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold text-[#6C837C]">
@@ -191,8 +191,8 @@ export default function DashboardOverview() {
           </button>
         </div>
 
-        {/* Queue Distribution Breakdown (Inspired by 'Sources Usage in Manufacturing') */}
-        <div className="md:col-span-5 clean-card p-6 flex flex-col justify-between">
+        {/* Queue Distribution Breakdown */}
+        <div className="md:col-span-2 lg:col-span-5 clean-card p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
               <div>
@@ -231,10 +231,10 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* Row 3: 2 Pill Cards + Forest Feature Banner (Inspired by Row 3 in Reference Image) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        {/* Dark Pill Card (Climate Change Index style) */}
-        <div className="md:col-span-3 bg-[#0B2B26] text-white rounded-3xl p-5 flex items-center gap-4 shadow-md">
+      {/* Row 3: 2 Pill Cards + Forest Feature Banner */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
+        {/* Dark Pill Card */}
+        <div className="md:col-span-1 lg:col-span-3 bg-[#0B2B26] text-white rounded-3xl p-5 flex items-center gap-4 shadow-md">
           <div className="relative w-12 h-12 rounded-full border-2 border-[#8EB69B] flex items-center justify-center font-bold text-sm shrink-0">
             92.4
           </div>
@@ -246,8 +246,8 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Light Pill Card (Water level style) */}
-        <div className="md:col-span-3 clean-card p-5 flex items-center gap-4">
+        {/* Light Pill Card */}
+        <div className="md:col-span-1 lg:col-span-3 clean-card p-5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-full border-2 border-[#10B981] flex items-center justify-center font-bold text-xs text-[#0B2B26] shrink-0 bg-[#DAF1DE]/60">
             5.7ms
           </div>
@@ -259,8 +259,8 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Forest Feature Banner (Inspired by 'Let's join our community 230k+ people') */}
-        <div className="md:col-span-6 forest-card p-5 flex items-center justify-between relative overflow-hidden shadow-lg">
+        {/* Forest Feature Banner */}
+        <div className="md:col-span-2 lg:col-span-6 forest-card p-5 flex items-center justify-between relative overflow-hidden shadow-lg">
           <div className="relative z-10 max-w-sm space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#8EB69B]/25 text-[#DAF1DE] font-semibold">
@@ -304,7 +304,7 @@ export default function DashboardOverview() {
         </div>
         <button
           onClick={() => setTraceCandidate(candidates[0])}
-          className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8EB69B] hover:bg-[#DAF1DE] text-[#051F20] font-bold text-xs shadow-md transition-all duration-200"
+          className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#8EB69B] hover:bg-[#DAF1DE] text-[#051F20] font-bold text-xs shadow-md transition-all duration-200"
         >
           <Radio className="w-4 h-4 text-[#051F20]" />
           <span>Buka Live Trace Monitor</span>

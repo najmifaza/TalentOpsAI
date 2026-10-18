@@ -8,8 +8,23 @@ import EvidenceGraph from './components/EvidenceGraph';
 import WhatIfStudio from './components/WhatIfStudio';
 import PlaceholderView from './components/PlaceholderView';
 
+import { WifiOff } from 'lucide-react';
+
 function DashboardLayout() {
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isOffline, setIsOffline] = React.useState(!navigator.onLine);
+
+  React.useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const titles = {
     '/': 'Dashboard & Triage Queue',
@@ -29,15 +44,29 @@ function DashboardLayout() {
   const currentTitle = getTitle();
 
   return (
-    <div className="flex min-h-screen bg-[#EEF4F0] text-[#0B201B] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#051F20]">
-      {/* Sidebar Navigation (Forest Green #0B2B26) */}
-      <Sidebar />
+    <div className="flex min-h-screen bg-[#EEF4F0] text-[#0B201B] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#051F20] relative">
+      {/* Edge-Case Alert: Global Offline Status Banner */}
+      {isOffline && (
+        <div className="fixed top-0 inset-x-0 z-50 bg-amber-600 text-white text-xs font-semibold py-2 px-4 flex items-center justify-center gap-2 shadow-md">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          <span>Koneksi internet terputus. Sistem beralih ke cache data deterministik lokal in-memory.</span>
+        </div>
+      )}
+
+      {/* Sidebar Navigation (Responsive: Desktop static + Mobile Drawer) */}
+      <Sidebar 
+        isOpenMobile={isMobileMenuOpen} 
+        onCloseMobile={() => setIsMobileMenuOpen(false)} 
+      />
 
       {/* Main Content Canvas (Soft Mint-Tinted Off-White #EEF4F0) */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header currentTitle={currentTitle} />
+      <div className={`flex-1 flex flex-col min-w-0 ${isOffline ? 'pt-8' : ''}`}>
+        <Header 
+          currentTitle={currentTitle} 
+          onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
+        />
 
-        <main className="flex-1 px-8 py-6 max-w-7xl w-full mx-auto animate-fade-in">
+        <main className="flex-1 px-4 sm:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto animate-fade-in">
           <Routes>
             <Route index element={<DashboardOverview />} />
             <Route path="dashboard" element={<DashboardOverview />} />
@@ -50,13 +79,13 @@ function DashboardLayout() {
         </main>
 
         {/* Global Footer */}
-        <footer className="border-t border-[#E1EBE4] bg-[#EEF4F0]/80 px-8 py-4 text-xs text-[#6C837C]">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto">
+        <footer className="border-t border-[#E1EBE4] bg-[#EEF4F0]/80 px-4 sm:px-8 py-4 text-xs text-[#6C837C]">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto text-center sm:text-left">
             <span className="font-medium">
               TalentOps AI &copy; 2026 &bull; Human-Centric Agentic Recruitment Web Ecosystem
             </span>
             <span className="font-mono text-[11px] text-[#3D544E] font-semibold">
-              Walking Skeleton &bull; React 18 + Vite &bull; Tailwind CSS &bull; VPS Ubuntu 24.04
+              Responsive Multi-Device &bull; React 18 + Vite &bull; Tailwind CSS
             </span>
           </div>
         </footer>

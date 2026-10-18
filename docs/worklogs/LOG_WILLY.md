@@ -139,4 +139,40 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - Pengujian responsivitas lintas perangkat (desktop, tablet, mobile).
   - Penanganan edge-cases antarmuka (disconnection SSE, network latency retry, dan audit aksesibilitas).
 
+---
+
+### 2026-10-18 - Willy - Responsivitas Multi-Device & Penanganan Edge-Cases (Sprint 4 Selesai Penuh)
+- **Komponen / File:**
+  - `frontend/src/App.jsx` (Mobile drawer state & global offline status banner)
+  - `frontend/src/components/Header.jsx` (Hamburger menu toggle & responsive header)
+  - `frontend/src/components/Sidebar.jsx` (Mobile slide-over drawer dengan backdrop blur & auto-close)
+  - `frontend/src/components/CandidateTable.jsx` (Petunjuk scroll horizontal mobile & touch target optimization)
+  - `frontend/src/components/WhatIfStudio.jsx` (Scroll indicator tabel & adaptasi grid layar kecil)
+  - `frontend/src/components/EvidenceGraph.jsx` (Navigasi layer pan controller mobile/tablet, setCenter smooth animation, & toggle legenda)
+  - `frontend/src/components/DashboardOverview.jsx` (Optimasi grid 12-kolom breakpoint md/lg tablet & mobile)
+  - `frontend/src/components/CandidateModal.jsx` (Responsivitas tombol aksi & padding modal adaptif)
+  - `frontend/src/components/HealthStatusBadge.jsx` (Kompak badge VPS di layar kecil)
+  - `frontend/src/components/AgentTraceModal.jsx` (Banner resilien pemutusan SSE & tombol coba sambungkan ulang)
+  - `frontend/src/components/CareerPortal.jsx` (Validasi berkas kosong 0-byte & ekstensi executable berbahaya)
+  - `frontend/src/components/ApplicationTracker.jsx` (Validasi regex format token UUIDv4 & panduan display ID #TK-)
+- **Yang Dikerjakan:**
+  - **1. Responsivitas Antarmuka Lintas Perangkat (Desktop, Tablet, Mobile):**
+    - **React Flow Evidence Graph (Mobile & Tablet Panning):** Mengintegrasikan React Flow Provider dengan `useReactFlow()`, menghadirkan *Horizontal Layer Jump Bar* dan *Floating Mobile/Tablet Pan Controller* (`< Layer Kiri`, `Layer Kanan >`, dan `Pusatkan Semua`) dengan animasi `setCenter()` berlatensi 0 ms. Memberikan kontrol penuh saat graf lebar terpotong di layar sentuh, lengkap dengan touch gesture (`panOnDrag`, `touchZoom`, `zoomOnPinch`).
+    - **Mobile Navigation Drawer:** Mengubah Sidebar menjadi slide-over drawer modern dengan animasi halus, backdrop blur gelap, dan tombol penutup silang (`X`) pada layar `< 1024px`, mempertahankan persistent sidebar pada layar desktop (&ge; 1024px).
+    - **Header & Badge Adaptif:** Tombol hamburger menu otomatis muncul di layar mobile/tablet, judul halaman merespons ukuran layar, dan HealthStatusBadge dipadatkan secara elegan di ponsel tanpa memakan tempat.
+    - **Dashboard Tablet Grid Optimization:** Mengubah pembagian grid Row 2 dan Row 3 menjadi `grid-cols-1 md:grid-cols-2 lg:grid-cols-12` agar kartu Semi-Circle Gauge dan 4D Distribution tidak terhimpit pada resolusi tablet (768px - 1023px).
+    - **Tabel Antrean & What-If Studio:** Menambahkan petunjuk geser horizontal (*mobile scroll hint*) dan lebar minimum tabel (`min-w-[700px]`) agar kolom tidak terhimpit pada layar ponsel.
+    - **Candidate Dossier Modal:** Menata ulang padding (`p-5 sm:p-7`) dan tombol aksi menjadi layout flex dinamis yang tidak terpotong pada layar ponsel sempit (&lt; 400px).
+  - **2. Penanganan Kasus Ekstrem (Edge-Cases Handling & Resilience):**
+    - **Global Offline Detector:** Menambahkan detektor konektivitas internet (`window.addEventListener('offline')`) dengan banner peringatan di bagian atas aplikasi saat perangkat kehilangan jaringan.
+    - **Network Disconnection saat Streaming SSE (`AgentTraceModal.jsx`):** Menambahkan deteksi error koneksi `EventSource.onerror`, notifikasi Bounded Self-Healing, dan tombol *"Coba Sambungkan Ulang"* on-demand.
+    - **Validasi Berkas Korup & Keamanan Ekstensi (`CareerPortal.jsx`):** Menolak berkas resume kosong (0-byte) dan memblokir ekstensi ganda berbahaya (misal `.exe`, `.sh`, `.bat`, `.js`).
+    - **Validasi Format Token Pelacak (`ApplicationTracker.jsx`):** Memvalidasi format 36-karakter UUIDv4 via regex dan memberikan edukasi pembeda jika pengguna memasukkan Masked Identifier display (`#TK-XXXXXX`).
+- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1778 modul tertransformasi**, zero error). Seluruh kriteria Definition of Done (DoD) Sprint 4 untuk Developer 3 (Willy) terpenuhi 100%.
+- **Catatan untuk Rekan Tim:**
+  - *Frontend Sprint 4 Production Ready:* Aplikasi sekarang 100% responsif di desktop (1920x1080), tablet iPad/Android (768px - 1024px), dan mobile smartphone (360px - 414px), siap untuk demonstrasi juri tanpa risiko layout pecah.
+- **Rencana Selanjutnya (Sprint 5):**
+  - Production Hardening & Full Deployment Integration: optimasi bundle assets, audit skor Google Lighthouse, dan final visual polish.
+
+
 

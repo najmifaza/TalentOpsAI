@@ -496,8 +496,14 @@ export default function WhatIfStudio() {
           </div>
         </div>
 
+        {/* Mobile Scroll Indicator */}
+        <div className="flex items-center justify-between px-4 py-2 bg-[#F6FAF7] border-b border-[#E1EBE4] text-[11px] text-[#6C837C] sm:hidden">
+          <span>Geser tabel ke samping untuk melihat seluruh skor 4D</span>
+          <span className="font-mono font-bold text-[#0B2B26]">&rarr;</span>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#0B201B]">
+          <table className="w-full text-left text-xs text-[#0B201B] min-w-[700px]">
             <thead className="bg-[#F6FAF7] border-b border-[#E1EBE4] text-[10px] font-bold uppercase font-mono text-[#6C837C] tracking-wider">
               <tr>
                 <th className="py-3 px-4 text-center">Rank</th>

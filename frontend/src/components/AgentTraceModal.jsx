@@ -26,6 +26,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
   const [activeStepIndex, setActiveStepIndex] = useState(-1);
   const [isSimulation, setIsSimulation] = useState(false);
   const [streamStatus, setStreamStatus] = useState('IDLE'); // 'CONNECTING' | 'STREAMING' | 'COMPLETED' | 'ERROR'
+  const [streamError, setStreamError] = useState(null);
   const logContainerRef = useRef(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
@@ -143,6 +144,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
       sseSource.onopen = () => {
         setStreamStatus('STREAMING');
         setIsSimulation(false);
+        setStreamError(null);
       };
 
       sseSource.onmessage = (event) => {
@@ -172,11 +174,13 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
 
       sseSource.onerror = (err) => {
         console.warn('SSE stream inactive, switching to deterministic simulation mode:', err);
+        setStreamError('Koneksi Live SSE terputus/timeout. Sistem Bounded Self-Healing otomatis beralih ke Safe Deterministic Trace.');
         sseSource.close();
         runSimulation();
       };
     } catch (err) {
       console.warn('EventSource initialization error:', err);
+      setStreamError('Inisialisasi EventSource gagal. Sistem beralih ke Safe Deterministic Trace.');
       runSimulation();
     }
   };
@@ -243,10 +247,10 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
         className="bg-white rounded-3xl max-w-4xl w-full border border-[#C2E0C4] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-scale-up"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header Bar */}
-        <div className="bg-[#0B2B26] p-6 text-white flex items-center justify-between border-b border-[#163832]">
+        {/* Header Bar (Responsive) */}
+        <div className="bg-[#0B2B26] p-4 sm:p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#163832]">
           <div className="flex items-center gap-3">
-            <div className="relative">
+            <div className="relative shrink-0">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#8EB69B] to-[#235347] flex items-center justify-center text-[#051F20] font-bold">
                 <Radio className={`w-5 h-5 text-[#051F20] ${isStreaming ? 'animate-pulse' : ''}`} />
               </div>
@@ -256,8 +260,8 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
             </div>
 
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-lg text-white">Live Agentic Execution Trace</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-extrabold text-base sm:text-lg text-white">Live Agentic Execution Trace</h3>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#8EB69B]/20 text-[#DAF1DE] font-mono border border-[#8EB69B]/30">
                   SSE STREAM
                 </span>
@@ -267,21 +271,24 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-[#8EB69B]">
+              <p className="text-xs text-[#8EB69B] mt-0.5">
                 Kandidat: <strong className="text-white font-mono">{candidate.masked_identifier}</strong> &bull; {candidate.job_title}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-end sm:self-auto">
             <button
-              onClick={startStream}
+              onClick={() => {
+                setStreamError(null);
+                startStream();
+              }}
               disabled={isStreaming}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#163832] hover:bg-[#235347] disabled:opacity-50 text-xs font-semibold text-[#DAF1DE] transition-all border border-[#235347]"
               title="Putar Ulang Stream"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isStreaming ? 'animate-spin' : ''}`} />
-              <span>{isStreaming ? 'Streaming...' : 'Putar Ulang Trace'}</span>
+              <span>{isStreaming ? 'Streaming...' : 'Putar Ulang'}</span>
             </button>
 
             <button
@@ -292,6 +299,25 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
             </button>
           </div>
         </div>
+
+        {/* Edge-Case Banner: Network Disconnection Resilience */}
+        {streamError && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2.5 text-xs text-amber-900 flex items-center justify-between gap-3 animate-fade-in">
+            <div className="flex items-center gap-2 font-medium">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{streamError}</span>
+            </div>
+            <button
+              onClick={() => {
+                setStreamError(null);
+                startStream();
+              }}
+              className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-lg font-bold text-[11px] shrink-0 transition-colors"
+            >
+              Coba Sambungkan Ulang
+            </button>
+          </div>
+        )}
 
         {/* Content Layout: 2 Columns (Left: 7-Step Pipeline Visualizer, Right: Live Terminal Stream) */}
         <div className="grid grid-cols-1 md:grid-cols-12 flex-1 min-h-0 overflow-hidden">

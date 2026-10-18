@@ -23,6 +23,7 @@ from app.core.file_parser import (
     generate_tracking_token,
 )
 from app.core.rate_limiter import apply_rate_limiter
+from app.core.erasure import execute_talentops_erasure
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/careers", tags=["Public Career Portal"])
@@ -275,4 +276,43 @@ async def track_application_status(tracking_token: str, db: AsyncSession = Depen
         "status": row["status"],
         "recommendation": row["recommendation"],
         "submitted_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@router.post("/withdraw")
+async def withdraw_application(
+    request: Request,
+    tracking_token: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Public right-to-erasure / application withdrawal endpoint using secret tracking_token.
+    Executes unified crypto-shredding via talentops_erasure.
+    """
+    res = await db.execute(
+        text("SELECT id, masked_identifier, is_deleted FROM candidates WHERE tracking_token = :token"),
+        {"token": tracking_token},
+    )
+    cand = res.mappings().first()
+    if not cand or cand["is_deleted"]:
+        raise HTTPException(status_code=404, detail="APPLICATION_NOT_FOUND_OR_ALREADY_WITHDRAWN")
+
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1")
+    erasure_result = await execute_talentops_erasure(
+        db=db,
+        candidate_id=cand["id"],
+        reason="APPLICANT_VOLUNTARY_WITHDRAWAL_VIA_PORTAL",
+        ip_address=client_ip,
+        user_id=1,
+    )
+
+    if not erasure_result.get("success"):
+        raise HTTPException(status_code=400, detail=erasure_result.get("error", "ERASURE_FAILED"))
+
+    await db.commit()
+    return {
+        "status": "success",
+        "message": "Application withdrawn and personal data crypto-shredded under UU PDP No. 27/2022.",
+        "masked_identifier": cand["masked_identifier"],
+        "is_deleted": True,
     }

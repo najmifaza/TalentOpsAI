@@ -64,3 +64,23 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
   - *HR Dropzone:* Endpoint `/api/candidates/upload` menerima form `job_id` dan file multi-upload untuk status awal `queued`.
   - *SSE Broadcaster:* Siap dikonsumsi di endpoint `/api/candidates/stream/{id}`.
 - **Rencana Selanjutnya (Sprint 3):** Dukungan orkestrasi agent triage background worker bersama modul AI scoring Fardizza, serta hardening VPS deployment.
+
+---
+
+### 2026-10-18 - Najmi - Unified Crypto-Shredding, HITL Review Gatekeeper & Atomic Calendar Cleaner (Sprint 3)
+- **Komponen / File:**
+  - `backend/app/core/erasure.py`
+  - `backend/app/api/candidates.py`
+  - `backend/app/api/careers.py`
+  - `backend/app/adapters/calendar.py`
+  - `backend/tests/test_sprint3_security_erasure_review.py`
+- **Yang Dikerjakan:**
+  - Ekstraksi dan konsolidasi modular service `talentops_erasure` (`execute_talentops_erasure`) sesuai PRD v2.5.2 & UU PDP No. 27/2022: penghancuran DEK (zero-bytes overwrite), tombstone blind index hash, pembersihan relasi `candidate_evidence`, `candidate_assessments`, pelepasan slot wawancara tentative, dan audit append-only di `pii_access_logs`.
+  - Integrasi endpoint publik penarikan lamaran mandiri `POST /api/careers/withdraw` berbasis `tracking_token` terautentikasi tanpa enumerasi ID.
+  - Implementasi endpoint HITL Review Gatekeeper `POST /api/candidates/{id}/review` yang menegakkan Strict Lock Hierarchy transaksional (`users` -> `interview_slots` -> `candidates`), transisi status kandidat, pencatatan tabel `human_reviews`, dan konfirmasi booking slot kalender otomatis untuk keputusan `APPROVED_DISPATCH`.
+  - Implementasi background cleaner helper `release_expired_tentative_slots` pada `MockCalendarAdapter` (PRD Bab 6.3) untuk membebaskan slot kedaluwarsa secara otomatis.
+- **Status & Verifikasi:** Selesai 100%. Test suite baru `test_sprint3_security_erasure_review.py` lulus 4 dari 4 pengujian, dan seluruh suite backend (`pytest backend/tests/`) lulus 27 dari 27 pengujian (zero failure).
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - *Frontend Review Modal:* Willy dapat langsung menembak `POST /api/candidates/{id}/review` dengan form field `decision`, `notes`, `slot_id` (opsional), dan `reviewer_id`.
+  - *Public Erasure/Withdrawal:* Pelamar dapat membatalkan lamaran secara mandiri lewat `POST /api/careers/withdraw` dengan `tracking_token`.
+- **Rencana Selanjutnya (Sprint 4):** Uji konkurensi 50 transaksi reservasi simultan kalender (zero double-booking) dan benchmark latensi end-to-end triage p50/p95.

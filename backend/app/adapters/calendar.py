@@ -144,6 +144,27 @@ class MockCalendarAdapter:
             "tag": self.TAG,
         }
 
+    async def release_expired_tentative_slots(self, db: AsyncSession) -> int:
+        """
+        PRD Bab 6.3 Cleaner Task:
+        Automatically frees tentative slots that have passed their expiration timestamp.
+        """
+        now = datetime.utcnow()
+        res = await db.execute(
+            text("""
+                UPDATE interview_slots
+                SET status = 'available',
+                    tentative_expires_at = NULL,
+                    candidate_id = NULL,
+                    external_calendar_event_id = NULL
+                WHERE status = 'tentative'
+                  AND tentative_expires_at IS NOT NULL
+                  AND tentative_expires_at < :now
+            """),
+            {"now": now},
+        )
+        return res.rowcount
+
     async def compensate_cancel_tentative(self, db: AsyncSession, slot_id: int) -> bool:
         """Saga compensating transaction: frees a tentative slot."""
         res = await db.execute(

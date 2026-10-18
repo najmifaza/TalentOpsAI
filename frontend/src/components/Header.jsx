@@ -1,12 +1,15 @@
 import React from 'react';
 import HealthStatusBadge from './HealthStatusBadge';
-import { Building2, Sparkles, Filter, Plus, Menu } from 'lucide-react';
+import { Building2, Sparkles, ExternalLink, Menu } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Header({ 
   currentTitle = "Dashboard", 
   onActionClick, 
   onToggleMobileMenu
 }) {
+  const navigate = useNavigate();
+
   return (
     <header className="h-16 sm:h-20 bg-[#EEF4F0]/95 backdrop-blur-sm px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 select-none border-b border-[#E1EBE4]/60 transition-colors duration-200">
       <div className="flex items-center gap-3">
@@ -41,15 +44,16 @@ export default function Header({
           <span className="font-semibold text-[#0B201B]">PT Solusi Digital</span>
         </div>
 
-        {/* Action Button */}
+        {/* Action Button: Buka Portal Pelamar */}
         <button
-          onClick={onActionClick || (() => alert('[AI Custom Filter]: Pengaturan kriteria seleksi dinamis dibuka.'))}
+          onClick={onActionClick || (() => navigate('/careers/apply'))}
           className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-[#0B2B26] hover:bg-[#163832] text-white rounded-xl text-xs font-semibold shadow-sm transition-all duration-200 shrink-0 btn-interactive"
-          aria-label="Tambah kriteria filter seleksi AI"
+          aria-label="Buka Portal Pelamar Publik"
+          title="Buka Portal Pelamar Publik untuk uji coba pengajuan berkas"
         >
-          <Plus className="w-3.5 h-3.5 text-[#8EB69B]" />
-          <span className="hidden sm:inline">Tambah Filter AI</span>
-          <span className="sm:hidden text-[11px]">Filter</span>
+          <ExternalLink className="w-3.5 h-3.5 text-[#8EB69B]" />
+          <span className="hidden sm:inline">Portal Pelamar</span>
+          <span className="sm:hidden text-[11px]">Portal</span>
         </button>
       </div>
     </header>

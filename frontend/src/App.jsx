@@ -8,7 +8,6 @@ import DashboardOverview from './components/DashboardOverview';
 const EvidenceGraph = lazy(() => import('./components/EvidenceGraph'));
 const WhatIfStudio = lazy(() => import('./components/WhatIfStudio'));
 const CareerPortal = lazy(() => import('./components/CareerPortal'));
-const PlaceholderView = lazy(() => import('./components/PlaceholderView'));
 
 import { WifiOff, Sparkles } from 'lucide-react';
 
@@ -48,7 +47,6 @@ function DashboardLayout({ isDark, onToggleTheme }) {
     '/dashboard': 'Dashboard & Triage Queue',
     '/evidence-graph': 'Evidence Graph Explorer (React Flow)',
     '/what-if': 'What-If Simulation Studio',
-    '/security-pdp': 'UU PDP No. 27/2022 Privacy Governance',
   };
 
   const getTitle = () => {
@@ -99,7 +97,6 @@ function DashboardLayout({ isDark, onToggleTheme }) {
               <Route path="evidence-graph" element={<EvidenceGraph />} />
               <Route path="evidence-graph/:candidateId" element={<EvidenceGraph />} />
               <Route path="what-if" element={<WhatIfStudio />} />
-              <Route path="security-pdp" element={<PlaceholderView tabId="security-pdp" />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>

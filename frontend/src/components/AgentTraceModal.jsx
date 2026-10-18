@@ -28,6 +28,9 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
   const [streamStatus, setStreamStatus] = useState('IDLE'); // 'CONNECTING' | 'STREAMING' | 'COMPLETED' | 'ERROR'
   const [streamError, setStreamError] = useState(null);
   const logContainerRef = useRef(null);
+  const sseRef = useRef(null);
+  const watchdogRef = useRef(null);
+  const simulationTimerRef = useRef(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
@@ -128,26 +131,60 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
     }
   }, [events]);
 
+  const cleanupConnections = () => {
+    if (sseRef.current) {
+      try { sseRef.current.close(); } catch (e) {}
+      sseRef.current = null;
+    }
+    if (watchdogRef.current) {
+      clearTimeout(watchdogRef.current);
+      watchdogRef.current = null;
+    }
+    if (simulationTimerRef.current) {
+      clearTimeout(simulationTimerRef.current);
+      simulationTimerRef.current = null;
+    }
+  };
+
   // Connect to SSE Stream or fallback to live simulation
   const startStream = () => {
+    cleanupConnections();
     setEvents([]);
     setActiveStepIndex(-1);
     setIsStreaming(true);
     setStreamStatus('CONNECTING');
+    setIsSimulation(false);
 
     const candidateId = candidate?.id || 1;
-    let sseSource = null;
+    let hasReceivedEvent = false;
+
+    // Watchdog: If server stream is silent/idle > 1500ms, auto-fallback to safe simulation
+    watchdogRef.current = setTimeout(() => {
+      if (!hasReceivedEvent) {
+        if (sseRef.current) {
+          try { sseRef.current.close(); } catch (e) {}
+          sseRef.current = null;
+        }
+        runSimulation();
+      }
+    }, 1500);
 
     try {
-      sseSource = new EventSource(`${API_BASE_URL}/api/candidates/stream/${candidateId}`);
+      const sseSource = new EventSource(`${API_BASE_URL}/api/candidates/stream/${candidateId}`);
+      sseRef.current = sseSource;
 
       sseSource.onopen = () => {
         setStreamStatus('STREAMING');
-        setIsSimulation(false);
         setStreamError(null);
       };
 
       sseSource.onmessage = (event) => {
+        hasReceivedEvent = true;
+        if (watchdogRef.current) {
+          clearTimeout(watchdogRef.current);
+          watchdogRef.current = null;
+        }
+
         try {
           const parsed = JSON.parse(event.data);
           setEvents(prev => [...prev, {
@@ -165,7 +202,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
           if (parsed.event === 'completed' || parsed.status === 'COMPLETED') {
             setStreamStatus('COMPLETED');
             setIsStreaming(false);
-            sseSource.close();
+            cleanupConnections();
           }
         } catch (e) {
           console.warn('Non-JSON SSE event received:', event.data);
@@ -173,22 +210,31 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
       };
 
       sseSource.onerror = (err) => {
-        console.warn('SSE stream inactive, switching to deterministic simulation mode:', err);
-        setStreamError('Koneksi Live SSE terputus/timeout. Sistem Bounded Self-Healing otomatis beralih ke Safe Deterministic Trace.');
-        sseSource.close();
+        if (watchdogRef.current) {
+          clearTimeout(watchdogRef.current);
+          watchdogRef.current = null;
+        }
+        if (sseRef.current) {
+          try { sseRef.current.close(); } catch (e) {}
+          sseRef.current = null;
+        }
         runSimulation();
       };
     } catch (err) {
-      console.warn('EventSource initialization error:', err);
-      setStreamError('Inisialisasi EventSource gagal. Sistem beralih ke Safe Deterministic Trace.');
+      if (watchdogRef.current) {
+        clearTimeout(watchdogRef.current);
+        watchdogRef.current = null;
+      }
       runSimulation();
     }
   };
 
   // Resilient Simulation for Demo Presentation
   const runSimulation = () => {
+    cleanupConnections();
     setIsSimulation(true);
     setStreamStatus('STREAMING');
+    setIsStreaming(true);
     setEvents([]);
     setActiveStepIndex(0);
 
@@ -218,16 +264,16 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
 
       currentIdx++;
       if (currentIdx < CANONICAL_STEPS.length) {
-        setTimeout(executeNextStep, stepDelays[currentIdx]);
+        simulationTimerRef.current = setTimeout(executeNextStep, stepDelays[currentIdx]);
       } else {
-        setTimeout(() => {
+        simulationTimerRef.current = setTimeout(() => {
           setStreamStatus('COMPLETED');
           setIsStreaming(false);
         }, 500);
       }
     };
 
-    setTimeout(executeNextStep, 300);
+    simulationTimerRef.current = setTimeout(executeNextStep, 250);
   };
 
   useEffect(() => {
@@ -235,6 +281,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
       startStream();
     }
     return () => {
+      cleanupConnections();
       setIsStreaming(false);
     };
   }, [isOpen, candidate]);
@@ -283,12 +330,11 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
                 setStreamError(null);
                 startStream();
               }}
-              disabled={isStreaming}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#163832] hover:bg-[#235347] disabled:opacity-50 text-xs font-semibold text-[#DAF1DE] transition-all border border-[#235347]"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#163832] hover:bg-[#235347] text-xs font-semibold text-[#DAF1DE] transition-all border border-[#235347]"
               title="Putar Ulang Stream"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isStreaming ? 'animate-spin' : ''}`} />
-              <span>{isStreaming ? 'Streaming...' : 'Putar Ulang'}</span>
+              <span>{isStreaming ? 'Memutar...' : 'Putar Ulang'}</span>
             </button>
 
             <button
@@ -405,8 +451,9 @@ export default function AgentTraceModal({ candidate, isOpen, onClose }) {
               </div>
 
               {events.length === 0 && (
-                <div className="text-center py-12 text-[#8EB69B]/50 text-xs">
-                  Menunggu event trace pertama dari server...
+                <div className="text-center py-12 text-[#8EB69B]/50 text-xs flex flex-col items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#8EB69B]" />
+                  <span>Menginisialisasi penyiaran langkah otonom agen...</span>
                 </div>
               )}
 

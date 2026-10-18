@@ -4,7 +4,6 @@ import {
   LayoutDashboard, 
   GitBranch, 
   Sliders, 
-  ShieldAlert, 
   Briefcase, 
   FileCheck2,
   X
@@ -13,9 +12,8 @@ import {
 export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {} }) {
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard & Triage', icon: LayoutDashboard, badge: '5 Antrean' },
-    { path: '/evidence-graph', label: 'Evidence Graph (React Flow)', icon: GitBranch, badge: 'Sprint 2-3' },
-    { path: '/what-if', label: 'What-If Simulation Studio', icon: Sliders, badge: 'Sprint 3' },
-    { path: '/security-pdp', label: 'UU PDP & Erasure Guard', icon: ShieldAlert, badge: 'AES-256' },
+    { path: '/evidence-graph', label: 'Evidence Graph (React Flow)', icon: GitBranch, badge: 'Audit' },
+    { path: '/what-if', label: 'What-If Simulation Studio', icon: Sliders, badge: 'Simulator' },
   ];
 
   const handleLinkClick = () => {
@@ -117,10 +115,10 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
               <>
                 <div className="flex items-center gap-3">
                   <Briefcase className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
-                  <span className="tracking-tight">Career Apply Portal</span>
+                  <span className="tracking-tight">Portal Pelamar</span>
                 </div>
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
-                  Sprint 2
+                  Pelamar
                 </span>
               </>
             )}
@@ -141,10 +139,10 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
               <>
                 <div className="flex items-center gap-3">
                   <FileCheck2 className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
-                  <span className="tracking-tight">Track Application</span>
+                  <span className="tracking-tight">Lacak Berkas Lamaran</span>
                 </div>
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
-                  UUIDv4
+                  Lacak
                 </span>
               </>
             )}

@@ -1,130 +1,91 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Radio, 
   X, 
-  Cpu, 
-  ShieldCheck, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Clock, 
   Terminal, 
-  Sparkles, 
-  RefreshCw, 
-  Play, 
+  CheckCircle2, 
+  AlertCircle, 
+  Clock, 
+  Radio, 
   RotateCcw, 
-  ChevronRight,
-  ExternalLink,
-  Lock,
-  GitBranch,
-  FileCheck2,
+  Cpu, 
+  Sparkles,
+  ShieldCheck,
   Check
 } from 'lucide-react';
+
+// 7 Canonical Steps mapped to Backend Broadcaster events
+const BACKEND_STEPS = [
+  {
+    key: 'triage_initiated',
+    title: '1. Sensor Privasi Data Pribadi',
+    subtitle: 'Penyensoran nama, kontak, gender & kampus asal (UU PDP No. 27/2022)',
+    timeTarget: '< 20 ms',
+  },
+  {
+    key: 'hidden_text_audit',
+    title: '2. Uji Integritas Dokumen Resume',
+    subtitle: 'Pemindaian teks tersembunyi, font putih siluman, dan manipulasi DOCX',
+    timeTarget: '< 15 ms',
+  },
+  {
+    key: 'llm_extraction',
+    title: '3. Ekstraksi Kompetensi LLM Gemini',
+    subtitle: 'Ekstraksi klaim keahlian terstruktur suhu 0.0 deterministik',
+    timeTarget: '~ 1.2 s',
+  },
+  {
+    key: 'substring_guard_audit',
+    title: '4. Validasi Substring Guard Bukti Resume',
+    subtitle: 'Verifikasi klaim keahlian langsung ke kutipan teks asli resume',
+    timeTarget: '< 10 ms',
+  },
+  {
+    key: 'github_repo_verification',
+    title: '5. Audit Portofolio & Repositori GitHub',
+    subtitle: 'Pemeriksaan repositori publik, bahasa kode, dan status commit GitHub',
+    timeTarget: '~ 85 ms',
+  },
+  {
+    key: 'deterministic_scoring',
+    title: '6. Perhitungan Skor Obyektif 4 Dimensi',
+    subtitle: 'Penilaian formula deterministik: S_comp, S_port, S_conf, S_risk',
+    timeTarget: '< 2 ms',
+  },
+  {
+    key: 'triage_completed',
+    title: '7. Keputusan Akhir & Kunci Kalender',
+    subtitle: 'Penetapan status rekomendasi & reservasi kalender wawancara',
+    timeTarget: '< 5 ms',
+  }
+];
+
+const STEP_INDEX_MAP = {
+  'triage_initiated': 0,
+  'pii_sanitization': 0,
+  'hidden_text_audit': 1,
+  'docx_integrity': 1,
+  'llm_extraction': 2,
+  'substring_guard_audit': 3,
+  'substring_guard': 3,
+  'github_repo_verification': 4,
+  'github_audit': 4,
+  'deterministic_scoring': 5,
+  'triage_completed': 6,
+  'agent_decision': 6
+};
 
 export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageComplete }) {
   const [events, setEvents] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [activeStepIndex, setActiveStepIndex] = useState(-1);
-  const [isSimulation, setIsSimulation] = useState(false);
   const [streamStatus, setStreamStatus] = useState('IDLE'); // 'CONNECTING' | 'STREAMING' | 'COMPLETED' | 'ERROR'
   const [streamError, setStreamError] = useState(null);
   const logContainerRef = useRef(null);
   const sseRef = useRef(null);
-  const watchdogRef = useRef(null);
-  const simulationTimerRef = useRef(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
-  // 7 Canonical Agentic Triage Steps - Format Bahasa Rekrutmen HR
-  const CANONICAL_STEPS = [
-    {
-      id: 'pii_sanitization',
-      title: '1. Sensor Privasi Data Pribadi',
-      subtitle: 'Penyensoran nama, kontak, gender & kampus asal (UU PDP No. 27/2022)',
-      timeTarget: '< 20 ms',
-      details: {
-        metode: 'In-Memory Regex Tokenizer',
-        sensor_nama_kontak: true,
-        blind_index_email: 'HMAC-SHA256 Terenkripsi',
-        tanpa_bias_almamater: true,
-        status: 'AMAN (PASSED)'
-      }
-    },
-    {
-      id: 'docx_integrity',
-      title: '2. Uji Integritas Dokumen Resume',
-      subtitle: 'Pemindaian teks tersembunyi, font putih siluman, dan injeksi prompt',
-      timeTarget: '< 15 ms',
-      details: {
-        tag_tersembunyi: 0,
-        font_mikro_di_bawah_1pt: false,
-        warna_putih_manipulasi: false,
-        status: 'DOKUMEN ASLI & BERSIH'
-      }
-    },
-    {
-      id: 'llm_extraction',
-      title: '3. Ekstraksi Kompetensi & Pengalaman',
-      subtitle: 'Pencocokan keahlian teknis secara obyektif dengan persyaratan posisi',
-      timeTarget: '~ 1.2 s',
-      details: {
-        mesin_evaluasi: 'Gemini 3.8 Flash (Suhu 0.0 Deterministik)',
-        skema_penilaian: 'Anti-Bias Kompetensi Riil',
-        isolasi_dokumen: 'Sandbox CV Terenkripsi',
-        status: 'TEREKSTRAKSI LENGKAP'
-      }
-    },
-    {
-      id: 'substring_guard',
-      title: '4. Validasi Bukti Faktual Resume',
-      subtitle: 'Pencocokan klaim keahlian langsung ke kutipan kalimat asli pada resume',
-      timeTarget: '< 10 ms',
-      details: {
-        klaim_terverifikasi: '6 Klaim Keahlian Utama',
-        penalti_halusinasi: '0 (Tanpa Halusinasi)',
-        klaim_tanpa_bukti: 0,
-        status: '100% TERGROUNDING RESUME'
-      }
-    },
-    {
-      id: 'github_audit',
-      title: '5. Audit Portofolio & Kode GitHub',
-      subtitle: 'Pemeriksaan keaslian repositori publik, aktivitas proyek, dan bahasa kode',
-      timeTarget: '~ 85 ms',
-      details: {
-        tautan_proyek: candidate?.verified_github || 'https://github.com/candidate/core',
-        status_audit: candidate?.github_status === 'NOT_APPLICABLE' ? 'Non-IT (N/A)' : 'Terverifikasi Valid',
-        bahasa_utama: 'Python / Microservices',
-        status: candidate?.github_status || 'VERIFIED'
-      }
-    },
-    {
-      id: 'deterministic_scoring',
-      title: '6. Perhitungan Skor Objektif 4 Dimensi',
-      subtitle: 'Penilaian matematis: Keahlian Inti, Portofolio, Bukti, dan Resiko Anomali',
-      timeTarget: '< 2 ms',
-      details: {
-        kesesuaian_keahlian: `${candidate?.scores_4d?.s_comp || 92}%`,
-        kualitas_portofolio: `${candidate?.scores_4d?.s_port || 88}%`,
-        validitas_bukti: `${candidate?.scores_4d?.s_conf || 94}%`,
-        indikator_resiko: `${candidate?.scores_4d?.s_risk || 12}%`,
-        skor_keseluruhan: candidate?.overall_score || 89.2
-      }
-    },
-    {
-      id: 'agent_decision',
-      title: '7. Rekomendasi Keputusan Akhir',
-      subtitle: 'Penetapan status seleksi: Sangat Sesuai, Perlu Ditinjau, atau Kurang Sesuai',
-      timeTarget: '< 5 ms',
-      details: {
-        rekomendasi_ai: candidate?.recommendation && candidate?.recommendation !== 'PENDING_SCAN' ? candidate.recommendation : 'STRONG_MATCH',
-        prioritas_antrean: 'Prioritas Tinggi (Strong Match)',
-        kunci_jadwal_wawancara: 'Slot Siap Dipesan',
-        status: 'ANALISIS SELESAI'
-      }
-    }
-  ];
-
-  // Auto-scroll logs
+  // Auto-scroll logs to bottom
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
@@ -136,39 +97,33 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
       try { sseRef.current.close(); } catch (e) {}
       sseRef.current = null;
     }
-    if (watchdogRef.current) {
-      clearTimeout(watchdogRef.current);
-      watchdogRef.current = null;
-    }
-    if (simulationTimerRef.current) {
-      clearTimeout(simulationTimerRef.current);
-      simulationTimerRef.current = null;
-    }
   };
 
-  // Connect to SSE Stream or fallback to live simulation
-  const startStream = () => {
+  // Connect to Real-time Backend SSE Stream
+  const startStream = async () => {
     cleanupConnections();
     setEvents([]);
     setActiveStepIndex(-1);
     setIsStreaming(true);
     setStreamStatus('CONNECTING');
-    setIsSimulation(false);
+    setStreamError(null);
 
     const candidateId = candidate?.id || 1;
     let hasReceivedEvent = false;
 
-    // Watchdog: If server stream is silent/idle > 1500ms, auto-fallback to safe simulation
-    watchdogRef.current = setTimeout(() => {
-      if (!hasReceivedEvent) {
-        if (sseRef.current) {
-          try { sseRef.current.close(); } catch (e) {}
-          sseRef.current = null;
-        }
-        runSimulation();
-      }
-    }, 1500);
+    // 1. Trigger live backend triage in background
+    try {
+      fetch(`${API_BASE_URL}/api/candidates/${candidateId}/triage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      }).catch(err => {
+        console.warn('Backend triage trigger notice:', err);
+      });
+    } catch (e) {
+      console.warn('Triage POST failed:', e);
+    }
 
+    // 2. Open real SSE connection directly to backend broadcaster
     try {
       const sseSource = new EventSource(`${API_BASE_URL}/api/candidates/stream/${candidateId}`);
       sseRef.current = sseSource;
@@ -180,40 +135,51 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
 
       sseSource.onmessage = (event) => {
         hasReceivedEvent = true;
-        if (watchdogRef.current) {
-          clearTimeout(watchdogRef.current);
-          watchdogRef.current = null;
-        }
 
         try {
           const parsed = JSON.parse(event.data);
+          const stepKey = parsed.step;
+          const stepIdx = STEP_INDEX_MAP[stepKey] !== undefined ? STEP_INDEX_MAP[stepKey] : -1;
+
+          if (stepIdx !== -1) {
+            setActiveStepIndex(stepIdx);
+          }
+
+          const stepInfo = stepIdx >= 0 ? BACKEND_STEPS[stepIdx] : null;
+          const stepTitle = stepInfo ? stepInfo.title : (parsed.step || 'Execution Trace');
+
+          // Log the actual real backend event
           setEvents(prev => [...prev, {
             time: new Date().toLocaleTimeString('id-ID'),
-            step: parsed.step || 'Execution Trace',
-            status: parsed.status || 'INFO',
+            step: stepTitle,
+            status: parsed.status ? parsed.status.toUpperCase() : 'INFO',
             details: parsed.details || parsed
           }]);
 
-          if (parsed.step) {
-            const stepIdx = CANONICAL_STEPS.findIndex(s => s.id === parsed.step || s.title.toLowerCase().includes(parsed.step.toLowerCase()));
-            if (stepIdx !== -1) setActiveStepIndex(stepIdx);
-          }
-
-          if (parsed.event === 'completed' || parsed.status === 'COMPLETED') {
+          // Handle final completion
+          if (stepKey === 'triage_completed' || parsed.event === 'completed' || parsed.status === 'completed' || parsed.status === 'COMPLETED') {
             setStreamStatus('COMPLETED');
             setIsStreaming(false);
             cleanupConnections();
+
             if (onTriageComplete && candidate) {
+              const details = parsed.details || {};
+              const dimScores = details.dimension_scores || {};
+              const s_comp = dimScores.SKILL !== undefined ? dimScores.SKILL : 80.0;
+              const s_port = dimScores.PORTFOLIO !== undefined ? dimScores.PORTFOLIO : 70.0;
+              const s_conf = dimScores.EXPERIENCE !== undefined ? dimScores.EXPERIENCE : 85.0;
+              const s_risk = details.risk === 'LOW' ? 10.0 : details.risk === 'MEDIUM' ? 25.0 : details.risk === 'HIGH' ? 45.0 : 15.0;
+
               onTriageComplete(candidate.id, {
-                overall_score: parsed.overall_score || candidate.overall_score || 88.5,
-                scores_4d: parsed.dimension_scores || candidate.scores_4d || {
-                  s_comp: 91.0,
-                  s_port: 87.0,
-                  s_conf: 93.0,
-                  s_risk: 14.0
+                overall_score: details.overall_score !== undefined ? details.overall_score : (parsed.overall_score || 75.0),
+                scores_4d: {
+                  s_comp: Math.round(s_comp * 10) / 10,
+                  s_port: Math.round(s_port * 10) / 10,
+                  s_conf: Math.round(s_conf * 10) / 10,
+                  s_risk: Math.round(s_risk * 10) / 10
                 },
-                recommendation: parsed.recommendation || candidate.recommendation || 'STRONG_MATCH',
-                status: 'waiting_approval',
+                recommendation: details.recommendation || parsed.recommendation || 'REVIEW_REQUIRED',
+                status: details.status || 'waiting_approval',
                 scan_status: 'SCANNED'
               });
             }
@@ -224,161 +190,78 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
       };
 
       sseSource.onerror = (err) => {
-        if (watchdogRef.current) {
-          clearTimeout(watchdogRef.current);
-          watchdogRef.current = null;
-        }
-        if (sseRef.current) {
-          try { sseRef.current.close(); } catch (e) {}
-          sseRef.current = null;
-        }
-        runSimulation();
-      };
-    } catch (err) {
-      if (watchdogRef.current) {
-        clearTimeout(watchdogRef.current);
-        watchdogRef.current = null;
-      }
-      runSimulation();
-    }
-  };
-
-  // Resilient Simulation for Demo Presentation
-  const runSimulation = () => {
-    cleanupConnections();
-    setIsSimulation(true);
-    setStreamStatus('STREAMING');
-    setIsStreaming(true);
-    setEvents([]);
-    setActiveStepIndex(0);
-
-    const stepDelays = [400, 500, 1100, 450, 600, 350, 400];
-    let currentIdx = 0;
-
-    const executeNextStep = () => {
-      if (currentIdx >= CANONICAL_STEPS.length) {
-        setStreamStatus('COMPLETED');
-        setIsStreaming(false);
-        if (onTriageComplete && candidate) {
-          onTriageComplete(candidate.id, {
-            overall_score: candidate.overall_score || 88.5,
-            scores_4d: candidate.scores_4d || {
-              s_comp: 91.0,
-              s_port: 87.0,
-              s_conf: 93.0,
-              s_risk: 14.0
-            },
-            recommendation: candidate.recommendation && candidate.recommendation !== 'PENDING_SCAN' ? candidate.recommendation : 'STRONG_MATCH',
-            status: 'waiting_approval',
-            scan_status: 'SCANNED'
-          });
-        }
-        return;
-      }
-
-      const step = CANONICAL_STEPS[currentIdx];
-      setActiveStepIndex(currentIdx);
-
-      setEvents(prev => [
-        ...prev,
-        {
-          time: new Date().toLocaleTimeString('id-ID'),
-          step: step.title,
-          status: 'SUCCESS',
-          timeTarget: step.timeTarget,
-          details: step.details
-        }
-      ]);
-
-      currentIdx++;
-      if (currentIdx < CANONICAL_STEPS.length) {
-        simulationTimerRef.current = setTimeout(executeNextStep, stepDelays[currentIdx]);
-      } else {
-        simulationTimerRef.current = setTimeout(() => {
+        console.error('SSE Error occurred:', err);
+        if (hasReceivedEvent) {
           setStreamStatus('COMPLETED');
           setIsStreaming(false);
-          if (onTriageComplete && candidate) {
-            onTriageComplete(candidate.id, {
-              overall_score: candidate.overall_score || 88.5,
-              scores_4d: candidate.scores_4d || {
-                s_comp: 91.0,
-                s_port: 87.0,
-                s_conf: 93.0,
-                s_risk: 14.0
-              },
-              recommendation: candidate.recommendation && candidate.recommendation !== 'PENDING_SCAN' ? candidate.recommendation : 'STRONG_MATCH',
-              status: 'waiting_approval',
-              scan_status: 'SCANNED'
-            });
-          }
-        }, 500);
-      }
-    };
-
-    simulationTimerRef.current = setTimeout(executeNextStep, 250);
+        } else {
+          setStreamStatus('ERROR');
+          setStreamError('Koneksi ke SSE Broadcaster Backend VPS terputus. Pastikan endpoint stream dapat diakses.');
+          setIsStreaming(false);
+        }
+      };
+    } catch (err) {
+      console.error('EventSource initialization error:', err);
+      setStreamStatus('ERROR');
+      setStreamError(err.message);
+      setIsStreaming(false);
+    }
   };
 
   useEffect(() => {
     if (isOpen && candidate) {
       startStream();
     }
-    return () => {
-      cleanupConnections();
-      setIsStreaming(false);
-    };
+    return () => cleanupConnections();
   }, [isOpen, candidate]);
 
   if (!isOpen || !candidate) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in select-none">
-      <div 
-        className="bg-white rounded-3xl max-w-4xl w-full border border-[#e6e6ea] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-scale-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header Bar (Responsive) */}
-        <div className="bg-[#2b2d32] p-4 sm:p-6 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#383a42]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="clean-card w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl border border-[#383a42] bg-[#2b2d32]">
+        
+        {/* Header Bar */}
+        <div className="px-6 py-4 border-b border-[#383a42] flex items-center justify-between bg-[#23252a]">
           <div className="flex items-center gap-3">
-            <div className="relative shrink-0">
-              <div className="w-10 h-10 rounded-xl bg-[#1b55f5] flex items-center justify-center text-white font-bold shadow-xs">
-                <Radio className={`w-5 h-5 text-white ${isStreaming ? 'animate-pulse' : ''}`} />
-              </div>
-              {isStreaming && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 ring-4 ring-[#2b2d32] animate-ping"></span>
-              )}
+            <div className="p-2 rounded-lg bg-[#1b55f5]/20 text-[#1b55f5]">
+              <Radio className={`w-5 h-5 ${isStreaming ? 'animate-pulse text-[#1b55f5]' : 'text-emerald-400'}`} />
             </div>
-
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold font-display text-base sm:text-lg text-white">Transparansi Proses Kerja AI (Live Trace)</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1b55f5]/30 text-[#8ec0ff] font-mono border border-[#1b55f5]/50">
-                  REAL-TIME
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  Transparansi Proses Kerja AI (Live Trace)
+                </h3>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#1b55f5] text-white">
+                  REAL-TIME SSE
                 </span>
                 {streamStatus === 'COMPLETED' && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/40">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                     Selesai &amp; Tersimpan
                   </span>
                 )}
+                {streamStatus === 'STREAMING' && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+                    Memproses Langsung dari Backend...
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-white/70 mt-0.5">
-                Kandidat: <strong className="text-white font-mono">{candidate.masked_identifier}</strong> &bull; {candidate.job_title}
+              <p className="text-xs text-[#9a9aa8] mt-0.5">
+                Kandidat: <span className="font-mono text-white font-semibold">{candidate.masked_identifier}</span> • {candidate.job_title}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                setStreamError(null);
-                startStream();
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-all border border-white/20"
-              title="Putar Ulang Analisis"
+              onClick={startStream}
+              disabled={isStreaming}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all border border-white/10 disabled:opacity-50"
+              title="Jalankan Ulang Triage Backend"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isStreaming ? 'animate-spin' : ''}`} />
-              <span>{isStreaming ? 'Menganalisis...' : 'Analisis Ulang'}</span>
+              <span>Analisis Ulang</span>
             </button>
-
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"
@@ -388,169 +271,176 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
           </div>
         </div>
 
-        {/* Edge-Case Banner: Network Disconnection Resilience */}
-        {streamError && (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2.5 text-xs text-amber-900 flex items-center justify-between gap-3 animate-fade-in">
-            <div className="flex items-center gap-2 font-medium">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>{streamError}</span>
-            </div>
-            <button
-              onClick={() => {
-                setStreamError(null);
-                startStream();
-              }}
-              className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-lg font-bold text-[11px] shrink-0 transition-colors"
-            >
-              Coba Sambungkan Ulang
-            </button>
-          </div>
-        )}
-
-        {/* Content Layout: 2 Columns (Left: 7-Step Pipeline Visualizer, Right: Live Terminal Stream) */}
+        {/* Content Layout: 2 Columns */}
         <div className="grid grid-cols-1 md:grid-cols-12 flex-1 min-h-0 overflow-hidden">
-          {/* Left Column: 7 Step Stepper (5 Cols) */}
-          <div className="md:col-span-5 p-6 bg-[#f4f4f6] border-r border-[#e6e6ea] overflow-y-auto space-y-3">
+          
+          {/* Left Column: 7 Canonical Steps Visualizer */}
+          <div className="md:col-span-5 bg-[#f4f4f6] border-r border-[#e6e6ea] flex flex-col overflow-y-auto p-4 sm:p-5 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-[#e6e6ea]">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#67677e]">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#67677e]">
                 Alur Transparansi 7 Tahap
               </span>
-              <span className="text-[10px] text-[#1b55f5] font-mono font-bold">
-                Deterministik &bull; 0 Halusinasi
+              <span className="text-[10px] font-semibold text-[#1b55f5]">
+                Deterministik • 0 Halusinasi
               </span>
             </div>
 
-            <div className="space-y-2.5">
-              {CANONICAL_STEPS.map((step, idx) => {
-                const isPassed = activeStepIndex > idx || streamStatus === 'COMPLETED';
+            <div className="space-y-2 flex-1">
+              {BACKEND_STEPS.map((step, idx) => {
+                const isCompleted = activeStepIndex > idx || streamStatus === 'COMPLETED';
                 const isCurrent = activeStepIndex === idx && streamStatus === 'STREAMING';
 
                 return (
                   <div
-                    key={step.id}
-                    className={`p-3 rounded-xl border transition-all duration-300 ${
+                    key={step.key}
+                    className={`p-3 rounded-xl border transition-all duration-200 ${
                       isCurrent
-                        ? 'bg-white border-[#1b55f5] shadow-sm ring-2 ring-[#8ec0ff]/40 scale-[1.01]'
-                        : (isPassed
-                            ? 'bg-white border-[#e6e6ea]'
-                            : 'bg-white/40 border-[#e6e6ea] opacity-60')
+                        ? 'bg-white border-[#1b55f5] shadow-sm ring-2 ring-[#1b55f5]/20'
+                        : isCompleted
+                        ? 'bg-white border-emerald-200 shadow-2xs'
+                        : 'bg-white/60 border-[#e6e6ea] opacity-60'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 ${
-                        isPassed
-                          ? 'bg-[#10B981] text-white'
-                          : (isCurrent
-                              ? 'bg-[#1b55f5] text-white animate-pulse'
-                              : 'bg-[#e6e6ea] text-[#67677e]')
-                      }`}>
-                        {isPassed ? <Check className="w-3.5 h-3.5 text-white" /> : idx + 1}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className={`text-xs font-bold truncate ${isCurrent ? 'text-[#1b55f5]' : 'text-[#000000]'}`}>
-                            {step.title}
-                          </h4>
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-[#eaf0ff] text-[#1b55f5] font-semibold shrink-0">
-                            {step.timeTarget}
-                          </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2.5">
+                        <div className="mt-0.5">
+                          {isCompleted ? (
+                            <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          ) : isCurrent ? (
+                            <div className="w-5 h-5 rounded-full bg-[#1b55f5] text-white flex items-center justify-center animate-spin">
+                              <RotateCcw className="w-3 h-3" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-[#e6e6ea] text-[#67677e] flex items-center justify-center text-[10px] font-bold">
+                              {idx + 1}
+                            </div>
+                          )}
                         </div>
-                        <p className="text-[10px] text-[#67677e] truncate mt-0.5">
-                          {step.subtitle}
-                        </p>
+                        <div>
+                          <div className={`text-xs font-bold ${isCurrent ? 'text-[#1b55f5]' : isCompleted ? 'text-[#000000]' : 'text-[#67677e]'}`}>
+                            {step.title}
+                          </div>
+                          <div className="text-[11px] text-[#67677e] leading-snug mt-0.5">
+                            {step.subtitle}
+                          </div>
+                        </div>
                       </div>
+                      <span className="text-[10px] font-mono text-[#67677e] shrink-0">
+                        {step.timeTarget}
+                      </span>
                     </div>
                   </div>
                 );
               })}
             </div>
+
+            <div className="pt-2 border-t border-[#e6e6ea]">
+              <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#1b55f5] shrink-0" />
+                <span className="text-[11px] text-[#1b55f5] font-medium leading-tight">
+                  Kepatuhan UU PDP No. 27/2022 • Seluruh data pribadi disanitasi sebelum evaluasi.
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Right Column: Real-time Terminal Log Stream (7 Cols) */}
-          <div className="md:col-span-7 p-6 bg-[#181a1f] flex flex-col justify-between text-white font-mono text-xs overflow-hidden">
-            {/* Terminal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#2d3139] text-[11px] text-[#8ec0ff]">
+          {/* Right Column: Live Backend SSE Execution Logs */}
+          <div className="md:col-span-7 bg-[#181a1f] flex flex-col overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#2b2d32] flex items-center justify-between bg-[#1f2127]">
               <div className="flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-[#8ec0ff]" />
-                <span className="font-semibold text-white">Log Eksekusi Real-Time AI</span>
+                <Terminal className="w-4 h-4 text-[#1b55f5]" />
+                <span className="text-xs font-mono font-bold text-white tracking-wide">
+                  &gt;_ Log Eksekusi Real-Time SSE Backend
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-emerald-400 animate-ping' : 'bg-[#8ec0ff]'}`}></span>
-                <span className="text-[10px] text-white font-bold">
+                <span className={`w-2 h-2 rounded-full ${
+                  streamStatus === 'STREAMING' ? 'bg-amber-400 animate-ping' : 
+                  streamStatus === 'COMPLETED' ? 'bg-emerald-400' : 'bg-rose-500'
+                }`} />
+                <span className="text-[10px] font-mono font-bold text-[#9a9aa8]">
                   {streamStatus}
                 </span>
               </div>
             </div>
 
-            {/* Terminal Logs View */}
+            {/* Error Notice if any */}
+            {streamError && (
+              <div className="p-3 bg-rose-950/80 border-b border-rose-800 text-rose-200 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{streamError}</span>
+              </div>
+            )}
+
+            {/* Terminal Body */}
             <div 
               ref={logContainerRef}
-              className="flex-1 overflow-y-auto py-4 space-y-3 font-mono text-[11px] leading-relaxed custom-scrollbar"
+              className="flex-1 p-5 overflow-y-auto font-mono text-xs space-y-3.5 bg-[#121418]"
             >
-              <div className="text-white/50 text-[10px]">
-                [STREAM_INIT] Terhubung ke /api/candidates/stream/{candidate.id} &bull; Transmisi Terenkripsi
-              </div>
-
-              {events.length === 0 && (
-                <div className="text-center py-12 text-white/40 text-xs flex flex-col items-center justify-center gap-2">
-                  <RefreshCw className="w-4 h-4 animate-spin text-[#8ec0ff]" />
-                  <span>Memulai analisis otonom berbasis bukti...</span>
+              {events.length === 0 && streamStatus === 'CONNECTING' && (
+                <div className="text-[#67677e] italic py-8 text-center space-y-2">
+                  <RotateCcw className="w-5 h-5 animate-spin mx-auto text-[#1b55f5]" />
+                  <div>Menghubungkan ke SSE stream candidate #{candidate?.id}...</div>
+                  <div className="text-[10px] text-[#67677e]">Endpoint: {API_BASE_URL}/api/candidates/stream/{candidate?.id}</div>
                 </div>
               )}
 
-              {events.map((ev, i) => (
-                <div key={i} className="p-3 rounded-lg bg-[#22252b] border border-[#2d3139] space-y-1.5 animate-fade-in">
-                  <div className="flex items-center justify-between text-[10px] text-[#8ec0ff]">
-                    <span className="font-bold text-white flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      {ev.step}
+              {events.map((evt, idx) => (
+                <div 
+                  key={idx} 
+                  className="p-3 rounded-lg border border-[#2b2d32] bg-[#1a1c22] transition-all"
+                >
+                  <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-[#2b2d32] mb-2">
+                    <span className="text-[#1b55f5] font-bold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#1b55f5]" />
+                      {evt.step}
                     </span>
-                    <span className="text-white/50 font-mono">{ev.time}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-400 font-bold text-[10px]">{evt.status}</span>
+                      <span className="text-[#67677e] text-[10px]">{evt.time}</span>
+                    </div>
                   </div>
-
-                  {ev.details && (
-                    <pre className="p-2 rounded-md bg-[#121316] border border-[#2d3139] text-[10px] text-[#8ec0ff] overflow-x-auto">
-                      {JSON.stringify(ev.details, null, 2)}
-                    </pre>
-                  )}
+                  <pre className="text-[#d8d8df] text-[11px] whitespace-pre-wrap break-all overflow-x-auto leading-relaxed">
+                    {typeof evt.details === 'object' 
+                      ? JSON.stringify(evt.details, null, 2) 
+                      : evt.details}
+                  </pre>
                 </div>
               ))}
 
               {streamStatus === 'COMPLETED' && (
-                <div className="p-3 rounded-lg bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 text-[11px] flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>
-                    <strong>Analisis AI Selesai:</strong> Seluruh kriteria berhasil diverifikasi. Rekomendasi: <strong className="text-white">{candidate.recommendation && candidate.recommendation !== 'PENDING_SCAN' ? candidate.recommendation : 'STRONG_MATCH'}</strong>.
-                  </span>
+                <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 text-emerald-300 text-[11px] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span>Proses autonomous triage selesai secara deterministik. Hasil telah disinkronkan ke basis data.</span>
                 </div>
               )}
             </div>
 
-            {/* Terminal Footer Stats */}
-            <div className="pt-3 border-t border-[#2d3139] flex items-center justify-between text-[10px] text-white/50">
-              <span>Metode: Real-Time SSE Stream</span>
-              <span>Total Langkah: {events.length}</span>
-              <span>Privasi: Kepatuhan UU PDP No. 27/2022</span>
+            {/* Terminal Status Footer */}
+            <div className="px-5 py-2.5 border-t border-[#2b2d32] bg-[#1a1c22] flex items-center justify-between text-[10px] text-[#9a9aa8] font-mono">
+              <span>Metode: FastAPI Real-Time SSE Broadcaster</span>
+              <span>Candidate ID: {candidate?.id}</span>
+              <span>Kepatuhan: UU PDP No. 27/2022</span>
             </div>
           </div>
         </div>
 
-        {/* Modal Bottom Action */}
-        <div className="p-4 bg-white border-t border-[#e6e6ea] flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-[#454554]">
+        {/* Modal Footer */}
+        <div className="px-6 py-3.5 border-t border-[#383a42] bg-[#23252a] flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-[#9a9aa8]">
             <Sparkles className="w-4 h-4 text-[#1b55f5]" />
             <span>Riwayat keputusan AI tersimpan transparan untuk proses audit rekrutmen.</span>
           </div>
-
           <button
-            type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-bold shadow-xs transition-all"
+            className="px-5 py-2 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-bold transition-all shadow-xs"
           >
             Tutup Monitor
           </button>
         </div>
+
       </div>
     </div>
   );

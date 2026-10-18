@@ -100,6 +100,10 @@ export default function DashboardOverview() {
       }
       return c;
     }));
+    // Re-fetch backend candidates after brief delay to pull database updates
+    setTimeout(() => {
+      fetchCandidates();
+    }, 1000);
   };
 
   useEffect(() => {

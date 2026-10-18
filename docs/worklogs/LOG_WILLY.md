@@ -106,3 +106,37 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - Pembuatan **What-If Policy Simulation Studio UI** dengan slider bobot interaktif ($S_{\text{comp}}, S_{\text{port}}, S_{\text{conf}}, S_{\text{risk}}$) dan re-ranking tabel real-time in-browser.
   - Finalisasi modal dossier kandidat dengan tombol interaktif penjadwalan kalender wawancara atomik.
 
+---
+
+### 2026-10-18 - Willy - What-If Policy Simulation Studio, Interactive Calendar Lock & Evidence Graph Polish (Sprint 3 Selesai Penuh)
+- **Komponen / File:**
+  - `frontend/src/components/WhatIfStudio.jsx` (Komponen baru)
+  - `frontend/src/components/CandidateModal.jsx` (Upgrade penjadwalan kalender atomik & penolakan)
+  - `frontend/src/components/EvidenceGraph.jsx` (Finalisasi integrasi React Flow v12)
+  - `frontend/src/App.jsx` (Mounting rute riil `/what-if`)
+- **Yang Dikerjakan:**
+  - **1. What-If Policy Simulation Studio UI (`WhatIfStudio.jsx`):**
+    - Membangun antarmuka simulasi kebijakan rekrutmen in-memory berlatensi 0 ms (tanpa memanggil ulang LLM backend sesuai PRD Bab 1.2 & 8.2 Endpoint 11).
+    - 4 Interactive Range Sliders untuk kalibrasi bobot deterministik 4D: $S_{\text{comp}}$ (Keahlian & Core Skills, default 40%), $S_{\text{port}}$ (Repositori GitHub, default 20%), $S_{\text{conf}}$ (Keyakinan & Linieritas, default 25%), dan $S_{\text{risk}}$ (Sensitivitas Anomali & Penalti, default 15%).
+    - Dynamic Passing Grade Cut-off Slider (default 75.0, range 50 - 90) yang menentukan kelulusan otomatis ambang batas kandidat.
+    - 4 Preset Kebijakan Satu-Klik: *Standar Berimbang (Balanced)*, *Praktik Kode & Portofolio (Code-First)*, *Kepatuhan & Integritas Tinggi (Security-Strict)*, dan *Bakat Potensial (Fresh Talent / Inclusive)*.
+    - *Real-time Re-ranking Table* yang langsung menghitung ulang urutan peringkat pelamar di memori browser dengan visual chip pergeseran rank ($\Delta +1, \Delta -1, =$) dan delta nilai skor ($\pm X.X$ poin).
+    - Kartu metrik analitik dampak kebijakan (*Hiring Impact Analysis*): persentase kelulusan (pass rate), jumlah Strong Match, dan rerata skor simulasi.
+    - Fitur ekspor berkas hasil simulasi kebijakan dan pergeseran peringkat ke format JSON (`talentops_whatif_simulation_<timestamp>.json`).
+  - **2. Interaktivitas Modal Penjadwalan Kalender Atomik (`CandidateModal.jsx`):**
+    - Mengganti dialog `alert()` statis dengan alur multi-step interaktif: Dossier Overview &rarr; Schedule Selection &rarr; Atomic Lock Receipt / Rejection Confirmation.
+    - Menampilkan kartu slot wawancara aktif (Senin & Selasa, durasi 60 menit) lengkap dengan profil interviewer dan tipe wawancara arsitektur.
+    - Integrasi prinsip *Atomic Calendar Lock* (`SELECT ... FOR UPDATE`) selaras dengan `MockCalendarAdapter` buatan Najmi (`calendar.py`) untuk menjamin eliminasi double-booking.
+    - Generator dan pratinjau *Deterministic Event ID* standar RFC 5545 Google Calendar kompatibel (`talentops_slot<id>_cand<id>_<hash>`).
+    - Alur penolakan berkas (*Reject Candidate*) dengan pilihan alasan terstruktur (skor di bawah cut-off, anomali terdeteksi, timeline overlap) dan notifikasi kepatuhan *Right to Erasure* UU PDP.
+  - **3. Finalisasi Candidate Evidence Graph (React Flow v12):**
+    - Kanvas graf node-link terverifikasi menghubungkan 4 layer: Root Kandidat Dossier &rarr; Klaim Pydantic v2 &rarr; Kutipan Teks Asli Resume &rarr; Audit GitHub REST v3.
+    - Penanganan badge `NOT_APPLICABLE` untuk profil non-programmer dan visual edge berkedip merah untuk anomali keamanan teks tersembunyi.
+- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1778 modul tertransformasi**, zero error). Seluruh kriteria Definition of Done (DoD) Sprint 3 untuk Developer 3 (Willy) terpenuhi 100%.
+- **Catatan untuk Rekan Tim:**
+  - *Frontend Sprint 3 Production Ready:* Fitur What-If Studio dan Candidate Modal dapat langsung didemonstrasikan secara interaktif tanpa ketergantungan API eksternal.
+- **Rencana Selanjutnya (Sprint 4):**
+  - Pengujian responsivitas lintas perangkat (desktop, tablet, mobile).
+  - Penanganan edge-cases antarmuka (disconnection SSE, network latency retry, dan audit aksesibilitas).
+
+

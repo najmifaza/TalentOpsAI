@@ -2,7 +2,8 @@ import asyncio
 import json
 import os
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
+import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -10,7 +11,8 @@ from app.core.triage_service import AgentTriageService
 from app.core.broadcaster import sse_broadcaster
 
 
-async def run_pipeline_check():
+@pytest.mark.asyncio
+async def test_agent_triage_service_pipeline():
     service = AgentTriageService()
 
     # Mock Candidate & Job in DB
@@ -94,9 +96,3 @@ async def run_pipeline_check():
     assert result["overall_score"] >= 80.0
     assert result["recommendation"] in ("STRONG_MATCH", "REVIEW_REQUIRED")
     assert result["total_duration_ms"] > 0
-
-    print("ALL CHECKS PASSED: Agent Triage Service Pipeline validated end-to-end.")
-
-
-if __name__ == "__main__":
-    asyncio.run(run_pipeline_check())

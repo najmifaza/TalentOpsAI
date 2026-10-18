@@ -135,6 +135,7 @@ class AgentTriageService:
             t0 = time.time()
             prompt_msgs = build_extraction_prompt(sanitized_text)
 
+            extraction_error = None
             try:
                 llm_resp = await self.llm_adapter.complete(
                     messages=prompt_msgs,
@@ -146,6 +147,7 @@ class AgentTriageService:
                 schema = CandidateExtractionSchema.model_validate(extracted_dict)
                 extraction_source = llm_resp.get("source", "LIVE")
             except Exception as e:
+                extraction_error = str(e)
                 logger.warning(f"Live extraction failed for {candidate_id}, using heuristic fallback: {e}")
                 # Safe fallback schema
                 schema = CandidateExtractionSchema(
@@ -156,13 +158,20 @@ class AgentTriageService:
                 extraction_source = "FALLBACK"
 
             dur_ms = int((time.time() - t0) * 1000)
+            step_details = {
+                "source": extraction_source,
+                "claims_count": len(schema.claims),
+            }
+            if extraction_error:
+                step_details["llm_gateway_error"] = extraction_error
+
             await self._record_step(
                 db, run_id, candidate_id, masked_id, "llm_extraction",
-                "completed", dur_ms, {"source": extraction_source, "claims_count": len(schema.claims)}
+                "completed", dur_ms, step_details
             )
             await sse_broadcaster.publish(
                 candidate_id, "llm_extraction", "completed",
-                {"source": extraction_source, "claims_count": len(schema.claims)}
+                step_details
             )
 
             # ==================================================================

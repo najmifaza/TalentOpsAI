@@ -2,6 +2,14 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
+# Fix upstream aiomysql bug with PyMySQL 1.2+ where escape_bytes_prefixed is string instead of callable
+try:
+    import pymysql.converters
+    if not callable(getattr(pymysql.converters, "escape_bytes_prefixed", None)):
+        pymysql.converters.escape_bytes_prefixed = pymysql.converters.escape_bytes
+except Exception:
+    pass
+
 from .config import settings
 
 engine = create_async_engine(

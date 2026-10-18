@@ -176,21 +176,21 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   return (
     <>
       {/* 1. Desktop Persistent Sidebar (Visible on screens >= 1024px) */}
-      <aside className="hidden lg:flex w-64 bg-[#0B2B26] text-white flex-col shrink-0 min-h-screen border-r border-[#163832]/60 select-none">
+      <aside className="hidden lg:flex w-64 bg-[#0B2B26] dark:bg-[#072421] text-white flex-col shrink-0 min-h-screen border-r border-[#163832]/60 select-none transition-colors duration-200">
         {navContent}
       </aside>
 
       {/* 2. Mobile / Tablet Slide-over Drawer (Visible on screens < 1024px) */}
       {isOpenMobile && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
+        <div className="fixed inset-0 z-50 lg:hidden flex" role="dialog" aria-modal="true" aria-label="Navigasi Menu Utama">
           {/* Backdrop blur overlay */}
           <div 
             onClick={onCloseMobile}
-            className="fixed inset-0 bg-[#051F20]/70 backdrop-blur-sm transition-opacity animate-fade-in"
+            className="fixed inset-0 bg-[#051F20]/75 backdrop-blur-sm transition-opacity animate-fade-in"
           />
 
           {/* Drawer Pane */}
-          <aside className="relative z-50 w-72 max-w-[80vw] bg-[#0B2B26] text-white flex flex-col h-full shadow-2xl border-r border-[#163832] animate-slide-in">
+          <aside className="relative z-50 w-72 max-w-[80vw] bg-[#0B2B26] dark:bg-[#072421] text-white flex flex-col h-full shadow-2xl border-r border-[#163832] animate-slide-in">
             {navContent}
           </aside>
         </div>

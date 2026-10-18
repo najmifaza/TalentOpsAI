@@ -1,0 +1,18 @@
+Naufal Hidayat
+Email: naufal.hidayat@email.com | Phone: +6281277889900
+Lokasi: Tangerang, Indonesia
+
+RINGKASAN PROFESIONAL
+Backend Developer dengan pengalaman 2.5 tahun mengembangkan backend microservices dengan Python, Docker, dan PostgreSQL.
+
+KEAHLIAN TEKNIS
+- Python, FastAPI, Docker, PostgreSQL, Linux
+
+PENGALAMAN KERJA
+1. Backend Developer - PT Solusi Awan
+   Desember 2021 - Sekarang (Full-time)
+   - Developed async REST endpoints using FastAPI for inventory tracking.
+   - Containerized backend services with Docker and configured database indexes in PostgreSQL.
+
+PENDIDIKAN
+S1 Informatika (Lulus 2021)

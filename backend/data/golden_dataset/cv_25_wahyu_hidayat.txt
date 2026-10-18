@@ -1,0 +1,19 @@
+Wahyu Hidayat
+Email: wahyu.hidayat@email.com | Phone: +6281511223344 | GitHub: https://github.com/candidate/data-pipeline
+Lokasi: Jakarta, Indonesia
+
+RINGKASAN PROFESIONAL
+Data Platform & Backend Engineer berpengalaman 4 tahun merancang data pipeline dan streaming API dengan Python, FastAPI, PostgreSQL, Docker, dan Redis.
+
+KEAHLIAN
+- Python, FastAPI, Docker, PostgreSQL, Redis, CI/CD, Kafka
+
+PENGALAMAN KERJA
+1. Data Platform Engineer - PT Data Cerdas
+   Februari 2021 - Sekarang (Full-time)
+   - Built streaming data ingestion microservices using FastAPI and Redis handling 4000 rps.
+   - Tuned analytical query latency in PostgreSQL by 45% using composite partitioning.
+   - Maintained automated testing and deployment using Docker and GitHub Actions CI/CD.
+
+PENDIDIKAN
+S1 Ilmu Komputer (Lulus 2020)

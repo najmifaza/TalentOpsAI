@@ -1,0 +1,26 @@
+Siti Nurhaliza
+Email: siti.nurhaliza@email.com | Phone: +6281877665544 | GitHub: https://github.com/candidate/order-api
+Lokasi: Jakarta, Indonesia
+
+RINGKASAN PROFESIONAL
+Backend Engineer berpengalaman 4 tahun membangun REST API dengan FastAPI, PostgreSQL, dan Docker. Mengambil cuti melahirkan dan pengasuhan anak selama 14 bulan sebelum kembali aktif bekerja.
+
+KEAHLIAN
+- FastAPI, Docker, PostgreSQL, Redis, CI/CD
+
+PENGALAMAN KERJA
+1. Backend Developer - PT Mitra Inovasi
+   Januari 2023 - Sekarang (Full-time)
+   - Built async REST microservices with FastAPI handling 2000 rps.
+   - Configured Docker deployments and PostgreSQL database indexing.
+
+2. Maternity & Infant Care Leave
+   November 2021 - Desember 2022
+   - Dedicated 14-month full-time career pause for newborn child care and family support.
+
+3. Junior Backend Engineer - PT Aplikasi Cepat
+   Juni 2019 - Oktober 2021 (Full-time)
+   - Maintained backend APIs and transactional database queries in PostgreSQL.
+
+PENDIDIKAN
+S1 Sistem Informasi (Lulus 2019)

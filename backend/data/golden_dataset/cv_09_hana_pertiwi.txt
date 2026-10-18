@@ -1,0 +1,18 @@
+Hana Pertiwi
+Email: hana.pertiwi@email.com | Phone: +6281655667788 | GitHub: https://github.com/candidate/core-engine
+Lokasi: Depok, Indonesia
+
+RINGKASAN PROFESIONAL
+Lulusan S1 Informatika Universitas Indonesia dengan 3 tahun pengalaman membangun backend asinkronus dengan FastAPI, Docker, dan PostgreSQL.
+
+KEAHLIAN
+- FastAPI, Python, PostgreSQL, Docker, Redis, CI/CD
+
+PENGALAMAN KERJA
+1. Backend Developer - PT Solusi Utama
+   Maret 2021 - Sekarang (Full-time)
+   - Built REST microservices using FastAPI handling 2000 rps.
+   - Maintained database transactional operations with PostgreSQL.
+
+PENDIDIKAN
+S1 Informatika Universitas Indonesia (Lulus 2021)

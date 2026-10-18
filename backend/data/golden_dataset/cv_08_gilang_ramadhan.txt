@@ -1,0 +1,19 @@
+Gilang Ramadhan
+Email: gilang.ramadhan@email.com | Phone: +6281344556678 | GitHub: https://github.com/candidate/async-service
+Lokasi: Jakarta, Indonesia
+
+RINGKASAN PROFESIONAL
+Backend Software Engineer dengan rekam jejak 4 tahun membangun async microservices performa tinggi dengan FastAPI, PostgreSQL, Docker, dan Redis.
+
+KEAHLIAN TEKNIS
+- Python, FastAPI, PostgreSQL, Docker, Redis, CI/CD, Linux
+
+PENGALAMAN KERJA
+1. Backend Engineer - PT Fintek Unggul
+   Januari 2021 - Sekarang (Full-time)
+   - Built async API services using FastAPI and PostgreSQL handling 3000 rps throughput.
+   - Integrated Redis caching layer reducing database response time by 50%.
+   - Deployed microservices using Docker containers and automated CI/CD workflows.
+
+PENDIDIKAN
+S1 Ilmu Komputer (Lulus 2020)

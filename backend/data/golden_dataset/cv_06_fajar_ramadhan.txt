@@ -1,0 +1,23 @@
+Fajar Ramadhan
+Email: fajar.ramadhan@email.com | Phone: +6281223344556 | GitHub: https://github.com/candidate/cloud-infra
+Lokasi: Jakarta, Indonesia
+
+RINGKASAN PROFESIONAL
+Cloud Infrastructure and DevOps Engineer berpengalaman 5 tahun mengotomatisasi CI/CD pipelines, container orchestration dengan Docker & Kubernetes, dan monitoring backend PostgreSQL & Redis.
+
+KEAHLIAN
+- Docker, Kubernetes, CI/CD GitHub Actions, PostgreSQL, Redis, Terraform, Linux
+
+PENGALAMAN KERJA
+1. Lead DevOps Engineer - PT Infrastruktur Awan
+   Januari 2022 - Sekarang (Full-time)
+   - Built resilient CI/CD pipelines using GitHub Actions reducing build time by 45%.
+   - Containerized multi-tier microservices with Docker and orchestrated deployment on Kubernetes clusters.
+   - Optimized PostgreSQL database server memory tuning handling 1500 qps.
+
+2. DevOps Specialist - PT Solusi Digital
+   Februari 2019 - Desember 2021 (Full-time)
+   - Automated cloud infrastructure provisioning with Terraform and Docker.
+
+PENDIDIKAN
+S1 Teknik Informatika (Lulus 2019)

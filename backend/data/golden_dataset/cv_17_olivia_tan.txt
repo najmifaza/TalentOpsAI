@@ -1,0 +1,19 @@
+Olivia Tan
+Email: olivia.tan@email.com | Phone: +6281388990011 | GitHub: https://github.com/candidate/fullstack-app
+Lokasi: Jakarta, Indonesia
+
+RINGKASAN PROFESIONAL
+Full Stack Software Engineer dengan keahlian mendalam pada FastAPI, React, Docker, dan PostgreSQL selama 4 tahun.
+
+KEAHLIAN
+- FastAPI, Python, React, PostgreSQL, Docker, CI/CD, Redis
+
+PENGALAMAN KERJA
+1. Full Stack Engineer - PT Kreasi Solusi
+   Maret 2021 - Sekarang (Full-time)
+   - Built full stack web applications integrating FastAPI backend with React SPA frontend.
+   - Reduced API query latency by 35% using PostgreSQL composite indexes and Redis cache.
+   - Maintained open-source fullstack starter repo https://github.com/candidate/fullstack-app.
+
+PENDIDIKAN
+S1 Teknik Informatika (Lulus 2020)

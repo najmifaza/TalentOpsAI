@@ -1,5 +1,6 @@
 import os
 import sys
+import pytest
 
 # Add backend directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -11,22 +12,23 @@ from app.core.scoring import (
     merge_employment_intervals,
 )
 
+CORE_COMPETENCIES = ["FastAPI", "Docker", "PostgreSQL", "CI/CD", "Redis"]
 
-def run_checks():
-    core_competencies = ["FastAPI", "Docker", "PostgreSQL", "CI/CD", "Redis"]
 
-    # 1. Test Relevance & Taxonomy Mapping
+def test_relevance_and_taxonomy_mapping():
     assert calculate_relevance("FastAPI", "FastAPI") == 1.0, "Exact match must be 1.0"
     assert calculate_relevance("Django", "FastAPI") == 0.7, "Ecosystem match must be 0.7"
     assert calculate_relevance("Figma", "FastAPI") == 0.0, "Irrelevant must be 0.0"
 
-    # 2. Test Tier 3 Metric Regex & Fluff Guard
+
+def test_tier3_metric_regex_and_fluff_guard():
     assert is_tier3_metric_claim("handled async requests", "reduced latency by 40%") is True
     assert is_tier3_metric_claim("handled 2500 rps throughput", None) is True
     # Fluff check: 100% without technical context keyword should fail Tier 3
     assert is_tier3_metric_claim("100% dedicated to client satisfaction", None) is False
 
-    # 3. Test Interval Merging (Overlap prevention)
+
+def test_interval_merging_overlap_prevention():
     overlapping_timeline = [
         {"role": "Backend", "start": "2022-01", "end": "2023-06", "is_relevant_role": True},
         {"role": "Lead Architect", "start": "2022-06", "end": "2023-12", "is_relevant_role": True},
@@ -35,9 +37,8 @@ def run_checks():
     merged_years = merge_employment_intervals(overlapping_timeline)
     assert 1.9 <= merged_years <= 2.1, f"Expected ~2.0 years, got {merged_years}"
 
-    # =========================================================================
-    # 4. KASUS 1: Budi Santoso (Strong Match)
-    # =========================================================================
+
+def test_case_1_budi_santoso_strong_match():
     budi_claims = [
         {
             "dimension": "SKILL",
@@ -92,7 +93,7 @@ def run_checks():
         career_timeline=budi_timeline,
         education=budi_education,
         anomalies={"prompt_injection_detected": False, "hidden_text_detected": False},
-        core_competencies=core_competencies,
+        core_competencies=CORE_COMPETENCIES,
         verified_repos=budi_repos,
     )
 
@@ -103,9 +104,8 @@ def run_checks():
     assert budi_res["triage_priority"] == "STANDARD"
     assert "Aturan 1" in budi_res["rule_applied"]
 
-    # =========================================================================
-    # 5. KASUS 2: Reza Pratama (Review Required - Overlap Anomaly)
-    # =========================================================================
+
+def test_case_2_reza_pratama_overlap_anomaly():
     reza_claims = [
         {
             "dimension": "SKILL",
@@ -154,9 +154,9 @@ def run_checks():
     reza_res = DeterministicScoringEngine.compute_full_assessment(
         claims=reza_claims,
         career_timeline=reza_timeline,
-        education=budi_education,
+        education={"degree": "S1", "field_of_study": "Informatika"},
         anomalies={"prompt_injection_detected": False, "hidden_text_detected": False},
-        core_competencies=core_competencies,
+        core_competencies=CORE_COMPETENCIES,
         verified_repos=reza_repos,
     )
     assert reza_res["unresolved_risk"] == "HIGH", "17 months overlap must trigger HIGH risk"
@@ -164,9 +164,8 @@ def run_checks():
     assert reza_res["triage_priority"] == "HIGH_ATTENTION"
     assert "Aturan 2" in reza_res["rule_applied"]
 
-    # =========================================================================
-    # 6. KASUS 3: Citra Lestari (Weak Fit - Graphic Designer)
-    # =========================================================================
+
+def test_case_3_citra_lestari_weak_fit():
     citra_claims = [
         {"dimension": "SKILL", "technology": "Adobe Illustrator", "has_implementation_detail": True},
         {"dimension": "SKILL", "technology": "Photoshop", "has_implementation_detail": True},
@@ -181,49 +180,82 @@ def run_checks():
         career_timeline=citra_timeline,
         education=citra_education,
         anomalies={},
-        core_competencies=core_competencies,
+        core_competencies=CORE_COMPETENCIES,
     )
     assert citra_res["overall_score"] < 60.0, f"Citra score should be < 60.0, got {citra_res['overall_score']}"
     assert citra_res["recommendation"] == "WEAK_FIT"
     assert "Aturan 4" in citra_res["rule_applied"]
 
-    # =========================================================================
-    # 7. KASUS 4: Dewi Sartika (Security Quarantine - Rule 0)
-    # =========================================================================
+
+def test_case_4_dewi_sartika_security_quarantine():
+    budi_claims = [
+        {"dimension": "SKILL", "technology": "FastAPI", "has_implementation_detail": True},
+        {"dimension": "SKILL", "technology": "Docker", "has_implementation_detail": True},
+    ]
     dewi_res = DeterministicScoringEngine.compute_full_assessment(
         claims=budi_claims,
-        career_timeline=budi_timeline,
-        education=budi_education,
+        career_timeline=[{"role": "Developer", "start": "2020-01", "end": "present", "is_relevant_role": True}],
+        education={"degree": "S1", "field_of_study": "Informatika"},
         anomalies={"prompt_injection_detected": True, "hidden_text_detected": True},
-        core_competencies=core_competencies,
+        core_competencies=CORE_COMPETENCIES,
     )
     assert dewi_res["unresolved_risk"] == "HIGH"
     assert dewi_res["recommendation"] == "REVIEW_REQUIRED"
     assert dewi_res["triage_priority"] == "HIGH_ATTENTION"
     assert "Aturan 0" in dewi_res["rule_applied"]
 
-    # =========================================================================
-    # 8. KASUS 5: Eko Prasetyo (Fairness - Career Break Flag)
-    # =========================================================================
+
+def test_case_5_eko_prasetyo_fairness_career_break():
+    eko_claims = [
+        {
+            "dimension": "SKILL",
+            "technology": "FastAPI",
+            "has_implementation_detail": True,
+            "context_narrative": "built async rest microservices using FastAPI handling 2500 rps",
+            "metric_string": "handled 2500 rps throughput",
+            "repo_url": "https://github.com/candidate/payment-service",
+        },
+        {
+            "dimension": "SKILL",
+            "technology": "PostgreSQL",
+            "has_implementation_detail": True,
+            "context_narrative": "reduced database query latency by 40% using composite indexing in PostgreSQL",
+            "metric_string": "reduced latency by 40%",
+        },
+        {
+            "dimension": "SKILL",
+            "technology": "Redis",
+            "has_implementation_detail": True,
+            "context_narrative": "integrated redis caching layer to handle 2500 rps high throughput",
+            "metric_string": "2500 rps load",
+        },
+        {
+            "dimension": "SKILL",
+            "technology": "CI/CD",
+            "has_implementation_detail": True,
+            "context_narrative": "maintained open-source repository with full CI/CD pipeline",
+            "repo_url": "https://github.com/candidate/payment-service",
+        },
+        {
+            "dimension": "SKILL",
+            "technology": "Docker",
+            "has_implementation_detail": True,
+            "context_narrative": "containerized services with Docker for scalable microservices",
+        },
+    ]
     eko_timeline = [
         {"role": "Mid Backend", "start": "2023-03", "end": "present", "is_relevant_role": True},
         {"role": "Junior Backend", "start": "2018-03", "end": "2021-08", "is_relevant_role": True},
     ]
     eko_res = DeterministicScoringEngine.compute_full_assessment(
-        claims=budi_claims,
+        claims=eko_claims,
         career_timeline=eko_timeline,
-        education=budi_education,
+        education={"degree": "S1", "field_of_study": "Informatika"},
         anomalies={"career_break_detected": True},
-        core_competencies=core_competencies,
-        verified_repos=budi_repos,
+        core_competencies=CORE_COMPETENCIES,
+        verified_repos={"https://github.com/candidate/payment-service": {"verified": True, "is_fork": False}},
     )
     # Career break must NOT automatically trigger MEDIUM or HIGH risk
     assert eko_res["unresolved_risk"] == "LOW", "Legitimate career break must not be penalized"
     assert "CAREER_BREAK_FLAG" in eko_res["anomaly_flags"]
     assert eko_res["recommendation"] == "STRONG_MATCH"
-
-    print("ALL CHECKS PASSED: Deterministic 4D Scoring Engine & Agent Decision Points 100% verified.")
-
-
-if __name__ == "__main__":
-    run_checks()

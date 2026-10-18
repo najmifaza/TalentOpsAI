@@ -93,9 +93,15 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
     - **Penanganan Khusus Role Non-Programmer:** Untuk profil non-programmer (Citra Lestari `#TK-C39D44`), node GitHub menampilkan status `NOT_APPLICABLE` (bukan error merah), memenuhi aturan baku PRD & RACI matrix.
     - **Penanganan Anomali Keamanan:** Untuk profil injeksi teks tersembunyi (Dewi Sartika `#TK-D99A12`), edge divisualisasikan merah berkedip dengan indikator deteksi tag `w:vanish`.
     - Dilengkapi selektor 5 profil kandidat instan, MiniMap terintegrasi, Controls zoom/fit, dan legenda alur kredensial.
-- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1768 modul tertransformasi**, zero error). Seluruh kriteria Definition of Done (DoD) Sprint 2 untuk Developer 3 (Willy) terpenuhi 100%.
+- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1777 modul tertransformasi**, zero error). Seluruh kriteria Definition of Done (DoD) Sprint 2 untuk Developer 3 (Willy) terpenuhi 100%.
+- **Arsitektur Routing Web (React Router DOM v7):**
+  - Mengganti state internal `useState` navigasi halaman dengan **React Router DOM** untuk mendukung URL routing riil dan deep-linking:
+    - Public Career Portal: `/careers`, `/careers/apply`, `/careers/track`, `/careers/track/:token`.
+    - HR Dashboard Shell: `/dashboard`, `/evidence-graph`, `/what-if`, `/security-pdp`.
+  - Mengubah seluruh tombol navigasi pada `Sidebar.jsx` menjadi `<NavLink>` dengan styling aktif dinamis.
+  - Mendukung input parameter rute `:token` pada URL sehingga pelamar dapat langsung membuka URL status pelacakan dengan prefilled data & auto-fetch.
 - **Catatan untuk Rekan Tim:**
-  - *Frontend Sprint 2 Complete:* Seluruh 3 pilar fitur frontend Sprint 2 (Career Portal, SSE Trace Listener, dan Candidate Evidence Graph) telah siap di branch `feat/frontend-sprint2-` dan siap diuji / di-merge ke `main`.
+  - *Frontend Sprint 2 Complete & Fully Routed:* Seluruh modul navigasi telah terintegrasi dengan URL browser sesuai spesifikasi PRD Baris 740 dan Vercel rewrite.
 - **Rencana Selanjutnya (Sprint 3):**
   - Pembuatan **What-If Policy Simulation Studio UI** dengan slider bobot interaktif ($S_{\text{comp}}, S_{\text{port}}, S_{\text{conf}}, S_{\text{risk}}$) dan re-ranking tabel real-time in-browser.
   - Finalisasi modal dossier kandidat dengan tombol interaktif penjadwalan kalender wawancara atomik.

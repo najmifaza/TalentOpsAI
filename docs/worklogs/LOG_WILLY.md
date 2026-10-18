@@ -71,6 +71,7 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - `frontend/src/components/Sidebar.jsx`
   - `frontend/src/components/DashboardOverview.jsx`
   - `frontend/src/components/CandidateTable.jsx`
+  - `frontend/src/components/CandidateModal.jsx`
   - `frontend/src/App.jsx`
 - **Yang Dikerjakan:**
   - **1. Public Career Portal (`/careers/apply` & `/careers/track/{token}`):**
@@ -97,9 +98,10 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 - **Arsitektur Routing Web (React Router DOM v7):**
   - Mengganti state internal `useState` navigasi halaman dengan **React Router DOM** untuk mendukung URL routing riil dan deep-linking:
     - Public Career Portal: `/careers`, `/careers/apply`, `/careers/track`, `/careers/track/:token`.
-    - HR Dashboard Shell: `/dashboard`, `/evidence-graph`, `/what-if`, `/security-pdp`.
+    - HR Dashboard Shell: `/dashboard`, `/evidence-graph`, `/evidence-graph/:candidateId`, `/what-if`, `/security-pdp`.
   - Mengubah seluruh tombol navigasi pada `Sidebar.jsx` menjadi `<NavLink>` dengan styling aktif dinamis.
   - Mendukung input parameter rute `:token` pada URL sehingga pelamar dapat langsung membuka URL status pelacakan dengan prefilled data & auto-fetch.
+  - Mendukung input parameter rute `:candidateId` pada Evidence Graph dengan tombol pintasan dari modal dossier kandidat (`CandidateModal.jsx`).
 - **Catatan untuk Rekan Tim:**
   - *Frontend Sprint 2 Complete & Fully Routed:* Seluruh modul navigasi telah terintegrasi dengan URL browser sesuai spesifikasi PRD Baris 740 dan Vercel rewrite.
 - **Rencana Selanjutnya (Sprint 3):**

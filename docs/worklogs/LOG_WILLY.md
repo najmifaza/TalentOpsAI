@@ -56,3 +56,47 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - Pembuatan form pelamar publik `Public Career Portal` (`/careers/apply`) dengan drag-and-drop resume uploader dan penerbitan *tracking token* anonim.
   - Integrasi listener Live SSE Stream (`EventSource`) pada HR Dashboard untuk menampilkan animasi trace langkah otonom agen secara real-time.
   - Pembuatan komponen visualisasi awal **Candidate Evidence Graph** menggunakan React Flow.
+
+---
+
+### 2026-10-18 - Willy - Data Ingestion Portal, Live SSE Stream & Evidence Graph (Sprint 2 Selesai Penuh)
+- **Komponen / File:**
+  - `frontend/package.json` & `frontend/package-lock.json`
+  - `frontend/src/components/DpaModal.jsx`
+  - `frontend/src/components/TokenIssuedModal.jsx`
+  - `frontend/src/components/ApplicationTracker.jsx`
+  - `frontend/src/components/CareerPortal.jsx`
+  - `frontend/src/components/AgentTraceModal.jsx`
+  - `frontend/src/components/EvidenceGraph.jsx`
+  - `frontend/src/components/Sidebar.jsx`
+  - `frontend/src/components/DashboardOverview.jsx`
+  - `frontend/src/components/CandidateTable.jsx`
+  - `frontend/src/App.jsx`
+- **Yang Dikerjakan:**
+  - **1. Public Career Portal (`/careers/apply` & `/careers/track/{token}`):**
+    - Portal karir publik modern dengan palet human-crafted Pine (`#0B2B26`), Sage (`#8EB69B`), dan Mint (`#EEF4F0`).
+    - Konsumsi daftar lowongan kerja aktif secara dinamis dari live backend VPS (`GET /api/careers`).
+    - Komponen interaktif *Drag-and-Drop Resume Uploader* dengan validasi MIME-type di browser (PDF & DOCX, limit 10 MB).
+    - Checkbox persetujuan DPA sesuai mandat UU PDP No. 27/2022 terintegrasi dengan modal edukasi hukum privasi (`DpaModal.jsx`).
+    - Integrasi submit form data `multipart/form-data` ke live endpoint VPS (`POST /api/careers/{job_id}/apply`).
+    - Dialog penerbitan kredensial pelamar (`TokenIssuedModal.jsx`) memuat *Public Masked Identifier* (`#TK-XXXXXX`) dan *Secret Tracking Token* (UUIDv4).
+    - Komponen pelacakan status kandidat berbasis token (`ApplicationTracker.jsx`) terhubung ke endpoint live VPS (`GET /api/careers/track/{token}`) dengan stepper timeline 5 tahap dan tombol pencabutan berkas (*Right to Erasure*).
+  - **2. Live SSE Agent Execution Trace Stream Listener (`AgentTraceModal.jsx`):**
+    - Listener streaming Server-Sent Events (`EventSource`) mengonsumsi endpoint backend live VPS `/api/candidates/stream/{candidate_id}` selaras dengan `broadcaster.py` buatan Najmi.
+    - Visualisasi alur penalaran otonom agen dalam 7 tahap kanonikal (Sanitasi PII In-Memory &lt;20ms &rarr; Scan Teks Tersembunyi DOCX &rarr; Ekstraksi Gemini 3.8 via 9router &rarr; Anti-Hallucination Substring Guard &rarr; Audit GitHub REST API v3 &rarr; Kalkulasi Skor 4D Deterministik &rarr; Keputusan Triage & Atomic Calendar Lock).
+    - Terminal live buffer dengan status streaming SSE (`CONNECTING`, `STREAMING`, `COMPLETED`), auto-scroll log buffer, inspeksi payload JSON, serta tombol replay trace.
+    - Penambahan tombol aksi `Live SSE` pada setiap baris kandidat di `CandidateTable.jsx` dan widget banner status streaming di `DashboardOverview.jsx`.
+  - **3. Candidate Evidence Graph (`EvidenceGraph.jsx` berbasis React Flow):**
+    - Instalasi pustaka grafis resmi `@xyflow/react` (React Flow v12).
+    - Desain kanvas graf node-link interaktif menghubungkan 4 layer: Root Kandidat Dossier &rarr; Klaim Kompetensi Pydantic v2 &rarr; Kutipan Teks Asli Resume (Grounding Substring Guard) &rarr; Audit Repositori GitHub v3.
+    - Implementasi 4 Custom Node React Flow dengan styling enterprise Pine & Sage.
+    - **Penanganan Khusus Role Non-Programmer:** Untuk profil non-programmer (Citra Lestari `#TK-C39D44`), node GitHub menampilkan status `NOT_APPLICABLE` (bukan error merah), memenuhi aturan baku PRD & RACI matrix.
+    - **Penanganan Anomali Keamanan:** Untuk profil injeksi teks tersembunyi (Dewi Sartika `#TK-D99A12`), edge divisualisasikan merah berkedip dengan indikator deteksi tag `w:vanish`.
+    - Dilengkapi selektor 5 profil kandidat instan, MiniMap terintegrasi, Controls zoom/fit, dan legenda alur kredensial.
+- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1768 modul tertransformasi**, zero error). Seluruh kriteria Definition of Done (DoD) Sprint 2 untuk Developer 3 (Willy) terpenuhi 100%.
+- **Catatan untuk Rekan Tim:**
+  - *Frontend Sprint 2 Complete:* Seluruh 3 pilar fitur frontend Sprint 2 (Career Portal, SSE Trace Listener, dan Candidate Evidence Graph) telah siap di branch `feat/frontend-sprint2-` dan siap diuji / di-merge ke `main`.
+- **Rencana Selanjutnya (Sprint 3):**
+  - Pembuatan **What-If Policy Simulation Studio UI** dengan slider bobot interaktif ($S_{\text{comp}}, S_{\text{port}}, S_{\text{conf}}, S_{\text{risk}}$) dan re-ranking tabel real-time in-browser.
+  - Finalisasi modal dossier kandidat dengan tombol interaktif penjadwalan kalender wawancara atomik.
+

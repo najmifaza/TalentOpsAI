@@ -9,10 +9,11 @@ import {
   Eye,
   Github,
   Zap,
-  Info
+  Info,
+  Radio
 } from 'lucide-react';
 
-export default function CandidateTable({ candidates, onSelectCandidate }) {
+export default function CandidateTable({ candidates, onSelectCandidate, onStreamCandidate }) {
   const [search, setSearch] = useState('');
   const [filterRec, setFilterRec] = useState('ALL');
 
@@ -221,16 +222,30 @@ export default function CandidateTable({ candidates, onSelectCandidate }) {
 
                     {/* Action */}
                     <td className="py-4 px-4 text-right">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectCandidate(candidate);
-                        }}
-                        className="p-2 rounded-xl bg-[#EEF4F0] hover:bg-[#DAF1DE] hover:text-[#0B2B26] text-[#6C837C] transition-colors"
-                        title="Lihat Rincian Dossier"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onStreamCandidate) onStreamCandidate(candidate);
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#0B2B26] hover:bg-[#163832] text-white text-[11px] font-semibold transition-all shadow-sm group"
+                          title="Saksikan Live SSE Agent Stream"
+                        >
+                          <Radio className="w-3.5 h-3.5 text-[#8EB69B] group-hover:animate-pulse" />
+                          <span className="hidden xl:inline">Live SSE</span>
+                        </button>
+
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectCandidate(candidate);
+                          }}
+                          className="p-1.5 rounded-xl bg-[#EEF4F0] hover:bg-[#DAF1DE] hover:text-[#0B2B26] text-[#6C837C] transition-colors"
+                          title="Lihat Rincian Dossier"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

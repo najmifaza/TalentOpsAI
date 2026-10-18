@@ -78,20 +78,39 @@ export default function Sidebar({ activeTab, setActiveTab }) {
             Public Portal
           </div>
 
-          <a
-            href="#career-portal-preview"
-            onClick={(e) => {
-              e.preventDefault();
-              alert('Public Career Portal (/careers/apply) dijadwalkan pada Sprint 2!');
-            }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent transition-all group"
+          <button
+            onClick={() => setActiveTab('careers-apply')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+              activeTab === 'careers-apply'
+                ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
+                : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <Briefcase className="w-4 h-4 text-[#8EB69B]" />
+              <Briefcase className={`w-4 h-4 transition-colors ${activeTab === 'careers-apply' ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
               <span className="tracking-tight">Career Apply Portal</span>
             </div>
-            <ExternalLink className="w-3.5 h-3.5 text-[#8EB69B]/60 group-hover:text-white" />
-          </a>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
+              Sprint 2
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('careers-track')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+              activeTab === 'careers-track'
+                ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
+                : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <FileCheck2 className={`w-4 h-4 transition-colors ${activeTab === 'careers-track' ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
+              <span className="tracking-tight">Track Application</span>
+            </div>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
+              UUIDv4
+            </span>
+          </button>
         </div>
       </div>
 

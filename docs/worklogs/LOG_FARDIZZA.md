@@ -167,3 +167,22 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
   - Data empiris resmi untuk Bab 9 Proposal Lomba UINIC 8.0 dan proposal GTNIC 2026 sudah siap di `docs/BENCHMARK_EVALUATION_REPORT_SPRINT4.md`.
 - **Rencana Selanjutnya (Sprint 5):**
   - Production Hardening, fine-tuning token payload 9router, dan persiapan gladi resik live demo end-to-end.
+
+---
+
+### 2026-10-18 - Fardizza - Prompt Token Efficiency Fine-Tuning (Sprint 5 Task 1)
+- **Komponen / File:**
+  - `backend/app/core/prompt.py`
+  - `backend/tests/test_prompt_token_efficiency.py`
+  - `docs/worklogs/LOG_FARDIZZA.md`
+- **Yang Dikerjakan:**
+  - **1. Fine-tuning Prompt Payload untuk Efisiensi Biaya & Latensi (PRD Bab 4.3):**
+    - Mengompresi instruksi system prompt dan skema ekstraksi user prompt, memangkas overhead karakter dari 3.874 karakter (~968 token) menjadi 1.936 karakter (~484 token), setara dengan **reduksi token overhead sebesar 50.0%**.
+    - Mempertahankan integritas seluruh guardrail inti tanpa kompromi: Delimiter defense `<candidate_resume_untrusted>`, strict anti-bias nama kampus/akreditasi, verbatim substring guard, deteksi anomali (career break > 12 bln, overlap > 3 bln, title inflation), dan penegakan output format JSON murni.
+  - **2. Penyiapan Test Suite Token Efficiency (`test_prompt_token_efficiency.py`):**
+    - Menguji batas overhead prompt ($\le 600\text{ token}$).
+    - Menguji integritas kata kunci seluruh guardrails dan cleaner response JSON.
+    - Menguji total input token pada 25 berkas resume sintetis Golden Dataset, menghasilkan rata-rata **688.5 token** dan nilai maksimum **1.146 token** (jauh di bawah batas desain 3.500 token PRD Bab 4.3), menjamin estimasi COGS variabel tetap rendah di kisaran Rp 45–55 per berkas.
+- **Status & Verifikasi:** Selesai 100%. Test suite `test_prompt_token_efficiency.py` lulus 100%. Total test suite backend meningkat menjadi **49 test case lulus**.
+- **Rencana Selanjutnya (Sprint 5 Task 2):**
+  - Pengetesan skenario kegagalan koneksi LLM untuk memvalidasi sirkuit Bounded Self-Healing fallback dan safe offline pre-cached mode.

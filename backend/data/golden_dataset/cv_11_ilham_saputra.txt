@@ -1,0 +1,17 @@
+Ilham Saputra
+Email: ilham.saputra@email.com | Phone: +6281711223344
+Lokasi: Jakarta, Indonesia
+
+RINGKASAN PROFESIONAL
+Software Enthusiast menguasai puluhan teknologi modern.
+
+KEAHLIAN LENGKAP
+FastAPI, Docker, PostgreSQL, CI/CD, Redis, Python, Django, Flask, Kubernetes, Go, Rust, Java, Spring, React, Vue, Angular, Kafka, RabbitMQ, MongoDB, DynamoDB, AWS, GCP, Azure, Terraform, Linux, Git, Nginx, Elasticsearch, GraphQL, gRPC.
+
+PENGALAMAN KERJA
+1. General Developer - PT Serba Bisa
+   Januari 2023 - Sekarang (Full-time)
+   - Bekerja menggunakan FastAPI, Docker, PostgreSQL, CI/CD, dan Redis setiap hari di kantor.
+
+PENDIDIKAN
+S1 Ilmu Komputer (Lulus 2022)

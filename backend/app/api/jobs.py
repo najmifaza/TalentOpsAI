@@ -1,0 +1,263 @@
+import json
+import logging
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field, model_validator
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.core.scoring import DeterministicScoringEngine
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/jobs", tags=["Job Intelligence & Policy Simulation"])
+
+
+class WeightConfigSchema(BaseModel):
+    SKILL: float = Field(default=0.4, ge=0.0, le=1.0, description="Bobot dimensi Core Competencies Coverage")
+    EXPERIENCE: float = Field(default=0.3, ge=0.0, le=1.0, description="Bobot dimensi Kronologi Pengalaman Kerja")
+    EDUCATION: float = Field(default=0.1, ge=0.0, le=1.0, description="Bobot dimensi Linieritas Jenjang Pendidikan")
+    PORTFOLIO: float = Field(default=0.2, ge=0.0, le=1.0, description="Bobot dimensi Portofolio Repositori GitHub")
+
+    @model_validator(mode="after")
+    def validate_sum_equals_one(self) -> "WeightConfigSchema":
+        total = self.SKILL + self.EXPERIENCE + self.EDUCATION + self.PORTFOLIO
+        # Allow minor floating point rounding deviation
+        if not (0.99 <= total <= 1.01):
+            raise ValueError(f"Total bobot 4D harus sama dengan 1.0 (didapat: {total:.3f})")
+        return self
+
+
+class PolicySimulationRequest(BaseModel):
+    weights: WeightConfigSchema = Field(default_factory=WeightConfigSchema)
+    min_overall_score: float = Field(
+        default=75.0,
+        ge=0.0,
+        le=100.0,
+        description="Ambang batas dinamis STRONG_MATCH (default 75.0 menggantikan cut-off 85.0 PRD Bab 8.2)",
+    )
+
+
+@router.get("")
+async def list_jobs(db: AsyncSession = Depends(get_db)):
+    """Lists all active job openings with core competencies and baseline weights."""
+    res = await db.execute(
+        text("SELECT id, title, department, core_competencies, weight_config, status FROM job_descriptions WHERE status = 'active'")
+    )
+    rows = []
+    for r in res.mappings():
+        comp = r["core_competencies"]
+        if isinstance(comp, str):
+            try:
+                comp = json.loads(comp)
+            except Exception:
+                comp = []
+        w = r["weight_config"]
+        if isinstance(w, str):
+            try:
+                w = json.loads(w)
+            except Exception:
+                w = {}
+        rows.append({
+            "id": r["id"],
+            "title": r["title"],
+            "department": r["department"],
+            "core_competencies": comp,
+            "weight_config": w,
+            "status": r["status"],
+        })
+    return {"data": rows, "count": len(rows)}
+
+
+@router.get("/{job_id}")
+async def get_job_detail(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Retrieves specific job description and configuration."""
+    res = await db.execute(
+        text("SELECT * FROM job_descriptions WHERE id = :id"),
+        {"id": job_id},
+    )
+    job = res.mappings().first()
+    if not job:
+        raise HTTPException(status_code=404, detail="JOB_NOT_FOUND")
+
+    comp = job["core_competencies"]
+    if isinstance(comp, str):
+        try:
+            comp = json.loads(comp)
+        except Exception:
+            comp = []
+
+    w = job["weight_config"]
+    if isinstance(w, str):
+        try:
+            w = json.loads(w)
+        except Exception:
+            w = {}
+
+    return {
+        "id": job["id"],
+        "title": job["title"],
+        "department": job["department"],
+        "raw_text": job["raw_text"],
+        "core_competencies": comp,
+        "weight_config": w,
+        "status": job["status"],
+        "created_at": job["created_at"].isoformat() if job["created_at"] else None,
+    }
+
+
+@router.post("/{job_id}/simulate-policy")
+async def simulate_policy(
+    job_id: int,
+    payload: PolicySimulationRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    PRD Bab 8.2 (Item 11) & Bab 5.2:
+    In-Memory What-If Policy Simulation Studio (Zero LLM Re-call).
+    Re-scores candidate pool instantly using client-provided slider weights
+    and dynamic threshold `min_overall_score`.
+    """
+    # 1. Verify Job existence
+    job_res = await db.execute(
+        text("SELECT id, title, department, weight_config FROM job_descriptions WHERE id = :id"),
+        {"id": job_id},
+    )
+    job = job_res.mappings().first()
+    if not job:
+        raise HTTPException(status_code=404, detail="JOB_NOT_FOUND")
+
+    # 2. Fetch all candidates with evaluated dimension scores
+    cands_res = await db.execute(
+        text("""
+            SELECT id, masked_identifier, overall_score, dimension_scores,
+                   confidence_level, unresolved_risk, recommendation, triage_priority
+            FROM candidates
+            WHERE job_id = :job_id AND is_deleted = FALSE AND dimension_scores IS NOT NULL
+        """),
+        {"job_id": job_id},
+    )
+    cand_rows = list(cands_res.mappings().all())
+
+    # 3. Check for prompt injection / security quarantine anomalies
+    cand_ids = [c["id"] for c in cand_rows]
+    quarantined_ids = set()
+    if cand_ids:
+        # Check candidate_anomalies for HIGH severity prompt injection
+        anom_res = await db.execute(
+            text("SELECT candidate_id FROM candidate_anomalies WHERE candidate_id IN :ids AND anomaly_type IN ('PROMPT_INJECTION', 'HIDDEN_TEXT')"),
+            {"ids": tuple(cand_ids)},
+        )
+        for row in anom_res.fetchall():
+            quarantined_ids.add(row[0])
+
+    # 4. In-Memory Re-scoring & Re-ranking
+    w = payload.weights
+    new_weights = {
+        "SKILL": w.SKILL,
+        "EXPERIENCE": w.EXPERIENCE,
+        "EDUCATION": w.EDUCATION,
+        "PORTFOLIO": w.PORTFOLIO,
+    }
+
+    baseline_dist = {"STRONG_MATCH": 0, "REVIEW_REQUIRED": 0, "WEAK_FIT": 0}
+    simulated_dist = {"STRONG_MATCH": 0, "REVIEW_REQUIRED": 0, "WEAK_FIT": 0}
+
+    simulated_candidates: List[Dict[str, Any]] = []
+
+    for c in cand_rows:
+        dims = c["dimension_scores"]
+        if isinstance(dims, str):
+            try:
+                dims = json.loads(dims)
+            except Exception:
+                dims = {}
+
+        skill_s = float(dims.get("SKILL", 0.0))
+        exp_s = float(dims.get("EXPERIENCE", 0.0))
+        edu_s = float(dims.get("EDUCATION", 0.0))
+        port_s = float(dims.get("PORTFOLIO", 0.0))
+
+        # In-memory linear re-weighting
+        sim_overall = (
+            (skill_s * new_weights["SKILL"])
+            + (exp_s * new_weights["EXPERIENCE"])
+            + (edu_s * new_weights["EDUCATION"])
+            + (port_s * new_weights["PORTFOLIO"])
+        )
+        sim_overall = round(sim_overall, 2)
+
+        conf = c["confidence_level"] or "MEDIUM"
+        risk = c["unresolved_risk"] or "LOW"
+        is_quarantined = c["id"] in quarantined_ids
+
+        # Re-evaluate decision points with dynamic min_overall_score
+        sim_rec, sim_prio, rule = DeterministicScoringEngine.evaluate_decision_points(
+            overall_score=sim_overall,
+            confidence=conf,
+            risk=risk,
+            has_prompt_injection=is_quarantined,
+            cutoff_threshold=payload.min_overall_score,
+        )
+
+        base_rec = c["recommendation"] or "REVIEW_REQUIRED"
+        if base_rec in baseline_dist:
+            baseline_dist[base_rec] += 1
+        if sim_rec in simulated_dist:
+            simulated_dist[sim_rec] += 1
+
+        curr_overall = float(c["overall_score"]) if c["overall_score"] is not None else 0.0
+        delta = round(sim_overall - curr_overall, 2)
+
+        simulated_candidates.append({
+            "id": c["id"],
+            "masked_identifier": c["masked_identifier"],
+            "dimension_scores": {
+                "SKILL": skill_s,
+                "EXPERIENCE": exp_s,
+                "EDUCATION": edu_s,
+                "PORTFOLIO": port_s,
+            },
+            "baseline": {
+                "overall_score": curr_overall,
+                "recommendation": base_rec,
+                "triage_priority": c["triage_priority"],
+            },
+            "simulated": {
+                "overall_score": sim_overall,
+                "recommendation": sim_rec,
+                "triage_priority": sim_prio,
+                "rule_applied": rule,
+                "delta_score": delta,
+            },
+            "confidence_level": conf,
+            "unresolved_risk": risk,
+            "is_quarantined": is_quarantined,
+        })
+
+    # Sort simulated candidates by simulated_overall_score DESC
+    simulated_candidates.sort(key=lambda x: x["simulated"]["overall_score"], reverse=True)
+
+    distribution_delta = {
+        "STRONG_MATCH": simulated_dist["STRONG_MATCH"] - baseline_dist["STRONG_MATCH"],
+        "REVIEW_REQUIRED": simulated_dist["REVIEW_REQUIRED"] - baseline_dist["REVIEW_REQUIRED"],
+        "WEAK_FIT": simulated_dist["WEAK_FIT"] - baseline_dist["WEAK_FIT"],
+    }
+
+    return {
+        "job_id": job["id"],
+        "job_title": job["title"],
+        "department": job["department"],
+        "simulation_parameters": {
+            "weights": new_weights,
+            "min_overall_score": payload.min_overall_score,
+        },
+        "summary": {
+            "total_evaluated_candidates": len(simulated_candidates),
+            "baseline_distribution": baseline_dist,
+            "simulated_distribution": simulated_dist,
+            "distribution_delta": distribution_delta,
+        },
+        "ranking": simulated_candidates,
+    }

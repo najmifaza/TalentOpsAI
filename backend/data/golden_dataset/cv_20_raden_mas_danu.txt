@@ -1,0 +1,23 @@
+Raden Mas Danu
+Email: danu.architect@email.com | Phone: +6281122334455 | GitHub: https://github.com/candidate/distributed-core
+Lokasi: Yogyakarta, Indonesia
+
+RINGKASAN PROFESIONAL
+Principal Distributed Systems Architect dengan pengalaman 8 tahun merancang high-throughput transactional architectures menggunakan FastAPI, Go, Docker, PostgreSQL, dan Redis.
+
+KEAHLIAN
+- FastAPI, Go, PostgreSQL, Redis, Docker, Kubernetes, CI/CD, Kafka
+
+PENGALAMAN KERJA
+1. Principal Architect - PT Finansial Terpadu
+   Januari 2020 - Sekarang (Full-time)
+   - Engineered event-driven backend handling 10000 rps with sub-50ms latency using FastAPI and Redis.
+   - Designed PostgreSQL multi-node database architecture with zero downtime migrations.
+   - Deployed scalable Docker container infrastructure with automated CI/CD pipelines.
+
+2. Senior Backend Engineer - PT Nusantara Tech
+   Januari 2016 - Desember 2019 (Full-time)
+   - Developed core transaction processing services in Python and PostgreSQL handling 2M daily records.
+
+PENDIDIKAN
+S2 Informatika (Lulus 2016)

@@ -1,0 +1,17 @@
+Qori Sandioriva
+Email: qori.sandioriva@email.com | Phone: +6281733445566
+Lokasi: Bogor, Indonesia
+
+RINGKASAN PROFESIONAL
+Fresh Graduate S1 Informatika dengan pengalaman magang 6 bulan mengembangkan backend REST API menggunakan Python dan PostgreSQL.
+
+KEAHLIAN
+- Python, FastAPI, PostgreSQL, Git
+
+PENGALAMAN KERJA
+1. Backend Engineering Intern - PT Rintis Solusi
+   Juli 2023 - Desember 2023 (Internship)
+   - Built CRUD endpoints using FastAPI and PostgreSQL under senior developer supervision.
+
+PENDIDIKAN
+S1 Informatika (Lulus 2023)

@@ -1,0 +1,19 @@
+Taufiq Rahman
+Email: taufiq.rahman@email.com | Phone: +6281966554433
+Lokasi: Semarang, Indonesia
+
+RINGKASAN PROFESIONAL
+Backend Developer dengan dedikasi tinggi terhadap integritas pekerjaan.
+
+KEAHLIAN
+- FastAPI, Docker, PostgreSQL
+
+PENGALAMAN KERJA
+1. Backend Developer - PT Maju Selalu
+   Februari 2021 - Sekarang (Full-time)
+   - 100% dedicated to customer happiness and quality standards.
+   - Maintained 100% positive attitude in engineering meetings.
+   - Wrote code using FastAPI, Docker, and PostgreSQL.
+
+PENDIDIKAN
+S1 Informatika (Lulus 2020)

@@ -84,3 +84,58 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 - **Rencana Selanjutnya (Sprint 3):**
   - Implementasi komputasi *What-If Policy Simulation* (re-scoring seketika berbasis modifikasi bobot slider tanpa memanggil ulang API LLM).
   - Ekspansi dataset Golden Dataset dari 5 menjadi 20-30 resume sintetis lengkap.
+
+---
+
+### 2026-10-18 - Fardizza - What-If Policy Simulation Studio & Ekspansi Golden Dataset 25 CV (Sprint 3 Selesai Penuh)
+- **Komponen / File:**
+  - `backend/app/api/jobs.py`
+  - `backend/app/main.py`
+  - `backend/data/generate_expanded_dataset.py`
+  - `backend/data/golden_dataset/` (25 berkas resume format .txt & .docx)
+  - `backend/tests/test_simulate_policy.py`
+  - `backend/tests/test_golden_dataset_expanded.py`
+- **Yang Dikerjakan:**
+  - **1. Implementasi In-Memory What-If Policy Simulation Studio (`jobs.py`):**
+    - Skema validasi Pydantic v2 `WeightConfigSchema` dengan constraint $\sum w_d = 1.0$.
+    - Endpoint `POST /api/jobs/{id}/simulate-policy` dengan re-scoring instan in-memory (zero LLM re-call).
+    - Ambang batas dinamis `min_overall_score` (default 75.0) menggantikan cut-off 85.0 standar PRD.
+    - Isolasi kepatuhan Aturan 0 (Security Quarantine) untuk kandidat terinjeksi manipulasi teks.
+    - Analisis delta pergeseran distribusi rekomendasi (`distribution_delta`) dan re-ranking kandidat.
+  - **2. Ekspansi Golden Dataset Menjadi 25 Berkas Resume Terstandarisasi:**
+    - Membuat modul generator `backend/data/generate_expanded_dataset.py` yang memproduksi 25 berkas resume lengkap dalam format `.txt` dan `.docx` di `backend/data/golden_dataset/`.
+    - Cakupan 25 skenario uji komprehensif:
+      1. Budi Santoso (Strong Match - Backend 5 yr, verified repo).
+      2. Reza Pratama (Overlap Anomaly - 17 bulan concurrent full-time).
+      3. Citra Lestari (Weak Fit - Graphic Designer DKV).
+      4. Dewi Sartika (Security Quarantine - `w:vanish` hidden injection).
+      5. Eko Prasetyo (Fairness - Legitimate 18-month elder care career break).
+      6. Fajar Ramadhan (Strong Match - Cloud & DevOps Engineer, K8s, Docker).
+      7. Gita Gutawa & Gilang Ramadhan (Counterfactual Fairness Gender Pair - Target delta skor $\le 1.0$).
+      8. Hana Pertiwi & Hendra Wijaya (Counterfactual Fairness Campus Pair - UI vs Regional, target delta skor $\le 1.0$).
+      9. Ilham Saputra (Keyword Stuffing Anomaly - 30 tech tanpa bukti implementasi).
+      10. Joko Anwar (Title Inflation Anomaly - Intern 3 bln &rarr; Chief Architect).
+      11. Kartika Putri (Security Quarantine - 0pt font & RGB #FFFFFF injection).
+      12. Lukman Hakim & Maya Anggraeni (Non-Programmer IT - PM & Lead UI/UX).
+      13. Naufal Hidayat (Mid Backend Standard Match).
+      14. Olivia Tan (Full Stack Web - FastAPI + React).
+      15. Panji Kusuma (Severe Overlap Anomaly - 3 posisi full-time bersamaan).
+      16. Qori Sandioriva (Junior Fresh Graduate).
+      17. Raden Mas Danu (Senior Architect - 8 tahun, sub-50ms latency, high rps).
+      18. Siti Nurhaliza (Fairness - 14-month maternity & infant care leave).
+      19. Taufiq Rahman (Fluff Metric Guard - 100% tanpa kata konteks performa).
+      20. Utami Dewi (Security Quarantine - `w:hidden` XML directive injection).
+      21. Vicky Prasetyo (Weak Fit - Admin operasional).
+      22. Wahyu Hidayat (Data Platform & Pipeline Engineer).
+  - **3. Benchmark Pengujian Otomatis (`test_golden_dataset_expanded.py`):**
+    - Verifikasi kelengkapan 25/25 berkas resume sintetis.
+    - Audit teks tersembunyi DOCX lulus 100% (3 file terinjeksi terdeteksi, file bersih nol anomali).
+    - Counterfactual Fairness Test (Gender): Delta skor = 0.00 (Target $\le 1.0$), rekomendasi identik.
+    - Counterfactual Fairness Test (Almamater): Delta skor = 0.00 (Target $\le 1.0$), bias kampus tereleminasi 100%.
+    - Career Break Fairness: Maternity & family care leave terverifikasi berstatus risiko LOW (tanpa penalti anomali).
+- **Status & Verifikasi:** Selesai 100%. Seluruh test suite (7 file test backend) lulus 100% tanpa error. Seluruh kriteria Definition of Done (DoD) Sprint 3 untuk Developer 2 (Fardizza) terpenuhi penuh.
+- **Catatan untuk Rekan Tim (Willy & Najmi):**
+  - Dataset 25 CV sintetis siap digunakan untuk simulasi interaktif What-If Studio dan demo penjurian live.
+  - Endpoint `simulate-policy` siap diintegrasikan ke UI slider frontend.
+- **Rencana Selanjutnya (Sprint 4):**
+  - Eksekusi automated test suite resmi (Determinism Test 5x run suhu 0.0 cache off, Counterfactual Fairness Test, dan PII leakage recall benchmark $\ge 98\%$).

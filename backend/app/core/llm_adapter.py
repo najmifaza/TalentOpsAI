@@ -14,6 +14,17 @@ logger = logging.getLogger(__name__)
 # ponytail: In-memory dictionary cache for demo files. Upgrade to Redis Cluster for distributed enterprise.
 PRE_CACHED_STORE: dict[str, dict[str, Any]] = {}
 
+# Auto-load pre-cached fixtures for safe offline demo mode (PRD Bab 5.1)
+_FIXTURES_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "data", "golden_dataset", "pre_cached_fixtures.json")
+)
+if os.path.exists(_FIXTURES_PATH):
+    try:
+        with open(_FIXTURES_PATH, "r", encoding="utf-8") as _f:
+            PRE_CACHED_STORE.update(json.load(_f))
+    except Exception as _exc:
+        logger.warning("Could not auto-load pre-cached fixtures from %s: %s", _FIXTURES_PATH, _exc)
+
 
 def compute_file_hash(content: str | bytes) -> str:
     """SHA-256 hash for deterministic file cache identification."""

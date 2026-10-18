@@ -1,0 +1,25 @@
+Panji Kusuma
+Email: panji.kusuma@email.com | Phone: +6281599887766
+Lokasi: Surabaya, Indonesia
+
+RINGKASAN PROFESIONAL
+Senior Backend Engineer and Cloud Consultant.
+
+KEAHLIAN
+- FastAPI, Docker, PostgreSQL, Go, Redis
+
+PENGALAMAN KERJA
+1. Full-time Senior Backend Engineer - PT Utama Digital
+   Januari 2021 - Sekarang (Full-time)
+   - Architected microservices with FastAPI and PostgreSQL.
+
+2. Full-time Lead Infrastructure - PT Global Server
+   Juni 2021 - Desember 2023 (Full-time)
+   - Managed Docker container clusters and Redis caches.
+
+3. Full-time Software Consultant - PT Awan Mandiri
+   Maret 2022 - November 2023 (Full-time)
+   - Delivered distributed systems architecture.
+
+PENDIDIKAN
+S1 Teknik Komputer (Lulus 2019)

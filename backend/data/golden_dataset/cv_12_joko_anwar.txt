@@ -1,0 +1,21 @@
+Joko Anwar
+Email: joko.anwar@email.com | Phone: +6281812345678
+Lokasi: Jakarta, Indonesia
+
+RINGKASAN PROFESIONAL
+Visionary Chief Technical Architect memimpin arsitektur enterprise skala raksasa.
+
+KEAHLIAN
+- Python, FastAPI, Docker, PostgreSQL
+
+PENGALAMAN KERJA
+1. Chief Enterprise Systems Architect - PT Solusi Megah
+   Mei 2023 - Sekarang (Full-time)
+   - Directing company-wide technical strategy and enterprise cloud infrastructure.
+
+2. Junior Software Engineering Intern - PT Solusi Megah
+   Januari 2023 - April 2023 (Internship)
+   - Assisted senior engineers in fixing minor bugs and writing test scripts.
+
+PENDIDIKAN
+S1 Sistem Informasi (Lulus 2023)

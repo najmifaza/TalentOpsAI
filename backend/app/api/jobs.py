@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, model_validator
@@ -260,4 +261,111 @@ async def simulate_policy(
             "distribution_delta": distribution_delta,
         },
         "ranking": simulated_candidates,
+    }
+
+
+class BiasAnalysisRequest(BaseModel):
+    custom_text: Optional[str] = Field(None, description="Teks kustom untuk analisis sebelum disimpan ke database")
+
+
+@router.post("/{job_id}/analyze-bias")
+async def analyze_job_bias(
+    job_id: int,
+    payload: Optional[BiasAnalysisRequest] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    PRD Bab 8.1 & Bab 8.2 (Item 9):
+    FR-1 Job Analyzer: Scans job description against gender-exclusive terms,
+    age discrimination, institutional prestige bias, and toxic workplace ambiguity.
+    Calculates Inclusivity Score and persists flagged ambiguities.
+    """
+    job_res = await db.execute(
+        text("SELECT id, title, department, raw_text, flagged_ambiguities FROM job_descriptions WHERE id = :id"),
+        {"id": job_id},
+    )
+    job = job_res.mappings().first()
+    if not job:
+        raise HTTPException(status_code=404, detail="JOB_NOT_FOUND")
+
+    text_to_analyze = (payload.custom_text if payload and payload.custom_text else job["raw_text"]) or ""
+
+    # Rule-based linguistic patterns for recruitment equity
+    bias_rules = [
+        # 1. Gender-Coded / Exclusive Language
+        {
+            "category": "GENDER_EXCLUSIVE_TERMS",
+            "severity": "HIGH",
+            "regex": r"(?i)\b(ninja|rockstar|hacker|guru|superhero|pria/wanita|diutamakan\s+(?:wanita|pria|laki-laki|perempuan)|berpenampilan\s+menarik|tampan|cantik)\b",
+            "suggestion": "Gunakan padanan netral berbasis kompetensi seperti 'Engineer', 'Specialist', atau 'Professional'. Hapus persyaratan penampilan/gender.",
+        },
+        # 2. Age Discrimination (UU Ketenagakerjaan & EEO Guidelines)
+        {
+            "category": "AGE_DISCRIMINATION",
+            "severity": "HIGH",
+            "regex": r"(?i)\b(?:usia|umur)\s*(?:maksimal|max|maks)\s*\d+|\b(?:maksimal|max)\s*(?:usia|umur)\s*\d+|\bfresh\s+graduate\s+usia\s+muda\b|\bmuda\s+dan\s+energik\b",
+            "suggestion": "Fokuskan pada capaian keterampilan dan penguasaan teknologi teknis, bukan batasan umur biologis.",
+        },
+        # 3. Socioeconomic & Institutional Prestige Bias
+        {
+            "category": "INSTITUTION_PRESTIGE_BIAS",
+            "severity": "MEDIUM",
+            "regex": r"(?i)\b(lulusan\s+ptn\s+ternama|universitas\s+terkemuka|top\s+(?:3|5|10)\s+kampus|hanya\s+ptn|ipk\s*(?:minimal|min|>=|>)\s*3\.[5-9]\d*)\b",
+            "suggestion": "Gantikan rujukan almamater elitis dengan asesmen portofolio objektif dan uji keterampilan terstandarisasi.",
+        },
+        # 4. Toxic Work Ambiguity
+        {
+            "category": "AMBIGUOUS_WORK_EXPECTATIONS",
+            "severity": "LOW",
+            "regex": r"(?i)\b(siap\s+kerja\s+24/7|tanpa\s+mengenal\s+waktu|tahan\s+banting\s+di\s+bawah\s+tekanan\s+ekstrem|bersedia\s+lembur\s+kapanpun)\b",
+            "suggestion": "Perjelas ekspektasi jam kerja, SLA tim, dan manajemen beban kerja yang berkelanjutan.",
+        },
+    ]
+
+    findings = []
+    penalty_points = 0
+
+    for rule in bias_rules:
+        matches = list(re.finditer(rule["regex"], text_to_analyze))
+        for m in matches:
+            matched_term = m.group(0)
+            start_pos = max(0, m.start() - 30)
+            end_pos = min(len(text_to_analyze), m.end() + 30)
+            snippet = f"...{text_to_analyze[start_pos:end_pos].strip()}..."
+
+            findings.append({
+                "category": rule["category"],
+                "severity": rule["severity"],
+                "matched_term": matched_term,
+                "context_snippet": snippet,
+                "actionable_suggestion": rule["suggestion"],
+            })
+
+            if rule["severity"] == "HIGH":
+                penalty_points += 15
+            elif rule["severity"] == "MEDIUM":
+                penalty_points += 8
+            else:
+                penalty_points += 4
+
+    inclusivity_score = max(0, 100 - penalty_points)
+    inclusivity_rating = "EXCELLENT" if inclusivity_score >= 90 else "GOOD" if inclusivity_score >= 75 else "NEEDS_REVISION"
+
+    # Persist audit result to database
+    findings_json = json.dumps(findings)
+    await db.execute(
+        text("UPDATE job_descriptions SET flagged_ambiguities = :flags WHERE id = :id"),
+        {"flags": findings_json, "id": job_id},
+    )
+    await db.commit()
+
+    return {
+        "status": "success",
+        "job_id": job_id,
+        "title": job["title"],
+        "inclusivity_score": inclusivity_score,
+        "inclusivity_rating": inclusivity_rating,
+        "total_bias_flags": len(findings),
+        "bias_findings": findings,
+        "compliance_notes": "Selaras asas nondiskriminasi Pasal 5 & 6 UU No. 13 Tahun 2003 tentang Ketenagakerjaan dan target SDG 8.5.",
     }

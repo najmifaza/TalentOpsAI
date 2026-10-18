@@ -12,32 +12,35 @@ from backend.app.core.config import settings
 
 
 def init_database():
-    sql_file = backend_dir / "migrations" / "001_initial_schema.sql"
-    if not sql_file.exists():
-        print(f"Error: SQL file not found at {sql_file}")
+    migrations_dir = backend_dir / "migrations"
+    sql_files = sorted(migrations_dir.glob("*.sql"))
+    if not sql_files:
+        print(f"Error: No SQL files found in {migrations_dir}")
         sys.exit(1)
 
     print(f"Connecting to database via: {settings.SYNC_DATABASE_URL}")
     engine = create_engine(settings.SYNC_DATABASE_URL, isolation_level="AUTOCOMMIT")
 
-    with open(sql_file, "r", encoding="utf-8") as f:
-        sql_content = f.read()
-
-    # Split by semicolon, filtering out empty statements and comments
-    raw_statements = sql_content.split(";")
-    executed = 0
-
+    total_executed = 0
     with engine.connect() as conn:
-        for stmt in raw_statements:
-            clean_stmt = stmt.strip()
-            # Remove leading comments
-            lines = [line for line in clean_stmt.splitlines() if not line.strip().startswith("--")]
-            clean_stmt = "\n".join(lines).strip()
-            if clean_stmt:
-                conn.execute(text(clean_stmt))
-                executed += 1
+        for sql_file in sql_files:
+            print(f"Executing migration: {sql_file.name}")
+            with open(sql_file, "r", encoding="utf-8") as f:
+                sql_content = f.read()
 
-    print(f"Successfully executed {executed} DDL statements. 12 tables initialized.")
+            raw_statements = sql_content.split(";")
+            file_executed = 0
+            for stmt in raw_statements:
+                clean_stmt = stmt.strip()
+                lines = [line for line in clean_stmt.splitlines() if not line.strip().startswith("--")]
+                clean_stmt = "\n".join(lines).strip()
+                if clean_stmt:
+                    conn.execute(text(clean_stmt))
+                    file_executed += 1
+            print(f"  -> {file_executed} statements executed from {sql_file.name}")
+            total_executed += file_executed
+
+    print(f"Successfully executed {total_executed} total DDL statements across {len(sql_files)} migrations.")
 
 
 if __name__ == "__main__":

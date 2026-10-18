@@ -1,14 +1,16 @@
 import asyncio
 import json
 import logging
-from typing import AsyncGenerator, Dict, Set
+import time
+import uuid
+from typing import AsyncGenerator, Dict, Set, Optional
 
 logger = logging.getLogger(__name__)
 
 class SSEBroadcaster:
     """
-    In-memory Server-Sent Events (SSE) broadcaster.
-    Dispatches agent execution events to connected client streams.
+    In-memory Server-Sent Events (SSE) broadcaster with single-use ticket store
+    compliant with PRD v2.5.2 Bab 8.2 (Endpoints 8 & 15).
     """
     def __init__(self):
         # candidate_id -> Set of asyncio.Queue
@@ -16,6 +18,45 @@ class SSEBroadcaster:
         # Stores recent trace buffer per candidate for immediate replay on client connect
         self._history: Dict[int, list] = {}
         self._lock = asyncio.Lock()
+        # Single-use tickets: ticket_id -> {"candidate_id": int, "expires_at": float}
+        self._tickets: Dict[str, dict] = {}
+        self._ticket_ttl_seconds = 60
+
+    async def issue_ticket(self, candidate_id: int) -> str:
+        """
+        Issues a single-use UUIDv4 ticket with TTL 60 seconds (PRD Bab 8.2 Endpoint 15).
+        """
+        ticket = str(uuid.uuid4())
+        now = time.time()
+        async with self._lock:
+            # Purge expired tickets opportunistically
+            expired_keys = [k for k, v in self._tickets.items() if v["expires_at"] < now]
+            for k in expired_keys:
+                del self._tickets[k]
+
+            self._tickets[ticket] = {
+                "candidate_id": candidate_id,
+                "expires_at": now + self._ticket_ttl_seconds,
+            }
+        return ticket
+
+    async def validate_and_burn_ticket(self, candidate_id: int, ticket: str) -> bool:
+        """
+        Validates single-use ticket and immediately burns it (burn-on-read).
+        """
+        now = time.time()
+        async with self._lock:
+            ticket_data = self._tickets.get(ticket)
+            if not ticket_data:
+                return False
+            if ticket_data["expires_at"] < now:
+                del self._tickets[ticket]
+                return False
+            if ticket_data["candidate_id"] != candidate_id:
+                return False
+            # Burn ticket on successful validation
+            del self._tickets[ticket]
+            return True
 
     async def subscribe(self, candidate_id: int) -> AsyncGenerator[dict, None]:
         queue = asyncio.Queue(maxsize=100)

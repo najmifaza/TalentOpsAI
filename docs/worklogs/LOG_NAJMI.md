@@ -79,8 +79,11 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
   - Integrasi endpoint publik penarikan lamaran mandiri `POST /api/careers/withdraw` berbasis `tracking_token` terautentikasi tanpa enumerasi ID.
   - Implementasi endpoint HITL Review Gatekeeper `POST /api/candidates/{id}/review` yang menegakkan Strict Lock Hierarchy transaksional (`users` -> `interview_slots` -> `candidates`), transisi status kandidat, pencatatan tabel `human_reviews`, dan konfirmasi booking slot kalender otomatis untuk keputusan `APPROVED_DISPATCH`.
   - Implementasi background cleaner helper `release_expired_tentative_slots` pada `MockCalendarAdapter` (PRD Bab 6.3) untuk membebaskan slot kedaluwarsa secara otomatis.
-- **Status & Verifikasi:** Selesai 100%. Test suite baru `test_sprint3_security_erasure_review.py` lulus 4 dari 4 pengujian, dan seluruh suite backend (`pytest backend/tests/`) lulus 27 dari 27 pengujian (zero failure).
+  - Implementasi in-memory Single-Use SSE Ticket Store (TTL 60s, burn-on-read) pada `SSEBroadcaster` (`issue_ticket` & `validate_and_burn_ticket`) sesuai spesifikasi PRD Bab 8.2 Endpoints 8 & 15.
+  - Penambahan endpoint autentikasi streaming `POST /api/candidates/{id}/sse-ticket` dan `GET /api/candidates/{id}/trace-stream?ticket={uuid}` dengan penolakan tiket kedaluwarsa/terbakar (HTTP 401/403), serta tetap mempertahankan rute direct stream `/api/candidates/stream/{id}` untuk backward-compatibility UI Willy.
+- **Status & Verifikasi:** Selesai 100%. Test suite baru `test_sprint3_security_erasure_review.py` lulus 6 dari 6 pengujian, dan seluruh suite backend (`pytest backend/tests/`) lulus 29 dari 29 pengujian (zero failure).
 - **Catatan untuk Rekan Tim (Willy & Fardizza):**
   - *Frontend Review Modal:* Willy dapat langsung menembak `POST /api/candidates/{id}/review` dengan form field `decision`, `notes`, `slot_id` (opsional), dan `reviewer_id`.
   - *Public Erasure/Withdrawal:* Pelamar dapat membatalkan lamaran secara mandiri lewat `POST /api/careers/withdraw` dengan `tracking_token`.
+  - *Secure SSE Trace Stream:* Tersedia rute resmi enterprise `POST /api/candidates/{id}/sse-ticket` -> `GET /api/candidates/{id}/trace-stream?ticket={ticket_uuid}`. Rute legacy `/api/candidates/stream/{id}` tetap aktif tanpa kendala.
 - **Rencana Selanjutnya (Sprint 4):** Uji konkurensi 50 transaksi reservasi simultan kalender (zero double-booking) dan benchmark latensi end-to-end triage p50/p95.

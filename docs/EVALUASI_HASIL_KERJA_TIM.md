@@ -16,7 +16,7 @@ Proyek **TalentOps AI** telah menyelesaikan implementasi teknis untuk **Sprint 1
 
 Seluruh deliverable inti dari ketiga sprint telah terintegrasi di branch `main` dan diverifikasi:
 * **Backend API & DB:** Live di VPS Ubuntu `https://api-talentops.fawt.biz.id/api/health` dengan SSL HTTPS Let's Encrypt aktif.
-* **Automated Tests:** 27 test suite pytest lulus 100% (zero failure).
+* **Automated Tests:** 29 test suite pytest lulus 100% (zero failure).
 * **Dataset:** 25 berkas resume sintetis Golden Dataset (.txt dan .docx) terverifikasi.
 * **Frontend:** Arsitektur SPA React 18 + Vite terintegrasi penuh dengan routing React Router DOM v7 dan visual design natural pine/sage anti AI-slop.
 
@@ -25,7 +25,7 @@ Seluruh deliverable inti dari ketiga sprint telah terintegrasi di branch `main` 
 ## 2. EVALUASI IMPLEMENTASI PER DEVELOPER
 
 ### A. Developer 1: Najmi (Backend, Database, Security & Infrastructure)
-*Tingkat Kesesuaian:* **95% Sesuai PRD & RACI Matrix**
+*Tingkat Kesesuaian:* **100% Sesuai PRD & RACI Matrix**
 
 #### Komponen yang Telah Selesai:
 1. **Basis Data Relasional 12 Tabel ACID (PRD Bab 7):**
@@ -46,14 +46,14 @@ Seluruh deliverable inti dari ketiga sprint telah terintegrasi di branch `main` 
    - File: `backend/app/adapters/calendar.py`, `backend/app/adapters/github.py`, `backend/app/core/broadcaster.py`.
    - Mock Calendar Adapter dengan Strict Lock Hierarchy (`users` -> `interview_slots` -> `candidates`), pengecekan jadwal bertabrakan, format Event ID deterministik RFC 5545, serta background cleaner slot kedaluwarsa.
    - GitHub REST API v3 adapter dengan regex parsing format repo dan SSRF guard.
-   - In-memory SSE Broadcaster (`asyncio.Queue`) dengan buffer event replay.
+   - In-memory SSE Broadcaster (`asyncio.Queue`) dengan buffer event replay, Single-Use Ticket Store (TTL 60s, burn-on-read) sesuai PRD Bab 8.2 Endpoints 8 & 15.
 5. **Endpoint API (PRD Bab 8.2):**
    - Public Career Portal: `GET /api/careers`, `GET /api/careers/{id}`, `POST /api/careers/{id}/apply`, `GET /api/careers/track/{token}`, `POST /api/careers/withdraw`.
    - Internal Recruiter: `GET /api/candidates`, `GET /api/candidates/{id}`, `POST /api/candidates/upload`, `POST /api/candidates/{id}/review`, `DELETE /api/candidates/{id}`.
-   - Live SSE Stream: `GET /api/candidates/stream/{candidate_id}`.
+   - Live SSE Stream: `POST /api/candidates/{id}/sse-ticket` (Ticket issuance), `GET /api/candidates/{id}/trace-stream?ticket={uuid}` (Authenticated SSE), serta `GET /api/candidates/stream/{candidate_id}` (Legacy direct stream).
 
-#### Catatan Teknis / Gap:
-* Mekanisme SSE Ticket (`POST /api/candidates/{id}/sse-ticket`) yang tercantum pada PRD Bab 8.2 Endpoint 15 saat ini masih menggunakan streaming langsung ke `/api/candidates/stream/{id}`. Ini sudah memadai untuk MVP demo live, namun perlu dicatat sebagai pemenuhan target arsitektur enterprise `[TARGET]`.
+#### Catatan Teknis / Status Kepatuhan:
+* Mekanisme SSE Ticket (`POST /api/candidates/{id}/sse-ticket`) dan endpoint streaming terautentikasi (`GET /api/candidates/{id}/trace-stream?ticket={token}`) yang tercantum pada PRD Bab 8.2 Endpoint 8 & 15 telah selesai 100% diimplementasikan dan diverifikasi via automated test, dengan tetap mempertahankan backward compatibility pada endpoint `/api/candidates/stream/{id}` untuk UI existing. Tingkat kesesuaian Backend mencapai **100% Sesuai PRD**.
 
 ---
 

@@ -129,3 +129,64 @@ async def test_calendar_expired_cleaner_task():
     freed = await mock_calendar_adapter.release_expired_tentative_slots(mock_db)
     assert freed == 2
     mock_db.execute.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_sse_ticket_issuance_and_validation():
+    """Verifies single-use ticket issuance (TTL 60s) and burn-on-read validation (PRD Bab 8.2)."""
+    from app.core.broadcaster import sse_broadcaster
+
+    candidate_id = 42
+
+    # 1. Issue ticket
+    ticket = await sse_broadcaster.issue_ticket(candidate_id=candidate_id)
+    assert isinstance(ticket, str) and len(ticket) > 10
+
+    # 2. Reject wrong candidate
+    assert await sse_broadcaster.validate_and_burn_ticket(candidate_id=99, ticket=ticket) is False
+
+    # 3. Successful validation burns ticket
+    assert await sse_broadcaster.validate_and_burn_ticket(candidate_id=candidate_id, ticket=ticket) is True
+
+    # 4. Immediate second attempt fails (single-use burned)
+    assert await sse_broadcaster.validate_and_burn_ticket(candidate_id=candidate_id, ticket=ticket) is False
+
+
+@pytest.mark.asyncio
+async def test_sse_ticket_endpoints():
+    """Verifies POST /api/candidates/{id}/sse-ticket and GET /{id}/trace-stream validation."""
+    from app.api.candidates import issue_sse_stream_ticket, trace_stream_agent_execution
+    from fastapi import HTTPException
+
+    mock_db = AsyncMock()
+    cand_row = {"id": 10, "is_deleted": False}
+
+    async def mock_execute(statement, params=None):
+        sql = str(statement).upper()
+        if "FROM CANDIDATES" in sql:
+            return make_mappings(cand_row)
+        return MagicMock()
+
+    mock_db.execute = AsyncMock(side_effect=mock_execute)
+
+    # 1. Issue ticket endpoint
+    res = await issue_sse_stream_ticket(candidate_id=10, db=mock_db)
+    assert res["status"] == "success"
+    assert res["candidate_id"] == 10
+    ticket = res["ticket"]
+    assert ticket is not None
+
+    # 2. Trace stream without ticket raises 401
+    with pytest.raises(HTTPException) as exc_401:
+        await trace_stream_agent_execution(candidate_id=10, ticket=None)
+    assert exc_401.value.status_code == 401
+
+    # 3. Trace stream with valid ticket returns StreamingResponse
+    stream_res = await trace_stream_agent_execution(candidate_id=10, ticket=ticket)
+    assert stream_res.status_code == 200
+    assert stream_res.media_type == "text/event-stream"
+
+    # 4. Second attempt with burned ticket raises 403
+    with pytest.raises(HTTPException) as exc_403:
+        await trace_stream_agent_execution(candidate_id=10, ticket=ticket)
+    assert exc_403.value.status_code == 403

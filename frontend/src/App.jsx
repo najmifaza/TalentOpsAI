@@ -5,6 +5,7 @@ import Header from './components/Header';
 import DashboardOverview from './components/DashboardOverview';
 import CareerPortal from './components/CareerPortal';
 import EvidenceGraph from './components/EvidenceGraph';
+import WhatIfStudio from './components/WhatIfStudio';
 import PlaceholderView from './components/PlaceholderView';
 
 function DashboardLayout() {
@@ -42,7 +43,7 @@ function DashboardLayout() {
             <Route path="dashboard" element={<DashboardOverview />} />
             <Route path="evidence-graph" element={<EvidenceGraph />} />
             <Route path="evidence-graph/:candidateId" element={<EvidenceGraph />} />
-            <Route path="what-if" element={<PlaceholderView tabId="what-if" />} />
+            <Route path="what-if" element={<WhatIfStudio />} />
             <Route path="security-pdp" element={<PlaceholderView tabId="security-pdp" />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

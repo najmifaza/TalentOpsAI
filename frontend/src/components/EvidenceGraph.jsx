@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
   MiniMap,
@@ -332,7 +333,26 @@ function generateGraphElements(candidate) {
 }
 
 export default function EvidenceGraph() {
-  const [selectedCandidateId, setSelectedCandidateId] = useState(MOCK_CANDIDATES[0].id);
+  const { candidateId } = useParams();
+  const navigate = useNavigate();
+
+  // Find candidate by ID or Masked Identifier from URL if provided
+  const candidateFromUrl = useMemo(() => {
+    if (!candidateId) return null;
+    return MOCK_CANDIDATES.find(c => String(c.id) === String(candidateId) || c.masked_identifier === candidateId);
+  }, [candidateId]);
+
+  const [selectedCandidateId, setSelectedCandidateId] = useState(
+    candidateFromUrl ? candidateFromUrl.id : MOCK_CANDIDATES[0].id
+  );
+
+  // Sync state when URL parameter changes
+  useEffect(() => {
+    if (candidateFromUrl) {
+      setSelectedCandidateId(candidateFromUrl.id);
+    }
+  }, [candidateFromUrl]);
+
   const activeCandidate = MOCK_CANDIDATES.find(c => c.id === selectedCandidateId) || MOCK_CANDIDATES[0];
 
   const graphElements = useMemo(() => {
@@ -343,10 +363,15 @@ export default function EvidenceGraph() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(graphElements.edges);
 
   // Update nodes when candidate changes
-  React.useEffect(() => {
+  useEffect(() => {
     setNodes(graphElements.nodes);
     setEdges(graphElements.edges);
   }, [graphElements, setNodes, setEdges]);
+
+  const handleSelectCandidate = (cand) => {
+    setSelectedCandidateId(cand.id);
+    navigate(`/evidence-graph/${cand.id}`);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in select-none">
@@ -377,7 +402,7 @@ export default function EvidenceGraph() {
             return (
               <button
                 key={cand.id}
-                onClick={() => setSelectedCandidateId(cand.id)}
+                onClick={() => handleSelectCandidate(cand)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all flex items-center gap-2 ${
                   isSelected
                     ? 'bg-[#0B2B26] text-white shadow-md ring-2 ring-[#8EB69B]'

@@ -1,23 +1,20 @@
 import React from 'react';
+import { NavLink, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   GitBranch, 
   Sliders, 
   ShieldAlert, 
-  ExternalLink, 
   Briefcase, 
-  Sparkles,
-  Users,
-  Compass,
   FileCheck2
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab }) {
+export default function Sidebar() {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard & Triage', icon: LayoutDashboard, badge: '5 Antrean' },
-    { id: 'evidence-graph', label: 'Evidence Graph (React Flow)', icon: GitBranch, badge: 'Sprint 2-3' },
-    { id: 'what-if', label: 'What-If Simulation Studio', icon: Sliders, badge: 'Sprint 3' },
-    { id: 'security-pdp', label: 'UU PDP & Erasure Guard', icon: ShieldAlert, badge: 'AES-256' },
+    { path: '/dashboard', label: 'Dashboard & Triage', icon: LayoutDashboard, badge: '5 Antrean' },
+    { path: '/evidence-graph', label: 'Evidence Graph (React Flow)', icon: GitBranch, badge: 'Sprint 2-3' },
+    { path: '/what-if', label: 'What-If Simulation Studio', icon: Sliders, badge: 'Sprint 3' },
+    { path: '/security-pdp', label: 'UU PDP & Erasure Guard', icon: ShieldAlert, badge: 'AES-256' },
   ];
 
   return (
@@ -25,7 +22,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
       {/* Top Section */}
       <div>
         {/* Brand Header */}
-        <div className="p-6 pb-5 flex items-center gap-3">
+        <Link to="/dashboard" className="p-6 pb-5 flex items-center gap-3 hover:opacity-95 transition-opacity">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#8EB69B] to-[#235347] flex items-center justify-center shadow-md text-[#051F20] font-extrabold text-base">
             <svg className="w-5 h-5 text-[#051F20]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
@@ -38,7 +35,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
             </div>
             <p className="text-[10px] text-[#8EB69B]/70 tracking-wide font-medium">Recruitment Platform</p>
           </div>
-        </div>
+        </Link>
 
         {/* Navigation Menu */}
         <div className="px-4 py-3 space-y-1">
@@ -48,29 +45,34 @@ export default function Sidebar({ activeTab, setActiveTab }) {
 
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeTab === item.id;
             return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 group ${
-                  isActive
-                    ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
-                    : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
-                }`}
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 group ${
+                    isActive
+                      ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
+                      : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
+                  }`
+                }
               >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
-                  <span className="tracking-tight">{item.label}</span>
-                </div>
-                {item.badge && (
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${
-                    isActive ? 'bg-[#8EB69B]/20 text-[#DAF1DE] border border-[#8EB69B]/30' : 'bg-[#051F20]/60 text-[#8EB69B]/80'
-                  }`}>
-                    {item.badge}
-                  </span>
+                {({ isActive }) => (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
+                      <span className="tracking-tight">{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${
+                        isActive ? 'bg-[#8EB69B]/20 text-[#DAF1DE] border border-[#8EB69B]/30' : 'bg-[#051F20]/60 text-[#8EB69B]/80'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </>
                 )}
-              </button>
+              </NavLink>
             );
           })}
 
@@ -78,39 +80,51 @@ export default function Sidebar({ activeTab, setActiveTab }) {
             Public Portal
           </div>
 
-          <button
-            onClick={() => setActiveTab('careers-apply')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
-              activeTab === 'careers-apply'
-                ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
-                : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
-            }`}
+          <NavLink
+            to="/careers/apply"
+            className={({ isActive }) =>
+              `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+                isActive
+                  ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
+                  : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
+              }`
+            }
           >
-            <div className="flex items-center gap-3">
-              <Briefcase className={`w-4 h-4 transition-colors ${activeTab === 'careers-apply' ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
-              <span className="tracking-tight">Career Apply Portal</span>
-            </div>
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
-              Sprint 2
-            </span>
-          </button>
+            {({ isActive }) => (
+              <>
+                <div className="flex items-center gap-3">
+                  <Briefcase className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
+                  <span className="tracking-tight">Career Apply Portal</span>
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
+                  Sprint 2
+                </span>
+              </>
+            )}
+          </NavLink>
 
-          <button
-            onClick={() => setActiveTab('careers-track')}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
-              activeTab === 'careers-track'
-                ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
-                : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
-            }`}
+          <NavLink
+            to="/careers/track"
+            className={({ isActive }) =>
+              `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+                isActive
+                  ? 'bg-[#163832] text-white shadow-sm border border-[#235347]'
+                  : 'text-[#DAF1DE]/70 hover:text-white hover:bg-[#163832]/50 border border-transparent'
+              }`
+            }
           >
-            <div className="flex items-center gap-3">
-              <FileCheck2 className={`w-4 h-4 transition-colors ${activeTab === 'careers-track' ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
-              <span className="tracking-tight">Track Application</span>
-            </div>
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
-              UUIDv4
-            </span>
-          </button>
+            {({ isActive }) => (
+              <>
+                <div className="flex items-center gap-3">
+                  <FileCheck2 className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8EB69B]' : 'text-[#8EB69B]/70 group-hover:text-[#DAF1DE]'}`} />
+                  <span className="tracking-tight">Track Application</span>
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#8EB69B]/20 text-[#DAF1DE] font-semibold border border-[#8EB69B]/30">
+                  UUIDv4
+                </span>
+              </>
+            )}
+          </NavLink>
         </div>
       </div>
 

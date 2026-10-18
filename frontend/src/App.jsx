@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardOverview from './components/DashboardOverview';
@@ -6,45 +7,45 @@ import CareerPortal from './components/CareerPortal';
 import EvidenceGraph from './components/EvidenceGraph';
 import PlaceholderView from './components/PlaceholderView';
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+function DashboardLayout() {
+  const location = useLocation();
 
   const titles = {
-    'dashboard': 'Dashboard & Triage Queue',
-    'evidence-graph': 'Evidence Graph Explorer (React Flow)',
-    'what-if': 'What-If Simulation Studio',
-    'security-pdp': 'UU PDP No. 27/2022 Privacy Governance',
-    'careers-apply': 'Public Career Portal',
-    'careers-track': 'Public Application Tracker',
+    '/': 'Dashboard & Triage Queue',
+    '/dashboard': 'Dashboard & Triage Queue',
+    '/evidence-graph': 'Evidence Graph Explorer (React Flow)',
+    '/what-if': 'What-If Simulation Studio',
+    '/security-pdp': 'UU PDP No. 27/2022 Privacy Governance',
   };
 
-  // If user is accessing the Public Career Portal, render authentic full-screen public view
-  if (activeTab === 'careers-apply' || activeTab === 'careers-track') {
-    return (
-      <CareerPortal 
-        initialTab={activeTab === 'careers-track' ? 'track' : 'apply'}
-        onBackToDashboard={() => setActiveTab('dashboard')} 
-      />
-    );
-  }
+  const getTitle = () => {
+    if (location.pathname.startsWith('/evidence-graph')) {
+      return 'Evidence Graph Explorer (React Flow)';
+    }
+    return titles[location.pathname] || 'Dashboard & Triage Queue';
+  };
+
+  const currentTitle = getTitle();
 
   return (
     <div className="flex min-h-screen bg-[#EEF4F0] text-[#0B201B] font-sans antialiased selection:bg-[#8EB69B] selection:text-[#051F20]">
       {/* Sidebar Navigation (Forest Green #0B2B26) */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar />
 
       {/* Main Content Canvas (Soft Mint-Tinted Off-White #EEF4F0) */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Header currentTitle={titles[activeTab]} />
+        <Header currentTitle={currentTitle} />
 
         <main className="flex-1 px-8 py-6 max-w-7xl w-full mx-auto animate-fade-in">
-          {activeTab === 'dashboard' ? (
-            <DashboardOverview />
-          ) : activeTab === 'evidence-graph' ? (
-            <EvidenceGraph />
-          ) : (
-            <PlaceholderView tabId={activeTab} />
-          )}
+          <Routes>
+            <Route index element={<DashboardOverview />} />
+            <Route path="dashboard" element={<DashboardOverview />} />
+            <Route path="evidence-graph" element={<EvidenceGraph />} />
+            <Route path="evidence-graph/:candidateId" element={<EvidenceGraph />} />
+            <Route path="what-if" element={<PlaceholderView tabId="what-if" />} />
+            <Route path="security-pdp" element={<PlaceholderView tabId="security-pdp" />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </main>
 
         {/* Global Footer */}
@@ -62,3 +63,21 @@ export default function App() {
     </div>
   );
 }
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public Career Portal Routes (Full-screen view) */}
+        <Route path="/careers" element={<CareerPortal initialTab="apply" />} />
+        <Route path="/careers/apply" element={<CareerPortal initialTab="apply" />} />
+        <Route path="/careers/track" element={<CareerPortal initialTab="track" />} />
+        <Route path="/careers/track/:token" element={<CareerPortal initialTab="track" />} />
+
+        {/* Internal HR Dashboard Routes */}
+        <Route path="/*" element={<DashboardLayout />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+

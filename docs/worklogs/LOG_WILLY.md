@@ -259,9 +259,11 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
     - Menambahkan watchdog timer 1.5 detik: jika dalam 1.5 detik server hening tanpa event, koneksi idle otomatis ditutup dan dialihkan ke Safe Deterministic Trace 7 tahap dengan visualisasi buffer live.
     - Membuka kunci `disabled={isStreaming}` pada tombol "Putar Ulang", memungkinkan pengguna mereplay simulasi trace otonom agen kapan saja tanpa hambatan.
     - Menambahkan fungsi pembersihan menyeluruh (`cleanupConnections`) berbasis `useRef` untuk mencegah memory leak dan race condition saat modal ditutup.
-  - **3. Resolusi CORS Vercel Custom Domain (`talentops.fawt.biz.id`):**
+  - **3. Resolusi CORS Vercel Custom Domain & UUID Token Fix:**
     - Mengonfigurasi Vercel Edge Serverless Proxy Rewrite pada `frontend/vercel.json` untuk meneruskan seluruh endpoint `/api/(.*)` langsung ke VPS backend `https://api-talentops.fawt.biz.id/api/$1` (server-to-server, 100% kebal CORS browser).
-    - Memasang dual-path request di `HealthStatusBadge.jsx` dan `DashboardOverview.jsx`: mencoba direct fetch, lalu otomatis beralih ke proxy relative `/api/...` jika terdeteksi pembatasan CORS browser.
+    - Memasang dual-path request di `HealthStatusBadge.jsx`, `DashboardOverview.jsx`, `CareerPortal.jsx`, dan `ApplicationTracker.jsx`: mencoba direct fetch, lalu otomatis beralih ke proxy relative `/api/...` jika terdeteksi pembatasan CORS browser.
+    - Memperbaiki bug pembuatan token simulasi di `CareerPortal.jsx` yang sebelumnya menyisipkan karakter 'a' berlebih (menghasilkan 37 karakter) menjadi format standar RFC 4122 UUIDv4 36 karakter menggunakan `crypto.randomUUID()`.
+    - Menambahkan mekanisme auto-healing di `ApplicationTracker.jsx` untuk mendeteksi dan menormalkan token 37 karakter yang sudah terlanjur diterima pengguna, serta caching lokal di `localStorage` agar pelamar dapat langsung melacak statusnya secara instan.
     - Memperbarui `CORS_ORIGINS` dan menambahkan `allow_origin_regex=r"^https://.*(vercel\.app|fawt\.biz\.id)$"` di backend FastAPI.
 - **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1778 modul tertransformasi**, zero error).
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**

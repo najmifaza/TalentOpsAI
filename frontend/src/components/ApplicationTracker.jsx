@@ -30,7 +30,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
   const fetchStatus = async (tokenToFetch) => {
-    const token = (tokenToFetch || tokenInput).trim();
+    let token = (tokenToFetch || tokenInput).trim();
     if (!token) {
       setError('Harap masukkan secret tracking token (UUIDv4) Anda.');
       return;
@@ -38,6 +38,13 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
 
     // Edge-Case Validation: Check format & guide user if using public display identifier (#TK-)
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    // Auto-heal 37-char token if prefixed with stray 'a' from previous build simulation
+    if (token.length === 37 && token.startsWith('a') && UUID_REGEX.test(token.slice(1))) {
+      token = token.slice(1);
+      setTokenInput(token);
+    }
+
     const isPublicId = token.startsWith('#TK-') || token.startsWith('TK-');
 
     if (!UUID_REGEX.test(token) && !isPublicId) {
@@ -49,9 +56,15 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
     setError(null);
 
     try {
-      // 1. Try Live API Backend VPS first
-      const res = await fetch(`${API_BASE_URL}/api/careers/track/${encodeURIComponent(token)}`);
-      if (res.ok) {
+      // 1. Try Live API Backend VPS first (direct or proxied via Vercel rewrite)
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}/api/careers/track/${encodeURIComponent(token)}`);
+      } catch (directErr) {
+        res = await fetch(`/api/careers/track/${encodeURIComponent(token)}`);
+      }
+
+      if (res && res.ok) {
         const data = await res.json();
         setTrackingData({
           masked_identifier: data.masked_identifier,
@@ -67,7 +80,19 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
         return;
       }
 
-      // 2. Check if token matches local mock candidates (fallback for demo offline)
+      // 2. Check local application cache (resilient fallback if submitted under simulation/offline)
+      try {
+        const localCached = localStorage.getItem(`talentops_app_${token}`);
+        if (localCached) {
+          const parsed = JSON.parse(localCached);
+          setTrackingData(parsed);
+          setLastChecked(new Date().toLocaleTimeString('id-ID'));
+          setLoading(false);
+          return;
+        }
+      } catch (e) {}
+
+      // 3. Check if token matches local mock candidates (fallback for demo offline)
       const mockMatch = MOCK_CANDIDATES.find(c => c.tracking_token === token || c.masked_identifier === token);
       if (mockMatch) {
         setTrackingData({

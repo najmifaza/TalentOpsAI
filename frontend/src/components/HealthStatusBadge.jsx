@@ -15,10 +15,19 @@ export default function HealthStatusBadge() {
     setError(null);
     const start = performance.now();
     try {
-      const response = await fetch(`${apiBase}/api/health`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      });
+      let response;
+      try {
+        response = await fetch(`${apiBase}/api/health`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        });
+      } catch (directErr) {
+        // Fallback to relative endpoint proxied by Vercel rewrite
+        response = await fetch('/api/health', {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        });
+      }
       const end = performance.now();
       setLatency(Math.round(end - start));
 

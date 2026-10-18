@@ -2,6 +2,10 @@
   "version": 2,
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "https://api-talentops.fawt.biz.id/api/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -238,13 +238,17 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
-### 2026-10-18 - Willy - Alur Navigasi Bersih & Resiliensi Live SSE Trace Watchdog (UX Hardening)
+### 2026-10-18 - Willy - Alur Navigasi Bersih, Resiliensi Live SSE Trace Watchdog & Vercel Proxy CORS Fix (UX Hardening)
 - **Komponen / File:**
   - `frontend/src/App.jsx` (Eliminasi rute mati `/security-pdp` & placeholder)
   - `frontend/src/components/PlaceholderView.jsx` (Dihapus dari codebase)
   - `frontend/src/components/Sidebar.jsx` (Pembersihan label dev sprint & penyelarasan badge menu)
   - `frontend/src/components/Header.jsx` (Navigasi shortcut ke Portal Pelamar menggantikan alert)
   - `frontend/src/components/AgentTraceModal.jsx` (Watchdog timer SSE, perbaikan unmount leak, auto-fallback Safe Deterministic Trace)
+  - `frontend/vercel.json` (Proxy rewrite rule `/api/(.*)` &rarr; `https://api-talentops.fawt.biz.id/api/$1`)
+  - `frontend/src/components/HealthStatusBadge.jsx` (Dual-path direct + proxy fallback)
+  - `frontend/src/components/DashboardOverview.jsx` (Dual-path direct + proxy fallback)
+  - `backend/app/main.py`, `backend/app/core/config.py`, `backend/.env.example` (CORS whitelist `https://talentops.fawt.biz.id` & regex `*.fawt.biz.id`)
 - **Yang Dikerjakan:**
   - **1. Pembersihan Komponen Mati & Dead-End Route:**
     - Menghapus komponen `PlaceholderView.jsx` dan mencabut rute `/security-pdp` dari `App.jsx` yang sebelumnya menampilkan placeholder statis Sprint 1.
@@ -255,8 +259,12 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
     - Menambahkan watchdog timer 1.5 detik: jika dalam 1.5 detik server hening tanpa event, koneksi idle otomatis ditutup dan dialihkan ke Safe Deterministic Trace 7 tahap dengan visualisasi buffer live.
     - Membuka kunci `disabled={isStreaming}` pada tombol "Putar Ulang", memungkinkan pengguna mereplay simulasi trace otonom agen kapan saja tanpa hambatan.
     - Menambahkan fungsi pembersihan menyeluruh (`cleanupConnections`) berbasis `useRef` untuk mencegah memory leak dan race condition saat modal ditutup.
+  - **3. Resolusi CORS Vercel Custom Domain (`talentops.fawt.biz.id`):**
+    - Mengonfigurasi Vercel Edge Serverless Proxy Rewrite pada `frontend/vercel.json` untuk meneruskan seluruh endpoint `/api/(.*)` langsung ke VPS backend `https://api-talentops.fawt.biz.id/api/$1` (server-to-server, 100% kebal CORS browser).
+    - Memasang dual-path request di `HealthStatusBadge.jsx` dan `DashboardOverview.jsx`: mencoba direct fetch, lalu otomatis beralih ke proxy relative `/api/...` jika terdeteksi pembatasan CORS browser.
+    - Memperbarui `CORS_ORIGINS` dan menambahkan `allow_origin_regex=r"^https://.*(vercel\.app|fawt\.biz\.id)$"` di backend FastAPI.
 - **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (**1778 modul tertransformasi**, zero error).
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
-  - Alur antarmuka kini terfokus pada 2 alur nyata (Portal Pelamar dan Dashboard HR). Live Agent Trace dijamin anti-gantung dan siap didemonstrasikan di hadapan juri.
+  - Alur antarmuka kini terfokus pada 2 alur nyata (Portal Pelamar dan Dashboard HR). Live Agent Trace dijamin anti-gantung dan status koneksi API di domain kustom Vercel terbebas dari kendala CORS.
 
 

@@ -31,7 +31,12 @@ export default function DashboardOverview() {
   const fetchCandidates = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/candidates?limit=50`);
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}/api/candidates?limit=50`);
+      } catch (err) {
+        res = await fetch('/api/candidates?limit=50');
+      }
       if (res.ok) {
         const json = await res.json();
         if (json.data && json.data.length > 0) {

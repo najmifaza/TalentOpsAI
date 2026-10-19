@@ -290,7 +290,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
         <div className="px-6 py-4 border-b border-[#383a42] flex items-center justify-between bg-[#23252a]">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-[#1b55f5]/20 text-[#1b55f5]">
-              <Radio className={`w-5 h-5 ${isStreaming ? 'animate-pulse text-[#1b55f5]' : 'text-emerald-400'}`} />
+              <Radio className={`w-5 h-5 ${isStreaming ? 'animate-pulse text-[#1b55f5]' : 'text-[#8ec0ff]'}`} />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -301,7 +301,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
                   REAL-TIME SSE
                 </span>
                 {streamStatus === 'COMPLETED' && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#1b55f5]/20 text-[#8ec0ff] border border-[#1b55f5]/30">
                     Selesai &amp; Tersimpan
                   </span>
                 )}
@@ -362,7 +362,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
                       isCurrent
                         ? 'bg-white border-[#1b55f5] shadow-sm ring-2 ring-[#1b55f5]/20'
                         : isCompleted
-                        ? 'bg-white border-emerald-200 shadow-2xs'
+                        ? 'bg-white border-[#1b55f5]/30 shadow-2xs'
                         : 'bg-white/60 border-[#e6e6ea] opacity-60'
                     }`}
                   >
@@ -370,7 +370,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
                       <div className="flex items-start gap-2.5">
                         <div className="mt-0.5">
                           {isCompleted ? (
-                            <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                            <div className="w-5 h-5 rounded-full bg-[#eaf0ff] text-[#1b55f5] flex items-center justify-center">
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
                             </div>
                           ) : isCurrent ? (
@@ -423,7 +423,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${
                   streamStatus === 'STREAMING' ? 'bg-amber-400 animate-ping' : 
-                  streamStatus === 'COMPLETED' ? 'bg-emerald-400' : 'bg-rose-500'
+                  streamStatus === 'COMPLETED' ? 'bg-[#1b55f5]' : 'bg-rose-500'
                 }`} />
                 <span className="text-[10px] font-mono font-bold text-[#9a9aa8]">
                   {streamStatus}
@@ -463,7 +463,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
                       {evt.step}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-emerald-400 font-bold text-[10px]">{evt.status}</span>
+                      <span className="text-[#8ec0ff] font-bold text-[10px]">{evt.status}</span>
                       <span className="text-[#67677e] text-[10px]">{evt.time}</span>
                     </div>
                   </div>
@@ -476,8 +476,8 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
               ))}
 
               {streamStatus === 'COMPLETED' && (
-                <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 text-emerald-300 text-[11px] flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <div className="p-3 rounded-lg border border-[#1b55f5]/30 bg-[#1b55f5]/10 text-[#8ec0ff] text-[11px] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-[#1b55f5]" />
                   <span>Proses autonomous triage selesai secara deterministik. Hasil telah disinkronkan ke basis data.</span>
                 </div>
               )}

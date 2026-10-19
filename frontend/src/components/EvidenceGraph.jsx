@@ -40,27 +40,27 @@ import { MOCK_CANDIDATES } from '../data/mockCandidates';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
-// --- CUSTOM NODES ---
+// --- CUSTOM NODES (Grafana Labs Enterprise Theme) ---
 
 // 1. Candidate Root Node
 function CandidateNode({ data }) {
   return (
-    <div className="p-4 rounded-2xl bg-[#0B2B26] text-white border-2 border-[#8EB69B] shadow-xl w-64 select-none">
-      <Handle type="source" position={Position.Right} className="!bg-[#8EB69B] !w-3 !h-3" />
-      <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#163832]">
+    <div className="p-4 rounded-xl bg-[#1f2127] text-white border-2 border-[#1b55f5] shadow-xl w-64 select-none">
+      <Handle type="source" position={Position.Right} className="!bg-[#1b55f5] !w-3 !h-3" />
+      <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#2d3139]">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span className="text-[10px] font-mono font-bold uppercase text-[#8EB69B]">Kandidat Dossier</span>
+          <span className="text-[10px] font-mono font-bold uppercase text-[#8ec0ff]">Kandidat Dossier</span>
         </div>
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#163832] text-white font-mono font-bold">
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1b55f5] text-white font-mono font-bold">
           Skor: {data.score}
         </span>
       </div>
       <div className="mt-2.5">
         <h4 className="font-mono text-sm font-extrabold text-white">{data.maskedId}</h4>
-        <p className="text-[11px] text-[#DAF1DE] mt-0.5 font-medium">{data.jobTitle}</p>
-        <div className="mt-2 text-[10px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#163832] text-[#8EB69B]">
-          <ShieldCheck className="w-3 h-3 text-[#8EB69B]" />
+        <p className="text-[11px] text-[#9a9aa8] mt-0.5 font-medium">{data.jobTitle}</p>
+        <div className="mt-2 text-[10px] inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/10 text-[#8ec0ff] border border-white/10">
+          <ShieldCheck className="w-3 h-3 text-[#8ec0ff]" />
           <span>{data.recommendation}</span>
         </div>
       </div>
@@ -71,18 +71,18 @@ function CandidateNode({ data }) {
 // 2. Competency Claim Node
 function CompetencyNode({ data }) {
   return (
-    <div className="p-3.5 rounded-2xl bg-white border-2 border-[#C2E0C4] shadow-md w-60 select-none hover:border-[#235347] transition-all">
-      <Handle type="target" position={Position.Left} className="!bg-[#235347] !w-3 !h-3" />
-      <Handle type="source" position={Position.Right} className="!bg-[#8EB69B] !w-3 !h-3" />
-      <div className="flex items-center justify-between pb-1.5 border-b border-[#EEF4F0]">
-        <span className="text-[10px] font-bold uppercase text-[#235347] tracking-wider">Klaim Kompetensi</span>
-        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#EEF4F0] text-[#0B201B] font-bold">
+    <div className="p-3.5 rounded-xl bg-white border-2 border-[#e6e6ea] shadow-md w-60 select-none hover:border-[#1b55f5] transition-all">
+      <Handle type="target" position={Position.Left} className="!bg-[#1b55f5] !w-3 !h-3" />
+      <Handle type="source" position={Position.Right} className="!bg-[#8ec0ff] !w-3 !h-3" />
+      <div className="flex items-center justify-between pb-1.5 border-b border-[#f4f4f6]">
+        <span className="text-[10px] font-bold uppercase text-[#1b55f5] tracking-wider">Klaim Kompetensi</span>
+        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#eaf0ff] text-[#1b55f5] font-bold">
           {data.confidence}% Conf
         </span>
       </div>
       <div className="mt-2">
-        <h5 className="text-xs font-bold text-[#0B201B]">{data.skill}</h5>
-        <p className="text-[10px] text-[#6C837C] mt-0.5">{data.description}</p>
+        <h5 className="text-xs font-bold text-[#000000]">{data.skill}</h5>
+        <p className="text-[10px] text-[#67677e] mt-0.5">{data.description}</p>
       </div>
     </div>
   );
@@ -91,24 +91,24 @@ function CompetencyNode({ data }) {
 // 3. Resume Quote Grounding Evidence Node
 function EvidenceNode({ data }) {
   return (
-    <div className="p-3.5 rounded-2xl bg-[#EEF4F0] border-2 border-[#8EB69B] shadow-md w-64 select-none hover:border-[#0B2B26] transition-all">
-      <Handle type="target" position={Position.Left} className="!bg-[#8EB69B] !w-3 !h-3" />
-      <Handle type="source" position={Position.Right} className="!bg-[#235347] !w-3 !h-3" />
-      <div className="flex items-center justify-between pb-1.5 border-b border-[#C2E0C4]">
-        <div className="flex items-center gap-1 text-[10px] font-bold text-[#0B2B26]">
-          <Quote className="w-3 h-3 text-[#235347]" />
+    <div className="p-3.5 rounded-xl bg-white border-2 border-[#8ec0ff] shadow-md w-64 select-none hover:border-[#1b55f5] transition-all">
+      <Handle type="target" position={Position.Left} className="!bg-[#8ec0ff] !w-3 !h-3" />
+      <Handle type="source" position={Position.Right} className="!bg-[#1b55f5] !w-3 !h-3" />
+      <div className="flex items-center justify-between pb-1.5 border-b border-[#e6e6ea]">
+        <div className="flex items-center gap-1 text-[10px] font-bold text-[#000000]">
+          <Quote className="w-3 h-3 text-[#1b55f5]" />
           <span>Kutipan Asli CV</span>
         </div>
-        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#C2E0C4] text-[#0B2B26] font-semibold">
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#eaf0ff] text-[#1b55f5] font-semibold border border-blue-200">
           Grounded
         </span>
       </div>
-      <p className="mt-2 text-[11px] text-[#3D544E] italic leading-snug line-clamp-3">
+      <p className="mt-2 text-[11px] text-[#454554] italic leading-snug line-clamp-3">
         "{data.quote}"
       </p>
-      <div className="mt-2 pt-1 border-t border-[#C2E0C4]/60 flex items-center justify-between text-[9px] text-[#6C837C]">
+      <div className="mt-2 pt-1 border-t border-[#e6e6ea] flex items-center justify-between text-[9px] text-[#67677e]">
         <span>Grounding: Substring Matched</span>
-        <span className="text-emerald-700 font-bold">100% Valid</span>
+        <span className="text-emerald-600 font-bold">100% Valid</span>
       </div>
     </div>
   );
@@ -118,21 +118,20 @@ function EvidenceNode({ data }) {
 function GithubNode({ data }) {
   const isNA = data.status === 'NOT_APPLICABLE';
   const isFailed = data.status === 'FAILED_AUDIT' || data.status === 'SUSPICIOUS';
-  const isVerified = data.status === 'VERIFIED';
 
   return (
-    <div className={`p-4 rounded-2xl border-2 shadow-lg w-64 select-none transition-all ${
+    <div className={`p-4 rounded-xl border-2 shadow-lg w-64 select-none transition-all ${
       isNA 
-        ? 'bg-[#F3F4F6] border-[#D1D5DB] text-[#4B5563]' 
+        ? 'bg-[#f4f4f6] border-[#e6e6ea] text-[#67677e]' 
         : (isFailed 
             ? 'bg-rose-50 border-rose-300 text-rose-900' 
-            : 'bg-white border-[#235347] text-[#0B201B]')
+            : 'bg-white border-[#1b55f5] text-[#000000]')
     }`}>
-      <Handle type="target" position={Position.Left} className={`!w-3 !h-3 ${isNA ? '!bg-gray-400' : (isFailed ? '!bg-rose-500' : '!bg-[#235347]')}`} />
+      <Handle type="target" position={Position.Left} className={`!w-3 !h-3 ${isNA ? '!bg-gray-400' : (isFailed ? '!bg-rose-500' : '!bg-[#1b55f5]')}`} />
       
       <div className="flex items-center justify-between pb-2 border-b border-black/5">
         <div className="flex items-center gap-1.5">
-          <Github className={`w-4 h-4 ${isNA ? 'text-gray-500' : (isFailed ? 'text-rose-600' : 'text-[#0B2B26]')}`} />
+          <Github className={`w-4 h-4 ${isNA ? 'text-gray-500' : (isFailed ? 'text-rose-600' : 'text-[#1b55f5]')}`} />
           <span className="text-[10px] font-bold uppercase tracking-wider">Audit GitHub v3</span>
         </div>
         {isNA ? (
@@ -144,7 +143,7 @@ function GithubNode({ data }) {
             AUDIT_FAILED
           </span>
         ) : (
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#DAF1DE] text-[#0B2B26] font-mono font-bold border border-[#C2E0C4]">
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-mono font-bold border border-emerald-200">
             VERIFIED
           </span>
         )}
@@ -164,8 +163,8 @@ function GithubNode({ data }) {
           </div>
         ) : (
           <div className="space-y-1">
-            <p className="text-xs font-bold text-[#0B2B26] truncate">{data.repoName}</p>
-            <div className="flex items-center gap-2 text-[10px] text-[#6C837C]">
+            <p className="text-xs font-bold text-[#000000] truncate">{data.repoName}</p>
+            <div className="flex items-center gap-2 text-[10px] text-[#67677e]">
               <span>Bahasa: <strong>{data.language}</strong></span>
               <span>&bull;</span>
               <span>⭐ {data.stars} Stars</span>
@@ -175,7 +174,7 @@ function GithubNode({ data }) {
                 href={data.url} 
                 target="_blank" 
                 rel="noreferrer" 
-                className="text-[10px] text-[#235347] font-semibold flex items-center gap-1 hover:underline pt-0.5"
+                className="text-[10px] text-[#1b55f5] font-semibold flex items-center gap-1 hover:underline pt-0.5"
               >
                 <span>Buka Repositori</span>
                 <ExternalLink className="w-2.5 h-2.5" />
@@ -317,21 +316,21 @@ function generateGraphElements(candidate, liveEvidence = []) {
       source: 'root-candidate', 
       target: 'comp-1', 
       animated: true, 
-      style: { stroke: '#235347', strokeWidth: 2 } 
+      style: { stroke: '#1b55f5', strokeWidth: 2 } 
     },
     { 
       id: 'e-root-comp2', 
       source: 'root-candidate', 
       target: 'comp-2', 
       animated: true, 
-      style: { stroke: '#235347', strokeWidth: 2 } 
+      style: { stroke: '#1b55f5', strokeWidth: 2 } 
     },
     { 
       id: 'e-root-comp3', 
       source: 'root-candidate', 
       target: 'comp-3', 
       animated: true, 
-      style: { stroke: isSecurity ? '#E11D48' : '#235347', strokeWidth: isSecurity ? 3 : 2 } 
+      style: { stroke: isSecurity ? '#E11D48' : '#1b55f5', strokeWidth: isSecurity ? 3 : 2 } 
     },
 
     // Competencies to Evidence Quotes
@@ -339,20 +338,20 @@ function generateGraphElements(candidate, liveEvidence = []) {
       id: 'e-comp1-ev1', 
       source: 'comp-1', 
       target: 'ev-1', 
-      style: { stroke: '#8EB69B', strokeWidth: 2 } 
+      style: { stroke: '#8ec0ff', strokeWidth: 2 } 
     },
     { 
       id: 'e-comp2-ev2', 
       source: 'comp-2', 
       target: 'ev-2', 
-      style: { stroke: '#8EB69B', strokeWidth: 2 } 
+      style: { stroke: '#8ec0ff', strokeWidth: 2 } 
     },
     { 
       id: 'e-comp3-ev3', 
       source: 'comp-3', 
       target: 'ev-3', 
       animated: isSecurity,
-      style: { stroke: isSecurity ? '#E11D48' : '#8EB69B', strokeWidth: isSecurity ? 3 : 2 } 
+      style: { stroke: isSecurity ? '#E11D48' : '#8ec0ff', strokeWidth: isSecurity ? 3 : 2 } 
     },
 
     // Evidence to GitHub Repos
@@ -361,14 +360,14 @@ function generateGraphElements(candidate, liveEvidence = []) {
       source: 'ev-1', 
       target: 'git-1', 
       animated: !isNonIT && !isSecurity,
-      style: { stroke: isNonIT ? '#9CA3AF' : (isSecurity ? '#E11D48' : '#0B2B26'), strokeWidth: 2 } 
+      style: { stroke: isNonIT ? '#9CA3AF' : (isSecurity ? '#E11D48' : '#1b55f5'), strokeWidth: 2 } 
     },
     { 
       id: 'e-ev2-git2', 
       source: 'ev-2', 
       target: 'git-2', 
       animated: !isNonIT && !isSecurity,
-      style: { stroke: isNonIT ? '#9CA3AF' : (isSecurity ? '#E11D48' : '#0B2B26'), strokeWidth: 2 } 
+      style: { stroke: isNonIT ? '#9CA3AF' : (isSecurity ? '#E11D48' : '#1b55f5'), strokeWidth: 2 } 
     },
   ];
 
@@ -385,7 +384,7 @@ const GRAPH_LAYERS = [
 
 // Inner Canvas Component utilizing useReactFlow hook
 function EvidenceGraphInner({ candidate }) {
-  const { fitView, setCenter, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, setCenter } = useReactFlow();
   const [activeLayerIdx, setActiveLayerIdx] = useState(0);
   const [showLegendMobile, setShowLegendMobile] = useState(false);
   const [liveEvidence, setLiveEvidence] = useState([]);
@@ -422,7 +421,6 @@ function EvidenceGraphInner({ candidate }) {
   useEffect(() => {
     setNodes(graphElements.nodes);
     setEdges(graphElements.edges);
-    // Auto-fit on candidate change
     setTimeout(() => {
       fitView({ padding: 0.15, duration: 500 });
     }, 100);
@@ -453,11 +451,11 @@ function EvidenceGraphInner({ candidate }) {
 
   return (
     <div className="space-y-3">
-      {/* Layer Navigation Bar (Super Helpful on Mobile & Tablet to prevent truncation) */}
-      <div className="bg-[#EEF4F0] p-2.5 rounded-2xl border border-[#C2E0C4] flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
+      {/* Layer Navigation Bar */}
+      <div className="bg-white p-2.5 rounded-xl border border-[#e6e6ea] flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
-          <span className="text-[10px] font-bold text-[#6C837C] uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
-            <Layers className="w-3.5 h-3.5 text-[#235347]" />
+          <span className="text-[10px] font-bold text-[#67677e] uppercase tracking-wider shrink-0 flex items-center gap-1 mr-1">
+            <Layers className="w-3.5 h-3.5 text-[#1b55f5]" />
             Lompat Layer:
           </span>
           {GRAPH_LAYERS.map((layer, idx) => {
@@ -467,10 +465,10 @@ function EvidenceGraphInner({ candidate }) {
                 key={layer.id}
                 type="button"
                 onClick={() => jumpToLayer(idx)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all border ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all border ${
                   isActive
-                    ? 'bg-[#0B2B26] text-white border-[#0B2B26] shadow-sm'
-                    : 'bg-white hover:bg-[#DAF1DE] text-[#0B201B] border-[#E1EBE4]'
+                    ? 'bg-[#1b55f5] text-white border-[#1b55f5] shadow-xs'
+                    : 'bg-[#f4f4f6] hover:bg-white text-[#000000] border-[#e6e6ea]'
                 }`}
               >
                 {layer.label}
@@ -483,27 +481,18 @@ function EvidenceGraphInner({ candidate }) {
           <button
             type="button"
             onClick={handleFitAll}
-            className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#DAF1DE] text-[#0B201B] text-xs font-semibold border border-[#E1EBE4] transition-colors flex items-center gap-1.5 shadow-sm"
+            className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#f4f4f6] text-[#000000] text-xs font-semibold border border-[#e6e6ea] transition-colors flex items-center gap-1.5 shadow-2xs"
             title="Tampilkan Seluruh Graf di Layar"
           >
-            <Maximize2 className="w-3.5 h-3.5 text-[#235347]" />
+            <Maximize2 className="w-3.5 h-3.5 text-[#1b55f5]" />
             <span>Pusatkan Semua</span>
           </button>
         </div>
       </div>
 
-      {/* Main Canvas Container with Touch Guidance */}
-      <div className="clean-card p-2 shadow-lg border border-[#C2E0C4] overflow-hidden relative">
-        {/* Mobile & Tablet Touch Guidance Tip */}
-        <div className="px-3 py-1.5 bg-[#F6FAF7] border-b border-[#E1EBE4] text-[11px] text-[#6C837C] flex items-center justify-between lg:hidden">
-          <span className="flex items-center gap-1 font-medium">
-            <Move className="w-3.5 h-3.5 text-[#235347]" />
-            <span>Geser & zoom kanvas atau gunakan tombol navigasi layer di bawah</span>
-          </span>
-          <span className="font-mono text-[#0B2B26] font-bold">&bull; Touch Active</span>
-        </div>
-
-        <div className="w-full h-[520px] sm:h-[620px] rounded-2xl overflow-hidden bg-[#F8FAF9] relative">
+      {/* Main Canvas Container */}
+      <div className="clean-card p-2 shadow-sm border border-[#e6e6ea] overflow-hidden relative">
+        <div className="w-full h-[520px] sm:h-[620px] rounded-xl overflow-hidden bg-[#f4f4f6] relative">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -523,33 +512,33 @@ function EvidenceGraphInner({ candidate }) {
             elementsSelectable={true}
             attributionPosition="bottom-left"
           >
-            <Background color="#8EB69B" gap={20} size={1.2} />
-            <Controls className="!bg-white !border !border-[#E1EBE4] !shadow-md !rounded-xl overflow-hidden" />
+            <Background color="#d8d8df" gap={20} size={1.2} />
+            <Controls className="!bg-white !border !border-[#e6e6ea] !shadow-xs !rounded-lg overflow-hidden" />
             <MiniMap 
               nodeColor={(n) => {
-                if (n.type === 'candidate') return '#0B2B26';
-                if (n.type === 'competency') return '#235347';
-                if (n.type === 'evidence') return '#8EB69B';
-                return '#163832';
+                if (n.type === 'candidate') return '#1f2127';
+                if (n.type === 'competency') return '#1b55f5';
+                if (n.type === 'evidence') return '#8ec0ff';
+                return '#454554';
               }}
-              className="!bg-white/90 !border !border-[#E1EBE4] !rounded-xl !shadow-md hidden md:block"
+              className="!bg-white/95 !border !border-[#e6e6ea] !rounded-xl !shadow-xs hidden md:block"
             />
           </ReactFlow>
 
-          {/* Floating Mobile & Tablet Pan Controller (Prev / Next Buttons & Reset) */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-[#C2E0C4] shadow-xl lg:hidden max-w-[95%]">
+          {/* Floating Mobile Pan Controller */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 sm:gap-2 bg-white/95 backdrop-blur-md p-1.5 rounded-xl border border-[#e6e6ea] shadow-xl lg:hidden max-w-[95%]">
             <button
               type="button"
               onClick={handlePrevLayer}
               disabled={activeLayerIdx <= 0}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#EEF4F0] hover:bg-[#DAF1DE] disabled:opacity-30 text-[#0B201B] text-xs font-bold flex items-center gap-1 transition-colors shrink-0"
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#f4f4f6] hover:bg-white disabled:opacity-30 text-[#000000] text-xs font-bold flex items-center gap-1 transition-colors shrink-0"
               title="Geser ke Layer Sebelumnya"
             >
-              <ChevronLeft className="w-4 h-4 text-[#235347]" />
+              <ChevronLeft className="w-4 h-4 text-[#1b55f5]" />
               <span className="hidden xs:inline">Layer</span> Kiri
             </button>
 
-            <span className="text-[11px] font-mono font-bold text-[#0B2B26] px-1 shrink-0">
+            <span className="text-[11px] font-mono font-bold text-[#000000] px-1 shrink-0">
               {activeLayerIdx >= 0 ? `${activeLayerIdx + 1}/4` : 'All'}
             </span>
 
@@ -557,56 +546,44 @@ function EvidenceGraphInner({ candidate }) {
               type="button"
               onClick={handleNextLayer}
               disabled={activeLayerIdx >= GRAPH_LAYERS.length - 1}
-              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#0B2B26] hover:bg-[#163832] disabled:opacity-30 text-white text-xs font-bold flex items-center gap-1 transition-colors shadow-sm shrink-0"
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] disabled:opacity-30 text-white text-xs font-bold flex items-center gap-1 transition-colors shadow-xs shrink-0"
               title="Geser ke Layer Berikutnya"
             >
               <span className="hidden xs:inline">Layer</span> Kanan
-              <ChevronRight className="w-4 h-4 text-[#8EB69B]" />
+              <ChevronRight className="w-4 h-4 text-white" />
             </button>
 
             <button
               type="button"
               onClick={handleFitAll}
-              className="ml-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#DAF1DE] text-[#0B201B] text-xs font-bold border border-[#E1EBE4] transition-colors flex items-center gap-1 shrink-0"
+              className="ml-1 px-2.5 py-1.5 rounded-lg bg-white hover:bg-[#f4f4f6] text-[#000000] text-xs font-bold border border-[#e6e6ea] transition-colors flex items-center gap-1 shrink-0"
               title="Pusatkan Seluruh Graf"
             >
-              <Maximize2 className="w-3.5 h-3.5 text-[#235347]" />
+              <Maximize2 className="w-3.5 h-3.5 text-[#1b55f5]" />
               <span className="hidden sm:inline">Pusatkan</span>
             </button>
           </div>
 
-          {/* Mobile Legend Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setShowLegendMobile(prev => !prev)}
-            className="sm:hidden absolute top-3 left-3 z-10 px-2.5 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-[#E1EBE4] text-[11px] font-bold text-[#0B201B] shadow-sm flex items-center gap-1.5"
-          >
-            <Info className="w-3.5 h-3.5 text-[#235347]" />
-            <span>{showLegendMobile ? 'Tutup Legenda' : 'Lihat Legenda'}</span>
-          </button>
-
           {/* Canvas Floating Legend */}
-          <div className={`absolute top-12 sm:top-4 left-3 sm:left-4 z-10 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#E1EBE4] shadow-md text-xs space-y-2 select-none transition-all ${
-            showLegendMobile ? 'block animate-fade-in' : 'hidden sm:block'
-          }`}>
-            <span className="font-bold text-[10px] uppercase tracking-wider text-[#0B201B] block">
+          <div className="absolute top-4 left-4 z-10 bg-white/95 backdrop-blur-md p-3.5 rounded-xl border border-[#e6e6ea] shadow-sm text-xs space-y-2 select-none hidden sm:block">
+            <span className="font-bold text-[10px] uppercase tracking-wider text-[#000000] block">
               Legenda Alur Bukti Kredensial
             </span>
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-md bg-[#0B2B26] border border-[#8EB69B]"></span>
-              <span className="text-[#3D544E] text-[11px]">Kandidat Master Root</span>
+              <span className="w-3 h-3 rounded-md bg-[#1f2127] border border-[#1b55f5]"></span>
+              <span className="text-[#454554] text-[11px]">Kandidat Master Root</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-md bg-white border-2 border-[#C2E0C4]"></span>
-              <span className="text-[#3D544E] text-[11px]">Klaim Ekstraksi Pydantic v2</span>
+              <span className="w-3 h-3 rounded-md bg-white border-2 border-[#e6e6ea]"></span>
+              <span className="text-[#454554] text-[11px]">Klaim Ekstraksi Kompetensi</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-md bg-[#EEF4F0] border-2 border-[#8EB69B]"></span>
-              <span className="text-[#3D544E] text-[11px]">Kutipan Grounding Resume</span>
+              <span className="w-3 h-3 rounded-md bg-white border-2 border-[#8ec0ff]"></span>
+              <span className="text-[#454554] text-[11px]">Kutipan Grounding Resume</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-md bg-white border-2 border-[#235347]"></span>
-              <span className="text-[#3D544E] text-[11px]">Audit GitHub (Atau NOT_APPLICABLE)</span>
+              <span className="w-3 h-3 rounded-md bg-white border-2 border-[#1b55f5]"></span>
+              <span className="text-[#454554] text-[11px]">Audit GitHub (Atau NOT_APPLICABLE)</span>
             </div>
           </div>
         </div>
@@ -692,7 +669,7 @@ export default function EvidenceGraph() {
         </div>
       </div>
 
-      {/* Candidate Selector Bar (Responsive Horizontal Scroll) */}
+      {/* Candidate Selector Bar */}
       <div className="clean-card p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0 scrollbar-none">
           <span className="text-xs font-bold uppercase tracking-wider text-[#67677e] mr-1 shrink-0">
@@ -706,17 +683,17 @@ export default function EvidenceGraph() {
                 onClick={() => handleSelectCandidate(cand)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-2 shrink-0 ${
                   isSelected
-                    ? 'bg-[#1b55f5] text-white shadow-sm ring-2 ring-[#8ec0ff]'
-                    : 'bg-white hover:bg-[#f4f4f6] text-[#000000] border border-[#d8d8df]'
+                    ? 'bg-[#1b55f5] text-white shadow-xs ring-2 ring-[#8ec0ff]'
+                    : 'bg-white hover:bg-[#f4f4f6] text-[#000000] border border-[#e6e6ea]'
                 }`}
               >
                 <span>{cand.masked_identifier}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-sans font-bold ${
                   cand.recommendation === 'STRONG_MATCH' 
-                    ? (isSelected ? 'bg-white/20 text-white' : 'bg-[#eaf0ff] text-[#1b55f5]') 
+                    ? (isSelected ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-800') 
                     : (cand.recommendation === 'SECURITY_QUARANTINE' 
-                        ? (isSelected ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-700') 
-                        : (isSelected ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-700'))
+                        ? (isSelected ? 'bg-white/20 text-white' : 'bg-rose-50 text-rose-800') 
+                        : (isSelected ? 'bg-white/20 text-white' : 'bg-amber-50 text-amber-800'))
                 }`}>
                   {cand.recommendation}
                 </span>
@@ -731,7 +708,7 @@ export default function EvidenceGraph() {
         </div>
       </div>
 
-      {/* React Flow Provider Wrapper to enable useReactFlow hooks for smooth panning */}
+      {/* React Flow Provider Wrapper */}
       <ReactFlowProvider>
         <EvidenceGraphInner candidate={activeCandidate} />
       </ReactFlowProvider>

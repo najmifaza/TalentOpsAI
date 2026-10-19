@@ -409,17 +409,17 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
               {/* Left Column: Job Selector & Job Details (5 cols) */}
               <div className="lg:col-span-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-[#0B201B]">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-[#000000]">
                     Pilih Posisi yang Tersedia
                   </h2>
-                  <span className="text-xs text-[#6C837C] font-semibold">
+                  <span className="text-xs text-[#67677e] font-semibold">
                     {jobs.length} Posisi Aktif
                   </span>
                 </div>
 
                 {loadingJobs ? (
-                  <div className="p-8 clean-card flex flex-col items-center justify-center text-xs text-[#6C837C] gap-2">
-                    <RefreshCw className="w-5 h-5 animate-spin text-[#235347]" />
+                  <div className="p-8 clean-card flex flex-col items-center justify-center text-xs text-[#67677e] gap-2">
+                    <RefreshCw className="w-5 h-5 animate-spin text-[#1b55f5]" />
                     <span>Memuat daftar lowongan kerja...</span>
                   </div>
                 ) : (
@@ -430,18 +430,18 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                         <div
                           key={job.id}
                           onClick={() => setSelectedJob(job)}
-                          className={`p-5 rounded-2xl cursor-pointer transition-all duration-200 border ${
+                          className={`p-5 rounded-xl cursor-pointer transition-all duration-200 border ${
                             isSelected
-                              ? 'bg-white border-[#235347] shadow-md ring-2 ring-[#8EB69B]/30'
-                              : 'bg-white/80 hover:bg-white border-[#E1EBE4] hover:border-[#C2E0C4]'
+                              ? 'bg-white border-[#1b55f5] shadow-md ring-2 ring-[#1b55f5]/20'
+                              : 'bg-white hover:bg-[#f4f4f6] border-[#e6e6ea] hover:border-[#1b55f5]/50'
                           }`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#235347] block mb-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#1b55f5] block mb-1">
                                 {job.department}
                               </span>
-                              <h3 className="font-bold text-[#0B201B] text-base tracking-tight">
+                              <h3 className="font-bold text-[#000000] text-base tracking-tight">
                                 {job.title}
                               </h3>
                             </div>
@@ -450,22 +450,22 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                             </span>
                           </div>
 
-                          <p className="text-xs text-[#6C837C] mt-2 line-clamp-2 leading-relaxed">
+                          <p className="text-xs text-[#67677e] mt-2 line-clamp-2 leading-relaxed">
                             {job.raw_text}
                           </p>
 
                           {/* Core Competencies Badges */}
-                          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-[#EEF4F0]">
+                          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-[#f4f4f6]">
                             {job.core_competencies?.slice(0, 4).map((tech, i) => (
                               <span
                                 key={i}
-                                className="text-[10px] px-2 py-0.5 rounded-md bg-[#EEF4F0] text-[#0B2B26] font-mono font-medium border border-[#C2E0C4]"
+                                className="text-[10px] px-2 py-0.5 rounded-md bg-[#f4f4f6] text-[#000000] font-mono font-medium border border-[#e6e6ea]"
                               >
                                 {tech}
                               </span>
                             ))}
                             {job.core_competencies?.length > 4 && (
-                              <span className="text-[10px] text-[#6C837C] self-center">
+                              <span className="text-[10px] text-[#67677e] self-center">
                                 +{job.core_competencies.length - 4} lainnya
                               </span>
                             )}
@@ -477,12 +477,12 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                 )}
 
                 {/* Privacy Guarantee Box */}
-                <div className="p-5 rounded-2xl bg-[#EEF4F0] border border-[#C2E0C4] space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#0B201B]">
-                    <ShieldCheck className="w-4 h-4 text-[#235347]" />
+                <div className="p-5 rounded-xl bg-white border border-[#e6e6ea] space-y-2 shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#000000]">
+                    <ShieldCheck className="w-4 h-4 text-[#1b55f5]" />
                     <span>Jaminan Kerahasiaan Identitas</span>
                   </div>
-                  <p className="text-xs text-[#3D544E] leading-relaxed">
+                  <p className="text-xs text-[#67677e] leading-relaxed">
                     Nama, kontak, dan kampus Anda dienkripsi lokal dengan kunci AES-256-GCM. Evaluasi awal murni menguji kesesuaian taksonomi keahlian dan artefak kode.
                   </p>
                 </div>
@@ -490,15 +490,15 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
 
               {/* Right Column: Application Form (7 cols) */}
               <div className="lg:col-span-7">
-                <div className="clean-card p-6 sm:p-8 shadow-md">
-                  <div className="pb-6 mb-6 border-b border-[#E1EBE4]">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#235347] block mb-1">
+                <div className="clean-card p-6 sm:p-8 shadow-sm">
+                  <div className="pb-6 mb-6 border-b border-[#e6e6ea]">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#1b55f5] block mb-1">
                       Formulir Lamaran Resmi
                     </span>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-[#0B201B] tracking-tight">
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-[#000000] tracking-tight">
                       Lamar Posisi: {selectedJob ? selectedJob.title : 'Pilih Lowongan'}
                     </h2>
-                    <p className="text-xs text-[#6C837C] mt-1">
+                    <p className="text-xs text-[#67677e] mt-1">
                       Isi data Anda dan unggah berkas CV/Resume (PDF atau DOCX) untuk memulai proses seleksi otonom.
                     </p>
                   </div>
@@ -507,10 +507,10 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                     {/* Input: Full Name */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-[#0B201B]">
+                        <label className="text-xs font-bold text-[#000000]">
                           Nama Lengkap <span className="text-rose-500">*</span>
                         </label>
-                        <span className="text-[10px] text-[#235347] font-semibold flex items-center gap-1 bg-[#EEF4F0] px-2 py-0.5 rounded-full border border-[#C2E0C4]">
+                        <span className="text-[10px] text-[#1b55f5] font-semibold flex items-center gap-1 bg-[#eaf0ff] px-2 py-0.5 rounded-full border border-blue-200">
                           <Lock className="w-2.5 h-2.5" /> Enkripsi AES-256-GCM
                         </span>
                       </div>
@@ -528,10 +528,10 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-[#0B201B]">
+                          <label className="text-xs font-bold text-[#000000]">
                             Email Aktif <span className="text-rose-500">*</span>
                           </label>
-                          <span className="text-[10px] text-[#6C837C] font-mono">
+                          <span className="text-[10px] text-[#67677e] font-mono">
                             Blind Index HMAC
                           </span>
                         </div>
@@ -541,20 +541,20 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="nama@domain.com"
-                          className="w-full px-4 py-2.5 rounded-xl border border-[#C2E0C4] bg-white text-xs text-[#0B201B] placeholder:text-[#6C837C]/60 focus:outline-none focus:ring-2 focus:ring-[#235347] transition-all"
+                          className="w-full px-4 py-2.5 rounded-xl border border-[#e6e6ea] bg-white text-xs text-[#000000] placeholder:text-[#67677e]/60 focus:outline-none focus:ring-2 focus:ring-[#1b55f5] transition-all"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-[#0B201B]">
-                          Nomor Telepon / WhatsApp <span className="text-[10px] font-normal text-[#6C837C]">(Opsional)</span>
+                        <label className="text-xs font-bold text-[#000000]">
+                          Nomor Telepon / WhatsApp <span className="text-[10px] font-normal text-[#67677e]">(Opsional)</span>
                         </label>
                         <input
                           type="tel"
                           value={phone}
                           onChange={(e) => setPhone(e.target.value)}
                           placeholder="+62 812-3456-7890"
-                          className="w-full px-4 py-2.5 rounded-xl border border-[#C2E0C4] bg-white text-xs text-[#0B201B] placeholder:text-[#6C837C]/60 focus:outline-none focus:ring-2 focus:ring-[#235347] transition-all"
+                          className="w-full px-4 py-2.5 rounded-xl border border-[#e6e6ea] bg-white text-xs text-[#000000] placeholder:text-[#67677e]/60 focus:outline-none focus:ring-2 focus:ring-[#1b55f5] transition-all"
                         />
                       </div>
                     </div>
@@ -562,47 +562,47 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                     {/* Input: GitHub & Portfolio Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-[#0B201B]">
-                          URL Profil / Repo GitHub <span className="text-[10px] font-normal text-[#6C837C]">(Opsional)</span>
+                        <label className="text-xs font-bold text-[#000000]">
+                          URL Profil / Repo GitHub <span className="text-[10px] font-normal text-[#67677e]">(Opsional)</span>
                         </label>
                         <input
                           type="url"
                           value={githubUrl}
                           onChange={(e) => setGithubUrl(e.target.value)}
                           placeholder="https://github.com/username/project"
-                          className="w-full px-4 py-2.5 rounded-xl border border-[#C2E0C4] bg-white text-xs text-[#0B201B] placeholder:text-[#6C837C]/60 focus:outline-none focus:ring-2 focus:ring-[#235347] transition-all"
+                          className="w-full px-4 py-2.5 rounded-xl border border-[#e6e6ea] bg-white text-xs text-[#000000] placeholder:text-[#67677e]/60 focus:outline-none focus:ring-2 focus:ring-[#1b55f5] transition-all"
                         />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-[#0B201B]">
-                          Link Portofolio / Website <span className="text-[10px] font-normal text-[#6C837C]">(Opsional)</span>
+                        <label className="text-xs font-bold text-[#000000]">
+                          Link Portofolio / Website <span className="text-[10px] font-normal text-[#67677e]">(Opsional)</span>
                         </label>
                         <input
                           type="url"
                           value={portfolioUrl}
                           onChange={(e) => setPortfolioUrl(e.target.value)}
                           placeholder="https://portfolio-anda.dev"
-                          className="w-full px-4 py-2.5 rounded-xl border border-[#C2E0C4] bg-white text-xs text-[#0B201B] placeholder:text-[#6C837C]/60 focus:outline-none focus:ring-2 focus:ring-[#235347] transition-all"
+                          className="w-full px-4 py-2.5 rounded-xl border border-[#e6e6ea] bg-white text-xs text-[#000000] placeholder:text-[#67677e]/60 focus:outline-none focus:ring-2 focus:ring-[#1b55f5] transition-all"
                         />
                       </div>
                     </div>
 
                     {/* Drag-and-Drop Resume Uploader */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-[#0B201B]">
+                      <label className="text-xs font-bold text-[#000000]">
                         Unggah Resume / CV <span className="text-rose-500">*</span>
                       </label>
 
                       {resumeFile ? (
-                        <div className="p-4 rounded-2xl bg-[#EEF4F0] border border-[#C2E0C4] flex items-center justify-between gap-3">
+                        <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-[#0B2B26] text-[#8EB69B] flex items-center justify-center shrink-0">
+                            <div className="w-10 h-10 rounded-xl bg-[#1b55f5] text-white flex items-center justify-center shrink-0 shadow-xs">
                               <FileText className="w-5 h-5" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-[#0B201B] truncate">{resumeFile.name}</p>
-                              <p className="text-[11px] text-[#6C837C]">
+                              <p className="text-xs font-bold text-[#000000] truncate">{resumeFile.name}</p>
+                              <p className="text-[11px] text-[#67677e]">
                                 {(resumeFile.size / 1024 / 1024).toFixed(2)} MB &bull; Valid Magic Bytes
                               </p>
                             </div>
@@ -626,10 +626,10 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                           onDragLeave={handleDragLeave}
                           onDrop={handleDrop}
                           onClick={() => fileInputRef.current?.click()}
-                          className={`p-6 sm:p-8 rounded-2xl border-2 border-dashed cursor-pointer text-center transition-all duration-200 ${
+                          className={`p-6 sm:p-8 rounded-xl border-2 border-dashed cursor-pointer text-center transition-all duration-200 ${
                             isDragging
-                              ? 'border-[#235347] bg-[#C2E0C4]/30 scale-[1.01]'
-                              : 'border-[#C2E0C4] hover:border-[#235347] bg-[#EEF4F0]/30 hover:bg-[#EEF4F0]/60'
+                              ? 'border-[#1b55f5] bg-[#eaf0ff]/50 scale-[1.01]'
+                              : 'border-[#e6e6ea] hover:border-[#1b55f5] bg-[#f4f4f6]/50 hover:bg-[#f4f4f6]'
                           }`}
                         >
                           <input
@@ -643,13 +643,13 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                               }
                             }}
                           />
-                          <div className="w-12 h-12 mx-auto rounded-2xl bg-white border border-[#C2E0C4] flex items-center justify-center text-[#235347] shadow-sm mb-3">
+                          <div className="w-12 h-12 mx-auto rounded-xl bg-white border border-[#e6e6ea] flex items-center justify-center text-[#1b55f5] shadow-2xs mb-3">
                             <UploadCloud className="w-6 h-6" />
                           </div>
-                          <p className="text-xs font-bold text-[#0B201B]">
-                            Tarik & Lepaskan Berkas Resume Di Sini, atau <span className="text-[#235347] underline">Pilih Berkas</span>
+                          <p className="text-xs font-bold text-[#000000]">
+                            Tarik & Lepaskan Berkas Resume Di Sini, atau <span className="text-[#1b55f5] underline">Pilih Berkas</span>
                           </p>
-                          <p className="text-[11px] text-[#6C837C] mt-1">
+                          <p className="text-[11px] text-[#67677e] mt-1">
                             Mendukung format PDF atau DOCX (Maksimal 10 MB)
                           </p>
                         </div>
@@ -664,16 +664,16 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                     </div>
 
                     {/* DPA Legal Consent Checkbox */}
-                    <div className="p-4 rounded-2xl bg-[#EEF4F0]/80 border border-[#C2E0C4] space-y-2">
+                    <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] space-y-2">
                       <div className="flex items-start gap-3">
                         <input
                           type="checkbox"
                           id="dpa-consent"
                           checked={dpaConsent}
                           onChange={(e) => setDpaConsent(e.target.checked)}
-                          className="w-4 h-4 mt-0.5 rounded text-[#0B2B26] focus:ring-[#235347] border-[#C2E0C4] cursor-pointer"
+                          className="w-4 h-4 mt-0.5 rounded text-[#1b55f5] focus:ring-[#1b55f5] border-[#e6e6ea] cursor-pointer"
                         />
-                        <label htmlFor="dpa-consent" className="text-xs text-[#3D544E] cursor-pointer select-none leading-relaxed">
+                        <label htmlFor="dpa-consent" className="text-xs text-[#454554] cursor-pointer select-none leading-relaxed">
                           Saya menyetujui Pemrosesan Data Pribadi sesuai ketentuan <strong>UU PDP No. 27 Tahun 2022</strong>. Saya memahami identitas saya akan disanitasi dari bias demografis sebelum dianalisis oleh AI, dan saya memiliki hak pencabutan data (<em>Right to Erasure</em>) sewaktu-waktu.{' '}
                           <button
                             type="button"
@@ -681,7 +681,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                               e.preventDefault();
                               setIsDpaModalOpen(true);
                             }}
-                            className="text-[#235347] hover:text-[#0B2B26] font-bold underline inline-flex items-center gap-0.5 ml-1"
+                            className="text-[#1b55f5] hover:text-[#1545c7] font-bold underline inline-flex items-center gap-0.5 ml-1"
                           >
                             <span>Baca Ketentuan DPA</span>
                             <ExternalLink className="w-3 h-3" />
@@ -701,17 +701,17 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="w-full py-3.5 px-6 rounded-xl bg-[#0B2B26] hover:bg-[#163832] disabled:opacity-60 text-white font-bold text-xs shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
+                      className="w-full py-3.5 px-6 rounded-xl bg-[#1b55f5] hover:bg-[#1545c7] disabled:opacity-60 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
                     >
                       {submitting ? (
                         <>
-                          <RefreshCw className="w-4 h-4 animate-spin text-[#8EB69B]" />
-                          <span>Mengenkrpsi & Mengirim Lamaran ke Queue Triage...</span>
+                          <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                          <span>Mengenkripsi & Mengirim Lamaran ke Queue Triage...</span>
                         </>
                       ) : (
                         <>
                           <span>Kirim Lamaran & Dapatkan Token Pelacakan</span>
-                          <ArrowRight className="w-4 h-4 text-[#8EB69B]" />
+                          <ArrowRight className="w-4 h-4 text-white" />
                         </>
                       )}
                     </button>

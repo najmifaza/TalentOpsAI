@@ -5,7 +5,6 @@ import Header from './components/Header';
 import DashboardOverview from './components/DashboardOverview';
 
 // Code Splitting via Dynamic Imports (Sprint 5 Vite Optimization)
-const EvidenceGraph = lazy(() => import('./components/EvidenceGraph'));
 const JobManagement = lazy(() => import('./components/JobManagement'));
 const CareerPortal = lazy(() => import('./components/CareerPortal'));
 
@@ -86,15 +85,11 @@ function DashboardLayout({ isDark, onToggleTheme }) {
   const titles = {
     '/': 'Dashboard & Triage Queue',
     '/dashboard': 'Dashboard & Triage Queue',
-    '/evidence-graph': 'Evidence Graph Explorer (React Flow)',
     '/jobs': 'Kelola Lowongan & Konfigurasi Bobot 4D',
     '/what-if': 'Kelola Lowongan & Konfigurasi Bobot 4D',
   };
 
   const getTitle = () => {
-    if (location.pathname.startsWith('/evidence-graph')) {
-      return 'Evidence Graph Explorer (React Flow)';
-    }
     return titles[location.pathname] || 'Dashboard & Triage Queue';
   };
 
@@ -137,8 +132,8 @@ function DashboardLayout({ isDark, onToggleTheme }) {
               <Routes>
                 <Route index element={<DashboardOverview />} />
                 <Route path="dashboard" element={<DashboardOverview />} />
-                <Route path="evidence-graph" element={<EvidenceGraph />} />
-                <Route path="evidence-graph/:candidateId" element={<EvidenceGraph />} />
+                <Route path="evidence-graph" element={<Navigate to="/dashboard" replace />} />
+                <Route path="evidence-graph/:candidateId" element={<Navigate to="/dashboard" replace />} />
                 <Route path="jobs" element={<JobManagement />} />
                 <Route path="what-if" element={<Navigate to="/jobs" replace />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -463,7 +463,7 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
 }
 
 // Inner Canvas Component utilizing useReactFlow hook
-function EvidenceGraphInner({ candidate, onReloadCandidates }) {
+function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false }) {
   const { fitView, setCenter } = useReactFlow();
   const [activeLayerIdx, setActiveLayerIdx] = useState(0);
   const [candidateDetail, setCandidateDetail] = useState(null);
@@ -628,7 +628,7 @@ function EvidenceGraphInner({ candidate, onReloadCandidates }) {
 
       {/* Main Canvas Container */}
       <div className="clean-card p-2 shadow-sm border border-[#e6e6ea] overflow-hidden relative">
-        <div className="w-full h-[520px] sm:h-[620px] rounded-xl overflow-hidden bg-[#f4f4f6] relative">
+        <div className={`w-full ${embedded ? 'h-[440px] sm:h-[480px]' : 'h-[520px] sm:h-[620px]'} rounded-xl overflow-hidden bg-[#f4f4f6] relative`}>
           {hasNoEvidenceYet ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600">
@@ -890,5 +890,19 @@ export default function EvidenceGraph() {
         />
       </ReactFlowProvider>
     </div>
+  );
+}
+
+// Reusable standalone component for embedding inside candidate dossier / inspector modals
+export function CandidateEvidenceGraph({ candidate, onReloadCandidates, embedded = true }) {
+  if (!candidate) return null;
+  return (
+    <ReactFlowProvider>
+      <EvidenceGraphInner 
+        candidate={candidate} 
+        onReloadCandidates={onReloadCandidates} 
+        embedded={embedded}
+      />
+    </ReactFlowProvider>
   );
 }

@@ -13,7 +13,6 @@ import {
 export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {} }) {
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard & Triage', icon: LayoutDashboard, badge: '5 Antrean' },
-    { path: '/evidence-graph', label: 'Evidence Graph (React Flow)', icon: GitBranch, badge: 'Audit' },
     { path: '/jobs', label: 'Kelola Lowongan & Bobot', icon: Briefcase, badge: 'Lowongan' },
   ];
 

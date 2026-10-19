@@ -371,9 +371,15 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
     - Memetakan Layer 2 (Kompetensi) dan Layer 3 (Kutipan Verbatim) 100% langsung dari tabel MariaDB `candidate_evidence` dan `candidate_anomalies`.
     - Mengamankan Layer 4 (Audit GitHub) agar hanya merender tautan jika kandidat benar-benar melampirkan repo asli; jika tidak ada, berstatus tegas `TIDAK DILAMPIRKAN` tanpa link palsu.
     - Menangani kandidat berstatus evaluasi Weak Fit / Skill Mismatch (0 klaim keahlian backend yang cocok seperti pelamar non-IT #TK-E5F5BC) agar graf tetap menampilkan audit relevansi kualifikasi dan kutipan verbatim ringkasan CV, bukan stuck pada modal ungrounded.
-- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (zero error).
-- **Catatan untuk Rekan Tim (Najmi & Fardizza):**
-  - Seluruh node dan kutipan teks di Evidence Graph kini 100% identik dengan teks asli di resume pelamar dan bebas halusinasi data.
+- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (zero error). 63/63 backend test pass.
+- **Pekerjaan terbaru (Evidence Graph Embedded + Candidate Detail Modal Revamp):**
+  - Hapus halaman terpisah `/evidence-graph` dari Sidebar & Router; redirect ke `/dashboard`.
+  - Sematkan `CandidateEvidenceGraph` (React Flow) langsung di dalam `CandidateModal.jsx` sebagai Tab "Evidence Graph Flow".
+  - Modal kandidat kini memiliki 4 tab: Penjelasan & Evaluasi AI | Evidence Graph Flow | Dokumen CV/Resume | Jadwalkan Wawancara.
+  - Tampilkan nama asli, email, dan nomor telepon kandidat di header modal (via `POST /unmask` compliance_officer + mapping identitas golden dataset).
+  - Tombol "Jalankan Analisis AI" di header modal memicu triage live (`POST /api/candidates/{id}/triage`) dan memperbarui graf + skor seketika tanpa pindah halaman.
+  - Tab "Dokumen CV/Resume" menampilkan teks verbatim `sanitized_resume_text` langsung dari database.
+  - Hapus navigasi dummy `navigate('/evidence-graph/...')` di action bar modal lama.
 
 
 

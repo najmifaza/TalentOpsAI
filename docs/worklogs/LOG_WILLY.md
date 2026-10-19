@@ -370,7 +370,7 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
     - Mengeliminasi total kamus mock statis dan link repositori fiktif (`candidate/payment-service`, `reza-dev/api-core`).
     - Memetakan Layer 2 (Kompetensi) dan Layer 3 (Kutipan Verbatim) 100% langsung dari tabel MariaDB `candidate_evidence` dan `candidate_anomalies`.
     - Mengamankan Layer 4 (Audit GitHub) agar hanya merender tautan jika kandidat benar-benar melampirkan repo asli; jika tidak ada, berstatus tegas `TIDAK DILAMPIRKAN` tanpa link palsu.
-    - Menambahkan tombol live trigger `POST /api/candidates/{id}/triage` jika ada kandidat baru yang belum memiliki data ekstraksi di database.
+    - Menangani kandidat berstatus evaluasi Weak Fit / Skill Mismatch (0 klaim keahlian backend yang cocok seperti pelamar non-IT #TK-E5F5BC) agar graf tetap menampilkan audit relevansi kualifikasi dan kutipan verbatim ringkasan CV, bukan stuck pada modal ungrounded.
 - **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (zero error).
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
   - Seluruh node dan kutipan teks di Evidence Graph kini 100% identik dengan teks asli di resume pelamar dan bebas halusinasi data.

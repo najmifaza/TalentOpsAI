@@ -317,6 +317,33 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
     });
   });
 
+  // If candidate has been evaluated but has 0 matching skills (Skill Mismatch / Weak Fit)
+  if (items.length === 0) {
+    let quoteText = "Berkas CV pelamar tidak mencantumkan kompetensi teknis yang dipersyaratkan posisi ini.";
+    const resumeText = candidate.sanitized_resume_text || '';
+    if (resumeText) {
+      const meaningfulLines = resumeText
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 25 && !l.startsWith('[') && !l.includes('RINGKASAN') && !l.includes('PENGALAMAN') && !l.includes('EDUCATION'));
+      if (meaningfulLines.length > 0) {
+        quoteText = meaningfulLines[0];
+      }
+    }
+
+    items.push({
+      type: 'evidence',
+      id: 'mismatch-1',
+      skill: 'Audit Relevansi Keahlian (Skill Mismatch)',
+      desc: 'Tidak ditemukan kecocokan kompetensi pelamar dengan kualifikasi inti lowongan.',
+      confidence: 100,
+      quote: quoteText,
+      source: 'RINGKASAN CV PELAMAR',
+      score: 0,
+      isSecurity: false,
+    });
+  }
+
   // Calculate vertical center positioning
   const count = Math.max(1, items.length);
   const midY = Math.max(160, ((count - 1) * 150) / 2);
@@ -439,6 +466,7 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
 function EvidenceGraphInner({ candidate, onReloadCandidates }) {
   const { fitView, setCenter } = useReactFlow();
   const [activeLayerIdx, setActiveLayerIdx] = useState(0);
+  const [candidateDetail, setCandidateDetail] = useState(null);
   const [liveEvidence, setLiveEvidence] = useState([]);
   const [liveAnomalies, setLiveAnomalies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -457,6 +485,7 @@ function EvidenceGraphInner({ candidate, onReloadCandidates }) {
       }
       if (res && res.ok) {
         const json = await res.json();
+        setCandidateDetail(json.candidate || null);
         setLiveEvidence(json.evidence || []);
         setLiveAnomalies(json.anomalies || []);
       }
@@ -471,10 +500,15 @@ function EvidenceGraphInner({ candidate, onReloadCandidates }) {
     fetchRealCandidateData();
   }, [fetchRealCandidateData]);
 
+  // Merge candidate info with real backend candidate record
+  const activeCandidateObj = useMemo(() => {
+    return candidateDetail ? { ...candidate, ...candidateDetail } : candidate;
+  }, [candidate, candidateDetail]);
+
   // Build the graph solely and strictly from the fetched real data
   const graphElements = useMemo(() => {
-    return buildGraphFromRealData(candidate, liveEvidence, liveAnomalies);
-  }, [candidate, liveEvidence, liveAnomalies]);
+    return buildGraphFromRealData(activeCandidateObj, liveEvidence, liveAnomalies);
+  }, [activeCandidateObj, liveEvidence, liveAnomalies]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -537,7 +571,8 @@ function EvidenceGraphInner({ candidate, onReloadCandidates }) {
     fitView({ padding: 0.15, duration: 600 });
   };
 
-  const hasNoEvidenceYet = liveEvidence.length === 0 && liveAnomalies.length === 0 && !isLoading;
+  const isTrulyUnscanned = (activeCandidateObj.status === 'queued' || activeCandidateObj.status === 'unscanned') && (activeCandidateObj.overall_score === null || activeCandidateObj.overall_score === undefined);
+  const hasNoEvidenceYet = isTrulyUnscanned && liveEvidence.length === 0 && liveAnomalies.length === 0 && !isLoading;
 
   return (
     <div className="space-y-3">

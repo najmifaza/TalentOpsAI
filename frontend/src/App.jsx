@@ -26,6 +26,47 @@ function ComponentLoader({ label = "Memuat modul komponen..." }) {
   );
 }
 
+// Error Boundary Fallback to prevent blank page
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("UI ErrorBoundary caught error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 font-bold">
+            !
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-[#000000]">Terjadi Gangguan Tampilan</h3>
+            <p className="text-xs text-[#67677e] mt-1 max-w-md">
+              {this.state.error?.message || "Komponen mengalami kesalahan saat memuat data."}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-[#1b55f5] text-white rounded-lg text-xs font-semibold hover:bg-[#1545c7] transition-all shadow-xs"
+          >
+            Muat Ulang Halaman
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function DashboardLayout({ isDark, onToggleTheme }) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -91,17 +132,19 @@ function DashboardLayout({ isDark, onToggleTheme }) {
         />
 
         <main id="main-content" tabIndex="-1" className="flex-1 px-4 sm:px-8 py-5 max-w-7xl w-full mx-auto animate-fade-in focus:outline-none">
-          <Suspense fallback={<ComponentLoader label="Menginisialisasi modul tampilan..." />}>
-            <Routes>
-              <Route index element={<DashboardOverview />} />
-              <Route path="dashboard" element={<DashboardOverview />} />
-              <Route path="evidence-graph" element={<EvidenceGraph />} />
-              <Route path="evidence-graph/:candidateId" element={<EvidenceGraph />} />
-              <Route path="jobs" element={<JobManagement />} />
-              <Route path="what-if" element={<Navigate to="/jobs" replace />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<ComponentLoader label="Menginisialisasi modul tampilan..." />}>
+              <Routes>
+                <Route index element={<DashboardOverview />} />
+                <Route path="dashboard" element={<DashboardOverview />} />
+                <Route path="evidence-graph" element={<EvidenceGraph />} />
+                <Route path="evidence-graph/:candidateId" element={<EvidenceGraph />} />
+                <Route path="jobs" element={<JobManagement />} />
+                <Route path="what-if" element={<Navigate to="/jobs" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </main>
 
         {/* Global Footer */}

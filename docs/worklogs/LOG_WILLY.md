@@ -363,9 +363,12 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - **3. Batch Triage AI & Penyelarasan Tema:**
     - Menambahkan trigger batch triage pada tabel antrean HR.
     - Mengeliminasi warna hijau lumut/pinus tua yang tersisa di modal kandidat.
+  - **4. Hotfix Resolusi Dashboard Blank & ErrorBoundary:**
+    - Memperbaiki `ReferenceError: useEffect is not defined` di `UploadCandidateModal.jsx`.
+    - Memasang komponen `ErrorBoundary` pelindung crash layout di `App.jsx`.
 - **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (zero error).
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
-  - Seluruh modul UI kini tersinkronisasi penuh dengan endpoint backend lowongan baru.
+  - Seluruh modul UI kini tersinkronisasi penuh dengan endpoint backend lowongan baru dan bebas crash rendering.
 
 
 

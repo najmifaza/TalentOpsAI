@@ -47,7 +47,7 @@ export default function DashboardOverview() {
       } catch (err) {
         res = await fetch('/api/candidates?limit=50');
       }
-      if (res.ok) {
+      if (res && res.ok) {
         const json = await res.json();
         if (json.data && json.data.length > 0) {
           const mapped = json.data.map(c => {

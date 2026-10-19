@@ -96,7 +96,7 @@ function DashboardLayout({ isDark, onToggleTheme }) {
   const currentTitle = getTitle();
 
   return (
-    <div className="flex min-h-screen bg-[#f4f4f6] text-[#000000] font-sans antialiased selection:bg-[#1b55f5] selection:text-white relative">
+    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans antialiased selection:bg-[#1b55f5] selection:text-white relative">
       {/* Accessibility Skip Link */}
       <a 
         href="#main-content" 
@@ -119,14 +119,14 @@ function DashboardLayout({ isDark, onToggleTheme }) {
         onCloseMobile={() => setIsMobileMenuOpen(false)} 
       />
 
-      {/* Main Content Canvas (Grafana Sunrise Theme) */}
+      {/* Main Content Canvas */}
       <div className={`flex-1 flex flex-col min-w-0 ${isOffline ? 'pt-8' : ''}`}>
         <Header 
           currentTitle={currentTitle} 
           onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)} 
         />
 
-        <main id="main-content" tabIndex="-1" className="flex-1 px-4 sm:px-8 py-5 max-w-7xl w-full mx-auto animate-fade-in focus:outline-none">
+        <main id="main-content" tabIndex="-1" className="flex-1 px-4 sm:px-8 py-6 max-w-7xl w-full mx-auto animate-fade-in focus:outline-none">
           <ErrorBoundary>
             <Suspense fallback={<ComponentLoader label="Menginisialisasi modul tampilan..." />}>
               <Routes>
@@ -143,12 +143,12 @@ function DashboardLayout({ isDark, onToggleTheme }) {
         </main>
 
         {/* Global Footer */}
-        <footer className="border-t border-[#e6e6ea] bg-white px-4 sm:px-8 py-4 text-xs text-[#67677e] transition-colors duration-200">
+        <footer className="border-t border-slate-200/80 bg-white px-4 sm:px-8 py-4 text-xs text-slate-500 transition-colors duration-200">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto text-center sm:text-left">
-            <span className="font-medium text-[#454554]">
+            <span className="font-medium text-slate-600">
               TalentOps AI &copy; 2026 &bull; Human-Centric Agentic Recruitment Web Ecosystem
             </span>
-            <span className="font-mono text-[11px] text-[#67677e] font-semibold">
+            <span className="font-mono text-[11px] text-slate-400 font-semibold">
               Production Hardened &bull; React 18 + Vite Code Splitting &bull; WCAG AA Compliant
             </span>
           </div>

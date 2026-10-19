@@ -9,14 +9,7 @@ import {
   CheckCircle2, 
   ShieldCheck, 
   TrendingUp, 
-  Server,
-  Database,
-  ArrowUpRight,
   Sparkles,
-  Cpu,
-  Layers,
-  ArrowRight,
-  Radio,
   RefreshCw,
   UploadCloud,
   Clock,
@@ -196,20 +189,20 @@ export default function DashboardOverview() {
   };
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-12">
       {/* 1. Header & Workspace Action Bar */}
-      <div className="clean-card p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
-        <div>
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#eaf0ff] text-[11px] font-bold text-[#1b55f5] mb-2 border border-[#8ec0ff]">
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-1.5 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200/60">
             <Sparkles className="w-3.5 h-3.5 text-[#1b55f5]" />
             <span>Workspace Triage Rekruter</span>
-            <span className="text-[#67677e] font-normal">&bull; Model: Gemini 3.8 (Suhu 0.0)</span>
+            <span className="text-slate-400 font-normal">&bull; Gemini 3.8 Flash (T=0.0)</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-[#000000] tracking-tight font-display">
-            Antrean Evaluasi & Observability Keputusan
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight font-display">
+            Antrean Evaluasi &amp; Observability Keputusan
           </h2>
-          <p className="text-xs text-[#67677e] mt-1 max-w-2xl leading-relaxed">
-            Evaluasi berkas pelamar berbasis bukti deterministik 4D, verifikasi portofolio GitHub resmi, 
+          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+            Evaluasi berkas pelamar berbasis bukti deterministik 4D, audit repositori GitHub terverifikasi, 
             dan perlindungan identitas pribadi berstandar UU PDP No. 27/2022.
           </p>
         </div>
@@ -218,20 +211,20 @@ export default function DashboardOverview() {
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             onClick={() => setIsUploadModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-bold transition-all shadow-xs"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1b55f5] hover:bg-[#1545c7] active:scale-98 text-white text-xs font-bold transition-all shadow-xs"
             title="Upload berkas CV pelamar baru (PDF/DOCX)"
           >
             <UploadCloud className="w-4 h-4" />
-            <span>+ Upload CV Pelamar</span>
+            <span>Upload CV Baru</span>
           </button>
 
           <button
             onClick={handleBatchTriage}
             disabled={isBatchRunning || unscannedCandidates.length === 0}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-xs ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs ${
               unscannedCandidates.length > 0 && !isBatchRunning
                 ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                : 'bg-white border border-[#d8d8df] text-[#67677e] hover:bg-[#f4f4f6]'
+                : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600 border border-slate-200/80 disabled:opacity-60'
             }`}
             title="Jalankan autonomous agent triage untuk seluruh berkas yang belum di-scan"
           >
@@ -239,14 +232,14 @@ export default function DashboardOverview() {
             <span>
               {isBatchRunning 
                 ? 'Memproses Batch...' 
-                : `Batch Triage AI (${unscannedCandidates.length} Antrean)`}
+                : `Batch Triage AI (${unscannedCandidates.length})`}
             </span>
           </button>
 
           <button
             onClick={fetchCandidates}
             disabled={isLoading}
-            className="p-2.5 rounded-lg bg-white border border-[#d8d8df] text-[#67677e] hover:text-[#000000] hover:bg-[#f4f4f6] transition-all shadow-2xs"
+            className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-xs"
             title="Sinkronkan data kandidat dari basis data MariaDB"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#1b55f5]' : ''}`} />
@@ -256,175 +249,185 @@ export default function DashboardOverview() {
 
       {/* Dynamic Status / Feedback Alert Banner */}
       {batchMessage && (
-        <div className="p-3.5 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff] text-xs font-semibold text-[#1b55f5] flex items-center justify-between shadow-xs animate-fade-in">
-          <div className="flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-blue-50 border border-blue-200/80 text-xs font-semibold text-blue-800 flex items-center justify-between shadow-xs animate-fade-in">
+          <div className="flex items-center gap-2.5">
             <Sparkles className="w-4 h-4 text-[#1b55f5]" />
             <span>{batchMessage}</span>
           </div>
           <button 
             onClick={() => setBatchMessage(null)}
-            className="text-[11px] underline hover:text-[#1545c7]"
+            className="text-xs text-blue-600 underline hover:text-blue-900"
           >
             Tutup
           </button>
         </div>
       )}
 
-      {/* 2. Recruitment Pipeline Funnel (4 Real Operational Stages) */}
+      {/* 2. Pipeline Stage Cards (Clean Modern Grid) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Stage 1: Menunggu Analisis AI */}
-        <div className="clean-card p-4 flex flex-col justify-between border-l-4 border-l-amber-500 shadow-xs">
+        {/* Stage 1: Menunggu Triage AI */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-amber-300 transition-all flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between text-xs font-bold text-[#67677e]">
-              <span>1. Menunggu Triage AI</span>
-              <Clock className="w-4 h-4 text-amber-500" />
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+              <span>Menunggu Triage AI</span>
+              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Clock className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl font-black text-[#000000] mt-1.5">
-              {unscannedCandidates.length} <span className="text-xs font-semibold text-[#67677e]">berkas</span>
+            <div className="text-3xl font-extrabold text-slate-900 mt-2 font-display">
+              {unscannedCandidates.length}
             </div>
-            <p className="text-[11px] text-[#67677e] mt-1">
+            <p className="text-xs text-slate-500 mt-1 leading-snug">
               {unscannedCandidates.length > 0 
-                ? 'Perlu diekstraksi AI & audit dokumen' 
-                : 'Semua berkas telah selesai di-triage'}
+                ? 'Berkas pelamar siap diekstrak AI' 
+                : 'Semua berkas telah dipindai'}
             </p>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-[#e6e6ea] flex items-center justify-between text-[11px]">
-            <span className="text-[#67677e]">Status Antrean:</span>
-            <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
-              {unscannedCandidates.length > 0 ? 'Pending Ingestion' : 'Selesai'}
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-400">Status</span>
+            <span className={`font-semibold px-2 py-0.5 rounded-full text-[11px] ${
+              unscannedCandidates.length > 0 ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'
+            }`}>
+              {unscannedCandidates.length > 0 ? 'Perlu Diproses' : 'Lengkap'}
             </span>
           </div>
         </div>
 
         {/* Stage 2: Siap Ditinjau HR */}
-        <div className="clean-card p-4 flex flex-col justify-between border-l-4 border-l-[#1b55f5] shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-blue-300 transition-all flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between text-xs font-bold text-[#67677e]">
-              <span>2. Siap Ditinjau HR</span>
-              <AlertTriangle className="w-4 h-4 text-[#1b55f5]" />
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+              <span>Siap Ditinjau HR</span>
+              <div className="w-7 h-7 rounded-lg bg-blue-50 text-[#1b55f5] flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl font-black text-[#000000] mt-1.5">
-              {reviewRequired} <span className="text-xs font-semibold text-[#67677e]">kandidat</span>
+            <div className="text-3xl font-extrabold text-slate-900 mt-2 font-display">
+              {reviewRequired}
             </div>
-            <p className="text-[11px] text-[#67677e] mt-1">
-              Memerlukan verifikasi celah kompetensi
+            <p className="text-xs text-slate-500 mt-1 leading-snug">
+              Perlu klarifikasi kualifikasi atau linimasa
             </p>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-[#e6e6ea] flex items-center justify-between text-[11px]">
-            <span className="text-[#67677e]">Kategori Triage:</span>
-            <span className="font-bold text-[#1b55f5] bg-[#eaf0ff] px-2 py-0.5 rounded">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-400">Kategori</span>
+            <span className="font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-[11px]">
               Review Required
             </span>
           </div>
         </div>
 
         {/* Stage 3: Sangat Sesuai (Lolos) */}
-        <div className="clean-card p-4 flex flex-col justify-between border-l-4 border-l-emerald-500 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-emerald-300 transition-all flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between text-xs font-bold text-[#67677e]">
-              <span>3. Sangat Sesuai (Lolos)</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+              <span>Sangat Sesuai (Lolos)</span>
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl font-black text-[#000000] mt-1.5">
-              {strongMatches} <span className="text-xs font-semibold text-[#67677e]">kandidat</span>
+            <div className="text-3xl font-extrabold text-slate-900 mt-2 font-display">
+              {strongMatches}
             </div>
-            <p className="text-[11px] text-[#67677e] mt-1">
-              Skor &ge; 85.0 &bull; Siap kunci jadwal
+            <p className="text-xs text-slate-500 mt-1 leading-snug">
+              Skor &ge; 85 &bull; Siap kunci jadwal wawancara
             </p>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-[#e6e6ea] flex items-center justify-between text-[11px]">
-            <span className="text-[#67677e]">Alokasi Kalender:</span>
-            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-400">Rekomendasi</span>
+            <span className="font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full text-[11px]">
               Strong Match
             </span>
           </div>
         </div>
 
         {/* Stage 4: Kurang Sesuai / Anomali */}
-        <div className="clean-card p-4 flex flex-col justify-between border-l-4 border-l-rose-500 shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-rose-300 transition-all flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between text-xs font-bold text-[#67677e]">
-              <span>4. Kurang Sesuai / Anomali</span>
-              <ShieldCheck className="w-4 h-4 text-rose-500" />
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+              <span>Kurang Sesuai / Anomali</span>
+              <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
             </div>
-            <div className="text-2xl font-black text-[#000000] mt-1.5">
-              {weakFit + quarantined} <span className="text-xs font-semibold text-[#67677e]">berkas</span>
+            <div className="text-3xl font-extrabold text-slate-900 mt-2 font-display">
+              {weakFit + quarantined}
             </div>
-            <p className="text-[11px] text-[#67677e] mt-1">
-              {quarantined > 0 ? `${quarantined} karantina teks/anomali` : 'Di bawah batas kelayakan'}
+            <p className="text-xs text-slate-500 mt-1 leading-snug">
+              {quarantined > 0 ? `${quarantined} karantina keamanan` : 'Di bawah batas kelayakan'}
             </p>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-[#e6e6ea] flex items-center justify-between text-[11px]">
-            <span className="text-[#67677e]">Pencegahan Risiko:</span>
-            <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-400">Penyaring</span>
+            <span className="font-semibold bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full text-[11px]">
               Weak Fit / Anomaly
             </span>
           </div>
         </div>
       </div>
 
-      {/* 3. Live Operational KPIs (Computed dynamically from candidates) */}
+      {/* 3. Live Operational KPIs (Computed dynamically) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="clean-card p-5 flex items-center justify-between shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-[#67677e] tracking-wide">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Rata-rata Skor Kesesuaian 4D
             </span>
-            <div className="text-3xl font-black text-[#000000] tracking-tight">
-              {avgScore} <span className="text-xs font-semibold text-[#67677e]">/100</span>
+            <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-display">
+              {avgScore} <span className="text-xs font-semibold text-slate-400">/ 100</span>
             </div>
-            <div className="text-[11px] text-[#67677e]">
-              Dihitung dari <strong className="text-[#000000]">{scannedCandidates.length}</strong> kandidat ter-scan
-            </div>
+            <p className="text-xs text-slate-500">
+              Dihitung dari <strong className="text-slate-800">{scannedCandidates.length}</strong> berkas terverifikasi
+            </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff] flex items-center justify-center text-[#1b55f5]">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200/60 flex items-center justify-center text-[#1b55f5]">
             <TrendingUp className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="clean-card p-5 flex items-center justify-between shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-[#67677e] tracking-wide">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Ketertelusuran Bukti CV (Grounding)
             </span>
-            <div className="text-3xl font-black text-[#000000] tracking-tight">
-              {highConfPct}% <span className="text-xs font-semibold text-[#67677e]">High Conf</span>
+            <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-display">
+              {highConfPct}% <span className="text-xs font-semibold text-emerald-600">High Conf</span>
             </div>
-            <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+            <p className="text-xs text-emerald-700 font-medium flex items-center gap-1">
               <Check className="w-3.5 h-3.5" />
               <span>Substring Guard anti-halusinasi aktif</span>
-            </div>
+            </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-600">
             <CheckCircle2 className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="clean-card p-5 flex items-center justify-between shadow-xs">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-bold text-[#67677e] tracking-wide">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               Kepatuhan Privasi UU PDP No. 27/2022
             </span>
-            <div className="text-3xl font-black text-[#000000] tracking-tight">
-              100% <span className="text-xs font-semibold text-[#67677e]">AES-256</span>
+            <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-display">
+              100% <span className="text-xs font-semibold text-slate-400">AES-256</span>
             </div>
-            <div className="text-[11px] text-[#1b55f5] font-semibold">
+            <p className="text-xs text-blue-700 font-medium">
               Blind index HMAC + Right to Erasure
-            </div>
+            </p>
           </div>
-          <div className="w-12 h-12 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] flex items-center justify-center text-[#1b55f5]">
+          <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
             <ShieldCheck className="w-6 h-6" />
           </div>
         </div>
       </div>
 
-      {/* 4. Main Table Section: Candidate Queue */}
-      <div className="space-y-4 pt-1">
+      {/* 4. Main Candidates Queue Section */}
+      <div className="space-y-4 pt-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold font-display text-[#000000]">Antrean Berkas Kandidat</h3>
-            <p className="text-xs text-[#67677e]">
-              Daftar pelamar dengan kontrol manual analisis AI, review dossier, dan audit repositori kode
+            <h3 className="text-lg font-bold font-display text-slate-900">Antrean Berkas Kandidat</h3>
+            <p className="text-xs text-slate-500">
+              Daftar pelamar dengan kontrol manual analisis AI, review dossier terperinci, dan audit repositori
             </p>
           </div>
         </div>

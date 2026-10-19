@@ -380,6 +380,12 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - Tombol "Jalankan Analisis AI" di header modal memicu triage live (`POST /api/candidates/{id}/triage`) dan memperbarui graf + skor seketika tanpa pindah halaman.
   - Tab "Dokumen CV/Resume" menampilkan teks verbatim `sanitized_resume_text` langsung dari database.
   - Hapus navigasi dummy `navigate('/evidence-graph/...')` di action bar modal lama.
+- **Redesign UI/UX Modern (Linear / WebEkspor Aesthetic) & Eliminasi Komponen Redundan:**
+  - Hapus file komponen redundan `HealthStatusBadge.jsx`, status API di-inline langsung secara lightweight di `Header.jsx`.
+  - Integrasi logo resmi `logo.svg` di `Header.jsx` dan sync ke `frontend/public/logo.svg`.
+  - Redesign `Sidebar.jsx` dengan dark slate palette (#111318), typography ramping, dan status pill yang bersih.
+  - Redesign `DashboardOverview.jsx` dan `CandidateTable.jsx` ke modern card-based breathable layout (slate-50 background, subtle border-slate-200, crisp typography, clean status badges, tombol aksi jelas).
+- **Status & Verifikasi:** Selesai 100%. Kompilasi Vite build lolos tanpa error (bundle lebih ringkas). Test backend 63/63 lolos hijau.
 
 
 

@@ -6,20 +6,20 @@ import DashboardOverview from './components/DashboardOverview';
 
 // Code Splitting via Dynamic Imports (Sprint 5 Vite Optimization)
 const EvidenceGraph = lazy(() => import('./components/EvidenceGraph'));
-const WhatIfStudio = lazy(() => import('./components/WhatIfStudio'));
+const JobManagement = lazy(() => import('./components/JobManagement'));
 const CareerPortal = lazy(() => import('./components/CareerPortal'));
 
 import { WifiOff, Sparkles } from 'lucide-react';
 
-// Loading Fallback Component with Natural Pine & Sage Aesthetics
+// Loading Fallback Component with Grafana Clean Enterprise Aesthetics
 function ComponentLoader({ label = "Memuat modul komponen..." }) {
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[350px] space-y-3" role="status" aria-live="polite">
       <div className="relative flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#C2E0C4] border-t-[#0B2B26] rounded-full animate-spin"></div>
-        <Sparkles className="w-4 h-4 text-[#235347] absolute animate-pulse" />
+        <div className="w-10 h-10 border-2 border-[#8ec0ff] border-t-[#1b55f5] rounded-full animate-spin"></div>
+        <Sparkles className="w-4 h-4 text-[#1b55f5] absolute animate-pulse" />
       </div>
-      <p className="text-xs font-semibold text-[#6C837C] tracking-wide animate-pulse">
+      <p className="text-xs font-semibold text-[#67677e] tracking-wide animate-pulse">
         {label}
       </p>
     </div>
@@ -46,7 +46,8 @@ function DashboardLayout({ isDark, onToggleTheme }) {
     '/': 'Dashboard & Triage Queue',
     '/dashboard': 'Dashboard & Triage Queue',
     '/evidence-graph': 'Evidence Graph Explorer (React Flow)',
-    '/what-if': 'What-If Simulation Studio',
+    '/jobs': 'Kelola Lowongan & Konfigurasi Bobot 4D',
+    '/what-if': 'Kelola Lowongan & Konfigurasi Bobot 4D',
   };
 
   const getTitle = () => {
@@ -96,7 +97,8 @@ function DashboardLayout({ isDark, onToggleTheme }) {
               <Route path="dashboard" element={<DashboardOverview />} />
               <Route path="evidence-graph" element={<EvidenceGraph />} />
               <Route path="evidence-graph/:candidateId" element={<EvidenceGraph />} />
-              <Route path="what-if" element={<WhatIfStudio />} />
+              <Route path="jobs" element={<JobManagement />} />
+              <Route path="what-if" element={<Navigate to="/jobs" replace />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>

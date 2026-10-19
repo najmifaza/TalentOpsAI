@@ -339,5 +339,34 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
   - Tampilan visual telah sepenuhnya modern dengan tema Grafana Labs Enterprise, transparan secara real-time, dan ramah pengguna HR.
 
+---
+
+### 2026-10-19 - Willy - Restrukturisasi UX Dashboard Operasional, Modul Kelola Lowongan & Batch Triage HR
+- **Komponen / File:**
+  - `frontend/src/components/DashboardOverview.jsx` (Redesain total jadi Operational Workspace, 4-stage funnel pipeline, KPI reaktif)
+  - `frontend/src/components/JobManagement.jsx` (Komponen baru manajemen lowongan kerja & konfigurasi bobot 4D)
+  - `frontend/src/components/WhatIfStudio.jsx` (Dihapus, digantikan JobManagement riil)
+  - `frontend/src/components/CandidateTable.jsx` (Integrasi tombol Batch Triage AI)
+  - `frontend/src/components/CandidateModal.jsx` (Harmonisasi palet ke tema Grafana clean enterprise)
+  - `frontend/src/components/CareerPortal.jsx` (Fix missing Lucide icons EyeOff & Cpu, dual-path API)
+  - `frontend/src/components/UploadCandidateModal.jsx` (Dropdown posisi dinamis terhubung ke `/api/jobs`)
+  - `frontend/src/components/Header.jsx` & `frontend/src/components/Sidebar.jsx` (Pemisahan batas portal pelamar publik & dashboard HR)
+  - `frontend/src/App.jsx` (Pembaruan rute `/jobs`, redirect `/what-if`, dan loader enterprise)
+- **Yang Dikerjakan:**
+  - **1. Penyederhanaan UX Dashboard Operasional:**
+    - Menghilangkan hero banner promosi berlebih dan tombol semu `alert()`.
+    - Memasang Recruitment Pipeline Funnel 4 tahap operasional (`Menunggu Triage AI` -> `Siap Ditinjau HR` -> `Sangat Sesuai` -> `Kurang Sesuai/Anomali`).
+    - Menghitung KPI secara reaktif dari data kandidat aktif.
+  - **2. Modul Kelola Lowongan & Bobot 4D (`JobManagement.jsx`):**
+    - Mengganti sandbox simulasi statis dengan formulir pembuatan dan pengelolaan lowongan kerja permanen di database.
+    - Menambahkan preset bobot cepat (Standar, Code-First, Security-Strict, Junior-Friendly) serta slider bobot 4D per lowongan.
+  - **3. Batch Triage AI & Penyelarasan Tema:**
+    - Menambahkan trigger batch triage pada tabel antrean HR.
+    - Mengeliminasi warna hijau lumut/pinus tua yang tersisa di modal kandidat.
+- **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (zero error).
+- **Catatan untuk Rekan Tim (Najmi & Fardizza):**
+  - Seluruh modul UI kini tersinkronisasi penuh dengan endpoint backend lowongan baru.
+
+
 
 

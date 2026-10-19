@@ -18,6 +18,8 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
   const [candidateName, setCandidateName] = useState('');
   const [candidateEmail, setCandidateEmail] = useState('');
   const [jobTitle, setJobTitle] = useState('Senior Backend Engineer');
+  const [selectedJobId, setSelectedJobId] = useState('1');
+  const [jobsList, setJobsList] = useState([]);
   const [file, setFile] = useState(null);
   const [fileError, setFileError] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -26,6 +28,30 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
   const fileInputRef = useRef(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+
+  useEffect(() => {
+    async function loadJobs() {
+      try {
+        let res;
+        try {
+          res = await fetch(`${API_BASE_URL}/api/jobs`);
+        } catch (e) {
+          res = await fetch('/api/jobs');
+        }
+        if (res && res.ok) {
+          const json = await res.json();
+          if (json.data && json.data.length > 0) {
+            setJobsList(json.data);
+            setSelectedJobId(String(json.data[0].id));
+            setJobTitle(json.data[0].title);
+          }
+        }
+      } catch (e) {}
+    }
+    if (isOpen) {
+      loadJobs();
+    }
+  }, [isOpen, API_BASE_URL]);
 
   if (!isOpen) return null;
 
@@ -78,7 +104,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
 
     try {
       const formData = new FormData();
-      formData.append('job_id', '1');
+      formData.append('job_id', String(selectedJobId || '1'));
       formData.append('files', file);
 
       let serverUploaded = null;
@@ -217,15 +243,28 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
               <span>Posisi yang Dilamar *</span>
             </label>
             <select
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
+              value={selectedJobId}
+              onChange={(e) => {
+                const jid = e.target.value;
+                setSelectedJobId(jid);
+                const found = jobsList.find(j => String(j.id) === String(jid));
+                if (found) setJobTitle(found.title);
+              }}
               className="w-full px-3.5 py-2.5 rounded-lg border border-[#d8d8df] bg-white text-xs text-[#000000] font-medium focus:outline-none focus:border-[#1b55f5]"
             >
-              <option value="Senior Backend Engineer">Senior Backend Engineer</option>
-              <option value="Frontend Engineer">Frontend Engineer (React / Next.js)</option>
-              <option value="DevOps & Cloud Engineer">DevOps &amp; Cloud Infrastructure</option>
-              <option value="AI / ML Engineer">AI &amp; Machine Learning Engineer</option>
-              <option value="Product Manager">Technical Product Manager</option>
+              {jobsList.length > 0 ? (
+                jobsList.map(j => (
+                  <option key={j.id} value={j.id}>
+                    {j.title} ({j.department || 'Engineering'})
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="1">Senior Backend Engineer (Core Engineering)</option>
+                  <option value="2">AI Data &amp; Evaluation Engineer (AI Group)</option>
+                  <option value="3">Lead Frontend UI/UX Engineer (Product)</option>
+                </>
+              )}
             </select>
           </div>
 

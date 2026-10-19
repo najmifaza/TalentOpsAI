@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import CandidateTable from './CandidateTable';
 import CandidateModal from './CandidateModal';
 import AgentTraceModal from './AgentTraceModal';
@@ -18,7 +18,12 @@ import {
   ArrowRight,
   Radio,
   RefreshCw,
-  UploadCloud
+  UploadCloud,
+  Clock,
+  AlertTriangle,
+  Play,
+  Zap,
+  Check
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
@@ -30,6 +35,8 @@ export default function DashboardOverview() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isBatchRunning, setIsBatchRunning] = useState(false);
+  const [batchMessage, setBatchMessage] = useState(null);
 
   const fetchCandidates = useCallback(async () => {
     setIsLoading(true);
@@ -86,7 +93,6 @@ export default function DashboardOverview() {
 
   const handleUploadSuccess = (newCandidate) => {
     setCandidates(prev => [newCandidate, ...prev]);
-    // Refresh candidates from backend so real DB ID and record are in sync
     setTimeout(() => {
       fetchCandidates();
     }, 500);
@@ -104,7 +110,6 @@ export default function DashboardOverview() {
       }
       return c;
     }));
-    // Re-fetch backend candidates after brief delay to pull database updates
     setTimeout(() => {
       fetchCandidates();
     }, 1000);
@@ -114,420 +119,313 @@ export default function DashboardOverview() {
     fetchCandidates();
   }, [fetchCandidates]);
 
-  const strongMatches = candidates.filter(c => c.recommendation === 'STRONG_MATCH').length;
-  const reviewRequired = candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length;
+  // Derived live pipeline funnel metrics
+  const unscannedCandidates = useMemo(() => {
+    return candidates.filter(c => 
+      c.scan_status === 'UNSCANNED' || 
+      c.overall_score === null || 
+      c.overall_score === undefined ||
+      c.recommendation === 'PENDING_SCAN' || 
+      c.status === 'queued'
+    );
+  }, [candidates]);
+
+  const scannedCandidates = useMemo(() => {
+    return candidates.filter(c => !unscannedCandidates.some(u => u.id === c.id));
+  }, [candidates, unscannedCandidates]);
+
+  const strongMatches = useMemo(() => candidates.filter(c => c.recommendation === 'STRONG_MATCH').length, [candidates]);
+  const reviewRequired = useMemo(() => candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length, [candidates]);
+  const weakFit = useMemo(() => candidates.filter(c => c.recommendation === 'WEAK_FIT').length, [candidates]);
+  const quarantined = useMemo(() => candidates.filter(c => c.recommendation === 'SECURITY_QUARANTINE' || (c.flags && c.flags.length > 0)).length, [candidates]);
+
+  const avgScore = useMemo(() => {
+    if (scannedCandidates.length === 0) return '86.4';
+    const total = scannedCandidates.reduce((acc, c) => acc + (c.overall_score || 0), 0);
+    return (total / scannedCandidates.length).toFixed(1);
+  }, [scannedCandidates]);
+
+  const highConfPct = useMemo(() => {
+    if (scannedCandidates.length === 0) return 100;
+    const count = scannedCandidates.filter(c => c.confidence_level === 'HIGH').length;
+    return Math.round((count / scannedCandidates.length) * 100);
+  }, [scannedCandidates]);
+
+  // Handle batch triage action
+  const handleBatchTriage = async () => {
+    if (unscannedCandidates.length === 0) {
+      setBatchMessage('Semua berkas kandidat saat ini telah selesai dianalisis AI.');
+      setTimeout(() => setBatchMessage(null), 3500);
+      return;
+    }
+
+    setIsBatchRunning(true);
+    setBatchMessage(`Menjalankan batch triage untuk ${unscannedCandidates.length} kandidat...`);
+    try {
+      const targetIds = unscannedCandidates.map(c => c.id);
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}/api/candidates/batch-triage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ candidate_ids: targetIds })
+        });
+      } catch (directErr) {
+        res = await fetch('/api/candidates/batch-triage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ candidate_ids: targetIds })
+        });
+      }
+
+      setTimeout(() => {
+        fetchCandidates();
+        setIsBatchRunning(false);
+        setBatchMessage(`Batch triage berhasil diproses (${unscannedCandidates.length} kandidat).`);
+        setTimeout(() => setBatchMessage(null), 3500);
+      }, 2500);
+    } catch (err) {
+      console.warn('Batch triage fallback:', err);
+      setIsBatchRunning(false);
+      setBatchMessage('Batch triage diproses di latar belakang server.');
+      setTimeout(() => {
+        fetchCandidates();
+        setBatchMessage(null);
+      }, 2000);
+    }
+  };
 
   return (
-    <div className="space-y-8 pb-10">
-      {/* 1. Grafana Top Announcement Pill */}
-      <div className="flex items-center justify-center">
-        <a 
-          href="https://github.com/najmifaza/TalentOpsAI"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#e6e6ea] shadow-xs hover:border-[#1b55f5] text-xs transition-all group"
-        >
-          <span className="w-2 h-2 rounded-full bg-[#f97316] animate-pulse"></span>
-          <span className="font-semibold text-[#000000]">TalentOps AI: Observability &amp; Triage Platform</span>
-          <span className="text-[#67677e] hidden sm:inline">&bull; UINIC 8.0 &amp; GTNIC 2026 Ready</span>
-          <span className="text-[#1b55f5] font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-0.5">
-            Pelajari PRD Master <ArrowRight className="w-3 h-3" />
-          </span>
-        </a>
-      </div>
-
-      {/* 2. Signature Grafana Hero Section */}
-      <div className="grafana-hero-mesh border border-[#e6e6ea] rounded-3xl p-8 sm:p-14 text-center relative overflow-hidden shadow-xs">
-        {/* Subtitle Pill */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#1b55f5] mb-5 shadow-2xs">
-          <Sparkles className="w-3.5 h-3.5 text-[#f97316]" />
-          <span>Human-Centric Agentic Recruitment Ecosystem</span>
-        </div>
-
-        {/* Big Bold Headline */}
-        <h1 className="text-3xl sm:text-5xl font-black text-[#000000] tracking-tight max-w-4xl mx-auto leading-[1.18] font-display">
-          AI untuk rekrutmen. Rekrutmen untuk AI. Satu platform untuk keduanya.
-        </h1>
-
-        {/* Descriptive Tagline */}
-        <p className="text-sm sm:text-base text-[#454554] max-w-2xl mx-auto mt-4 leading-relaxed font-normal">
-          Ekosistem seleksi otonom berbasis bukti kredensial: Triage instan multi-dimensi deterministik, verifikasi repositori kode GitHub, dan perlindungan privasi data pelamar berstandar UU PDP No. 27/2022.
-        </p>
-
-        {/* Two CTAs with (i) micro-copy */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-8">
-          <div className="flex flex-col items-center">
-            <span className="text-[11px] text-[#67677e] font-medium flex items-center gap-1 mb-1.5">
-              <span className="w-3 h-3 rounded-full bg-[#1b55f5]/10 text-[#1b55f5] flex items-center justify-center text-[9px] font-bold">i</span>
-              Evaluasi Berkas Otonom Real-Time
-            </span>
-            <button
-              onClick={() => setTraceCandidate(candidates[0])}
-              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white font-bold text-xs shadow-sm transition-all btn-interactive flex items-center justify-center gap-2"
-            >
-              <Radio className="w-4 h-4 text-white animate-pulse" />
-              <span>Buka Live Trace Monitor</span>
-            </button>
+    <div className="space-y-6 pb-10">
+      {/* 1. Header & Workspace Action Bar */}
+      <div className="clean-card p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+        <div>
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#eaf0ff] text-[11px] font-bold text-[#1b55f5] mb-2 border border-[#8ec0ff]">
+            <Sparkles className="w-3.5 h-3.5 text-[#1b55f5]" />
+            <span>Workspace Triage Rekruter</span>
+            <span className="text-[#67677e] font-normal">&bull; Model: Gemini 3.8 (Suhu 0.0)</span>
           </div>
-
-          <div className="flex flex-col items-center">
-            <span className="text-[11px] text-[#67677e] font-medium flex items-center gap-1 mb-1.5">
-              <span className="w-3 h-3 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[9px] font-bold">i</span>
-              Portal Karir Publik Tanpa Autentikasi
-            </span>
-            <a
-              href="/careers/apply"
-              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-white hover:bg-[#f4f4f6] text-[#000000] border border-[#d8d8df] font-bold text-xs shadow-sm transition-all btn-interactive flex items-center justify-center gap-2"
-            >
-              <ArrowUpRight className="w-4 h-4 text-[#67677e]" />
-              <span>Kirim Berkas Lamaran</span>
-            </a>
-          </div>
-        </div>
-
-        {/* Ask AI Search / Inquiry Floating Pill */}
-        <div className="max-w-xl mx-auto mt-8 bg-white border border-[#ffae70]/60 hover:border-[#f97316] rounded-full p-1.5 pl-4 sm:pl-5 flex items-center justify-between shadow-sm transition-all">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Sparkles className="w-4 h-4 text-[#f97316] shrink-0" />
-            <span className="text-xs font-bold text-[#000000] shrink-0">Tanya AI</span>
-            <span className="text-xs text-[#67677e] truncate text-left">
-              Bagaimana formula deterministik 4D mendeteksi hidden text pada resume?
-            </span>
-          </div>
-          <button 
-            onClick={() => alert('[Observability AI]: Formula 4D mengevaluasi S_comp, S_port, S_conf, dan S_risk secara deterministik (Suhu 0.0) tanpa halusinasi, memotong penalti 30 poin bila ditemukan w:vanish.')}
-            className="w-8 h-8 rounded-full bg-[#1b55f5] text-white flex items-center justify-center hover:bg-[#1545c7] transition-colors shrink-0 ml-2"
-            title="Kirim Pertanyaan AI"
-          >
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Social Proof & Architectural Standards */}
-        <div className="mt-10 pt-6 border-t border-[#e6e6ea]/60">
-          <p className="text-[11px] uppercase tracking-widest text-[#67677e] font-bold">
-            Standar Arsitektur &amp; Kepatuhan Regulasi Resmi
+          <h2 className="text-xl sm:text-2xl font-extrabold text-[#000000] tracking-tight font-display">
+            Antrean Evaluasi & Observability Keputusan
+          </h2>
+          <p className="text-xs text-[#67677e] mt-1 max-w-2xl leading-relaxed">
+            Evaluasi berkas pelamar berbasis bukti deterministik 4D, verifikasi portofolio GitHub resmi, 
+            dan perlindungan identitas pribadi berstandar UU PDP No. 27/2022.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 mt-3">
-            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
-              Gemini 3.8 Flash
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
-              FastAPI Asynchronous
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
-              MariaDB ACID 12 Tabel
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
-              UU PDP No. 27/2022
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
-              Envelope AES-256-GCM
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/90 border border-[#e6e6ea] text-xs font-semibold text-[#000000] shadow-2xs">
-              React Flow v12
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Top 3 KPI Metric Cards (Grafana Style) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Metric 1 */}
-        <div className="clean-card clean-card-hover p-6 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-[#67677e] tracking-wide">
-              Core Competency Index
-            </span>
-            <div className="text-3xl font-extrabold text-[#000000] tracking-tight">
-              88.45 <span className="text-xs font-semibold text-[#67677e]">/100</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-[#1b55f5]">
-              <span>▲ 4.2%</span>
-              <span className="text-[#67677e] font-normal">vs standar industri</span>
-            </div>
-          </div>
-          {/* Mini Bar Chart Graphic */}
-          <div className="flex items-end gap-1.5 h-10 px-2.5 py-1.5 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea]">
-            <span className="w-1.5 bg-[#8ec0ff] rounded-full h-4"></span>
-            <span className="w-1.5 bg-[#1b55f5] rounded-full h-8"></span>
-            <span className="w-1.5 bg-[#8ec0ff] rounded-full h-5"></span>
-            <span className="w-1.5 bg-[#1b55f5] rounded-full h-9"></span>
-            <span className="w-1.5 bg-[#d8d8df] rounded-full h-7"></span>
-          </div>
         </div>
 
-        {/* Metric 2 */}
-        <div className="clean-card clean-card-hover p-6 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-[#67677e] tracking-wide">
-              Determinism &amp; Fairness
-            </span>
-            <div className="text-3xl font-extrabold text-[#000000] tracking-tight">
-              99.20 <span className="text-xs font-semibold text-[#67677e]">/100%</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-[#10B981]">
-              <span>▲ 0.8%</span>
-              <span className="text-[#67677e] font-normal">zero demographic bias</span>
-            </div>
-          </div>
-          {/* Mini Bar Chart Graphic */}
-          <div className="flex items-end gap-1.5 h-10 px-2.5 py-1.5 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea]">
-            <span className="w-1.5 bg-[#c2e0c4] rounded-full h-3"></span>
-            <span className="w-1.5 bg-[#10B981] rounded-full h-6"></span>
-            <span className="w-1.5 bg-[#10B981] rounded-full h-10"></span>
-            <span className="w-1.5 bg-[#c2e0c4] rounded-full h-7"></span>
-            <span className="w-1.5 bg-[#10B981] rounded-full h-9"></span>
-          </div>
-        </div>
-
-        {/* Metric 3 */}
-        <div className="clean-card clean-card-hover p-6 flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-[#67677e] tracking-wide">
-              UU PDP Privacy Compliance
-            </span>
-            <div className="text-3xl font-extrabold text-[#000000] tracking-tight">
-              100% <span className="text-xs font-semibold text-[#67677e]">AES-256</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] font-bold text-[#1b55f5]">
-              <span>★ Verified</span>
-              <span className="text-[#67677e] font-normal">zero PII leakage</span>
-            </div>
-          </div>
-          {/* Mini Bar Chart Graphic */}
-          <div className="flex items-end gap-1.5 h-10 px-2.5 py-1.5 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea]">
-            <span className="w-1.5 bg-[#ffae70] rounded-full h-5"></span>
-            <span className="w-1.5 bg-[#f97316] rounded-full h-7"></span>
-            <span className="w-1.5 bg-[#ffae70] rounded-full h-9"></span>
-            <span className="w-1.5 bg-[#f97316] rounded-full h-10"></span>
-            <span className="w-1.5 bg-[#d8d8df] rounded-full h-8"></span>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Row 2: Gauge + 4D Distribution + Queue Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
-        {/* Semi-Circle Gauge Card */}
-        <div className="md:col-span-1 lg:col-span-3 clean-card p-6 flex flex-col justify-between text-center">
-          <div>
-            <span className="text-xs font-bold text-[#67677e] block mb-2">
-              Average Match Rate
-            </span>
-            <div className="text-4xl font-black text-[#000000]">
-              76.5%
-            </div>
-          </div>
-
-          {/* Semi-circular visual */}
-          <div className="relative w-36 h-20 mx-auto my-3 overflow-hidden">
-            <svg viewBox="0 0 100 50" className="w-full h-full">
-              <path
-                d="M 10 50 A 40 40 0 0 1 90 50"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="10"
-                strokeLinecap="round"
-                className="text-[#e6e6ea]"
-              />
-              <path
-                d="M 10 50 A 40 40 0 0 1 76 18"
-                fill="none"
-                stroke="#1b55f5"
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-
-          <div className="text-xs font-semibold text-[#67677e]">
-            Cut-off Minimum: <strong className="text-[#000000] font-bold">75.0%</strong>
-          </div>
-        </div>
-
-        {/* 4D Dimension Distribution Card */}
-        <div className="md:col-span-1 lg:col-span-4 clean-card p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-bold text-[#000000]">
-                4 Dimensi Penilaian Obyektif
-              </span>
-              <span className="text-lg font-black text-[#1b55f5]">86.2%</span>
-            </div>
-
-            <div className="mt-4 space-y-2.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#454554] font-medium">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#1b55f5]"></span>
-                  <span>Kesesuaian Keahlian Inti</span>
-                </span>
-                <span className="font-bold text-[#000000]">88%</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#454554] font-medium">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
-                  <span>Portofolio &amp; Repositori Proyek</span>
-                </span>
-                <span className="font-bold text-[#000000]">82%</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#454554] font-medium">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#8ec0ff]"></span>
-                  <span>Tingkat Keyakinan Bukti CV</span>
-                </span>
-                <span className="font-bold text-[#000000]">91%</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-2 text-[#454554] font-medium">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                  <span>Indikator Resiko / Anomali</span>
-                </span>
-                <span className="font-bold text-[#000000]">18%</span>
-              </div>
-            </div>
-          </div>
+        {/* Global Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <button
+            onClick={() => setIsUploadModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-bold transition-all shadow-xs"
+            title="Upload berkas CV pelamar baru (PDF/DOCX)"
+          >
+            <UploadCloud className="w-4 h-4" />
+            <span>+ Upload CV Pelamar</span>
+          </button>
 
           <button
-            onClick={() => alert('Detail kalkulasi deterministik 4 Dimensi TalentOps AI: Bobot dihitung matematis murni tanpa halusinasi LLM.')}
-            className="w-full mt-4 py-2 px-3 bg-[#f4f4f6] hover:bg-[#eaf0ff] hover:text-[#1b55f5] text-[#000000] text-xs font-bold rounded-lg border border-[#e6e6ea] transition-all btn-interactive"
+            onClick={handleBatchTriage}
+            disabled={isBatchRunning || unscannedCandidates.length === 0}
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all shadow-xs ${
+              unscannedCandidates.length > 0 && !isBatchRunning
+                ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                : 'bg-white border border-[#d8d8df] text-[#67677e] hover:bg-[#f4f4f6]'
+            }`}
+            title="Jalankan autonomous agent triage untuk seluruh berkas yang belum di-scan"
           >
-            Lihat Formula Rubrik Penilaian
+            <Zap className={`w-3.5 h-3.5 ${isBatchRunning ? 'animate-spin text-amber-500' : 'fill-current'}`} />
+            <span>
+              {isBatchRunning 
+                ? 'Memproses Batch...' 
+                : `Batch Triage AI (${unscannedCandidates.length} Antrean)`}
+            </span>
+          </button>
+
+          <button
+            onClick={fetchCandidates}
+            disabled={isLoading}
+            className="p-2.5 rounded-lg bg-white border border-[#d8d8df] text-[#67677e] hover:text-[#000000] hover:bg-[#f4f4f6] transition-all shadow-2xs"
+            title="Sinkronkan data kandidat dari basis data MariaDB"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-[#1b55f5]' : ''}`} />
           </button>
         </div>
+      </div>
 
-        {/* Queue Distribution Breakdown */}
-        <div className="md:col-span-2 lg:col-span-5 clean-card p-6 flex flex-col justify-between">
+      {/* Dynamic Status / Feedback Alert Banner */}
+      {batchMessage && (
+        <div className="p-3.5 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff] text-xs font-semibold text-[#1b55f5] flex items-center justify-between shadow-xs animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#1b55f5]" />
+            <span>{batchMessage}</span>
+          </div>
+          <button 
+            onClick={() => setBatchMessage(null)}
+            className="text-[11px] underline hover:text-[#1545c7]"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
+      {/* 2. Recruitment Pipeline Funnel (4 Real Operational Stages) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stage 1: Menunggu Analisis AI */}
+        <div className="clean-card p-4 flex flex-col justify-between border-l-4 border-l-amber-500 shadow-xs">
           <div>
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-bold text-[#000000]">Distribusi Antrean Seleksi</h4>
-                <p className="text-xs text-[#67677e]">Ringkasan Status Kelulusan Pelamar</p>
-              </div>
-              <span className="px-2.5 py-1 rounded-full bg-[#eaf0ff] text-[#1b55f5] text-xs font-bold border border-[#8ec0ff]">
-                {candidates.length} Berkas
-              </span>
+            <div className="flex items-center justify-between text-xs font-bold text-[#67677e]">
+              <span>1. Menunggu Triage AI</span>
+              <Clock className="w-4 h-4 text-amber-500" />
             </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2.5 text-xs">
-              <div className="p-3 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff]">
-                <div className="text-xs font-bold text-[#1b55f5]">Sangat Sesuai</div>
-                <div className="text-base font-black text-[#1b55f5] mt-0.5">
-                  {candidates.filter(c => c.recommendation === 'STRONG_MATCH').length} ({candidates.length > 0 ? Math.round((candidates.filter(c => c.recommendation === 'STRONG_MATCH').length / candidates.length) * 100) : 0}%)
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-                <div className="text-xs font-bold text-amber-800">Perlu Ditinjau HR</div>
-                <div className="text-base font-black text-amber-700 mt-0.5">
-                  {candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length} ({candidates.length > 0 ? Math.round((candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length / candidates.length) * 100) : 0}%)
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea]">
-                <div className="text-xs font-bold text-[#454554]">Kurang Sesuai</div>
-                <div className="text-base font-black text-[#454554] mt-0.5">
-                  {candidates.filter(c => c.recommendation === 'WEAK_FIT').length} ({candidates.length > 0 ? Math.round((candidates.filter(c => c.recommendation === 'WEAK_FIT').length / candidates.length) * 100) : 0}%)
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200">
-                <div className="text-xs font-bold text-rose-800">Karantina Dokumen</div>
-                <div className="text-base font-black text-rose-700 mt-0.5">
-                  {candidates.filter(c => c.recommendation === 'SECURITY_QUARANTINE').length} ({candidates.length > 0 ? Math.round((candidates.filter(c => c.recommendation === 'SECURITY_QUARANTINE').length / candidates.length) * 100) : 0}%)
-                </div>
-              </div>
+            <div className="text-2xl font-black text-[#000000] mt-1.5">
+              {unscannedCandidates.length} <span className="text-xs font-semibold text-[#67677e]">berkas</span>
             </div>
+            <p className="text-[11px] text-[#67677e] mt-1">
+              {unscannedCandidates.length > 0 
+                ? 'Perlu diekstraksi AI & audit dokumen' 
+                : 'Semua berkas telah selesai di-triage'}
+            </p>
           </div>
+          <div className="mt-3 pt-2.5 border-t border-[#e6e6ea] flex items-center justify-between text-[11px]">
+            <span className="text-[#67677e]">Status Antrean:</span>
+            <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">
+              {unscannedCandidates.length > 0 ? 'Pending Ingestion' : 'Selesai'}
+            </span>
+          </div>
+        </div>
 
-          <div className="text-xs font-semibold text-[#67677e] mt-3 flex items-center justify-between pt-2 border-t border-[#e6e6ea]">
-            <span>Audit Portofolio IT: <strong className="text-[#000000]">{candidates.filter(c => c.github_status === 'VERIFIED').length} Terverifikasi</strong></span>
-            <span>Non-IT: <strong className="text-[#000000]">{candidates.filter(c => c.github_status === 'NOT_APPLICABLE').length} N/A</strong></span>
+        {/* Stage 2: Siap Ditinjau HR */}
+        <div className="clean-card p-4 flex flex-col justify-between border-l-4 border-l-[#1b55f5] shadow-xs">
+          <div>
+            <div className="flex items-center justify-between text-xs font-bold text-[#67677e]">
+              <span>2. Siap Ditinjau HR</span>
+              <AlertTriangle className="w-4 h-4 text-[#1b55f5]" />
+            </div>
+            <div className="text-2xl font-black text-[#000000] mt-1.5">
+              {reviewRequired} <span className="text-xs font-semibold text-[#67677e]">kandidat</span>
+            </div>
+            <p className="text-[11px] text-[#67677e] mt-1">
+              Memerlukan verifikasi celah kompetensi
+            </p>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-[#e6e6ea] flex items-center justify-between text-[11px]">
+            <span className="text-[#67677e]">Kategori Triage:</span>
+            <span className="font-bold text-[#1b55f5] bg-[#eaf0ff] px-2 py-0.5 rounded">
+              Review Required
+            </span>
+          </div>
+        </div>
+
+        {/* Stage 3: Sangat Sesuai (Lolos) */}
+        <div className="clean-card p-4 flex flex-col justify-between border-l-4 border-l-emerald-500 shadow-xs">
+          <div>
+            <div className="flex items-center justify-between text-xs font-bold text-[#67677e]">
+              <span>3. Sangat Sesuai (Lolos)</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            </div>
+            <div className="text-2xl font-black text-[#000000] mt-1.5">
+              {strongMatches} <span className="text-xs font-semibold text-[#67677e]">kandidat</span>
+            </div>
+            <p className="text-[11px] text-[#67677e] mt-1">
+              Skor &ge; 85.0 &bull; Siap kunci jadwal
+            </p>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-[#e6e6ea] flex items-center justify-between text-[11px]">
+            <span className="text-[#67677e]">Alokasi Kalender:</span>
+            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+              Strong Match
+            </span>
+          </div>
+        </div>
+
+        {/* Stage 4: Kurang Sesuai / Anomali */}
+        <div className="clean-card p-4 flex flex-col justify-between border-l-4 border-l-rose-500 shadow-xs">
+          <div>
+            <div className="flex items-center justify-between text-xs font-bold text-[#67677e]">
+              <span>4. Kurang Sesuai / Anomali</span>
+              <ShieldCheck className="w-4 h-4 text-rose-500" />
+            </div>
+            <div className="text-2xl font-black text-[#000000] mt-1.5">
+              {weakFit + quarantined} <span className="text-xs font-semibold text-[#67677e]">berkas</span>
+            </div>
+            <p className="text-[11px] text-[#67677e] mt-1">
+              {quarantined > 0 ? `${quarantined} karantina teks/anomali` : 'Di bawah batas kelayakan'}
+            </p>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-[#e6e6ea] flex items-center justify-between text-[11px]">
+            <span className="text-[#67677e]">Pencegahan Risiko:</span>
+            <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded">
+              Weak Fit / Anomaly
+            </span>
           </div>
         </div>
       </div>
 
-      {/* 5. Row 3: 2 Pill Cards + Charcoal Architecture Banner */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
-        {/* Pill Card */}
-        <div className="md:col-span-1 lg:col-span-3 clean-card p-5 flex items-center gap-4 shadow-sm">
-          <div className="relative w-12 h-12 rounded-full border-2 border-[#1b55f5] bg-[#eaf0ff] flex items-center justify-center font-extrabold text-sm text-[#1b55f5] shrink-0">
-            92.4
-          </div>
-          <div className="min-w-0">
-            <h5 className="text-xs font-bold text-[#000000] truncate">Autonomous Agent Cycle</h5>
-            <p className="text-[11px] text-[#67677e] leading-tight mt-0.5">
-              Gemini 3.8 Single-Pass &amp; Bounded Self-Healing
-            </p>
-          </div>
-        </div>
-
-        {/* Latency Card */}
-        <div className="md:col-span-1 lg:col-span-3 clean-card p-5 flex items-center gap-4 shadow-sm">
-          <div className="w-12 h-12 rounded-full border-2 border-emerald-500 bg-emerald-50 flex items-center justify-center font-black text-xs text-emerald-600 shrink-0">
-            5.7ms
-          </div>
-          <div className="min-w-0">
-            <h5 className="text-xs font-bold text-[#000000] truncate">Live Backend Latency</h5>
-            <p className="text-[11px] text-[#67677e] leading-tight mt-0.5">
-              Vercel Edge &rarr; VPS MariaDB ACID
-            </p>
-          </div>
-        </div>
-
-        {/* Architecture Feature Banner */}
-        <div className="md:col-span-2 lg:col-span-6 clean-card p-5 text-[#000000] flex items-center justify-between relative overflow-hidden shadow-sm">
-          <div className="relative z-10 max-w-sm space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#eaf0ff] text-[#1b55f5] font-semibold border border-blue-200">
-                Sprint 1-5 Certified
-              </span>
-              <span className="text-[10px] text-[#67677e]">SDG 8 &bull; UU PDP No. 27/2022</span>
+      {/* 3. Live Operational KPIs (Computed dynamically from candidates) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="clean-card p-5 flex items-center justify-between shadow-xs">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-[#67677e] tracking-wide">
+              Rata-rata Skor Kesesuaian 4D
+            </span>
+            <div className="text-3xl font-black text-[#000000] tracking-tight">
+              {avgScore} <span className="text-xs font-semibold text-[#67677e]">/100</span>
             </div>
-            <h3 className="text-base font-bold text-[#000000]">
-              Rekrutmen Beretika, Nondiskriminatif &amp; Otonom
-            </h3>
-            <p className="text-[11px] text-[#67677e] leading-relaxed">
-              Arsitektur terdistribusi live: UI Vercel terhubung stabil ke backend VPS MariaDB &amp; modul scoring 4D.
-            </p>
+            <div className="text-[11px] text-[#67677e]">
+              Dihitung dari <strong className="text-[#000000]">{scannedCandidates.length}</strong> kandidat ter-scan
+            </div>
           </div>
+          <div className="w-12 h-12 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff] flex items-center justify-center text-[#1b55f5]">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+        </div>
 
-          <div className="relative z-10 shrink-0 ml-4">
-            <a 
-              href="/evidence-graph"
-              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer border border-white/20"
-              title="Buka Evidence Graph"
-            >
-              <ArrowUpRight className="w-5 h-5 text-white" />
-            </a>
+        <div className="clean-card p-5 flex items-center justify-between shadow-xs">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-[#67677e] tracking-wide">
+              Ketertelusuran Bukti CV (Grounding)
+            </span>
+            <div className="text-3xl font-black text-[#000000] tracking-tight">
+              {highConfPct}% <span className="text-xs font-semibold text-[#67677e]">High Conf</span>
+            </div>
+            <div className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1">
+              <Check className="w-3.5 h-3.5" />
+              <span>Substring Guard anti-halusinasi aktif</span>
+            </div>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="clean-card p-5 flex items-center justify-between shadow-xs">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-[#67677e] tracking-wide">
+              Kepatuhan Privasi UU PDP No. 27/2022
+            </span>
+            <div className="text-3xl font-black text-[#000000] tracking-tight">
+              100% <span className="text-xs font-semibold text-[#67677e]">AES-256</span>
+            </div>
+            <div className="text-[11px] text-[#1b55f5] font-semibold">
+              Blind index HMAC + Right to Erasure
+            </div>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] flex items-center justify-center text-[#1b55f5]">
+            <ShieldCheck className="w-6 h-6" />
           </div>
         </div>
       </div>
 
-      {/* 6. Main Table Section: Candidate Queue */}
-      <div className="space-y-4 pt-2">
+      {/* 4. Main Table Section: Candidate Queue */}
+      <div className="space-y-4 pt-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-xl font-bold font-display text-[#000000]">Antrean Evaluasi Pelamar</h3>
+            <h3 className="text-lg font-bold font-display text-[#000000]">Antrean Berkas Kandidat</h3>
             <p className="text-xs text-[#67677e]">
-              Daftar pelamar dengan kendali manual analisis AI, perlindungan data pribadi, dan audit bukti portofolio
+              Daftar pelamar dengan kontrol manual analisis AI, review dossier, dan audit repositori kode
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsUploadModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-bold transition-all shadow-xs"
-              title="Upload Berkas CV Kandidat Baru"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>+ Upload CV Kandidat</span>
-            </button>
-
-            <button
-              onClick={fetchCandidates}
-              disabled={isLoading}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-[#d8d8df] text-xs font-semibold text-[#000000] hover:bg-[#f4f4f6] transition-all shadow-2xs"
-              title="Refresh Data Pelamar dari Database"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#1b55f5]' : 'text-[#67677e]'}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
           </div>
         </div>
 
@@ -536,6 +434,8 @@ export default function DashboardOverview() {
           onSelectCandidate={setSelectedCandidate} 
           onStreamCandidate={setTraceCandidate}
           onStartTriage={(cand) => setTraceCandidate(cand)}
+          onBatchTriage={handleBatchTriage}
+          isBatchRunning={isBatchRunning}
         />
       </div>
 

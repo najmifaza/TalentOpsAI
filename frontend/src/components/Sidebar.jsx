@@ -6,6 +6,7 @@ import {
   Sliders, 
   Briefcase, 
   FileCheck2,
+  ExternalLink,
   X
 } from 'lucide-react';
 
@@ -13,7 +14,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard & Triage', icon: LayoutDashboard, badge: '5 Antrean' },
     { path: '/evidence-graph', label: 'Evidence Graph (React Flow)', icon: GitBranch, badge: 'Audit' },
-    { path: '/what-if', label: 'What-If Simulation Studio', icon: Sliders, badge: 'Simulator' },
+    { path: '/jobs', label: 'Kelola Lowongan & Bobot', icon: Briefcase, badge: 'Lowongan' },
   ];
 
   const handleLinkClick = () => {
@@ -97,56 +98,38 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
           })}
 
           <div className="pt-5 px-3 pb-2 text-[10px] font-bold tracking-widest text-white/50 uppercase">
-            Public Portal
+            Portal Pelamar Publik
           </div>
 
-          <NavLink
-            to="/careers/apply"
+          <a
+            href="/careers/apply"
+            target="_blank"
+            rel="noreferrer"
             onClick={handleLinkClick}
-            className={({ isActive }) =>
-              `w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group ${
-                isActive
-                  ? 'bg-[#1b55f5] text-white shadow-sm'
-                  : 'text-white/70 hover:text-white hover:bg-[#34373e]'
-              }`
-            }
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium text-white/70 hover:text-white hover:bg-[#34373e] transition-all group"
+            title="Buka form pendaftaran pelamar publik di tab baru"
           >
-            {({ isActive }) => (
-              <>
-                <div className="flex items-center gap-3">
-                  <Briefcase className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-white/60 group-hover:text-white'}`} />
-                  <span className="tracking-tight">Portal Pelamar</span>
-                </div>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white font-semibold">
-                  Pelamar
-                </span>
-              </>
-            )}
-          </NavLink>
+            <div className="flex items-center gap-3">
+              <Briefcase className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" />
+              <span className="tracking-tight">Portal Pelamar</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-colors" />
+          </a>
 
-          <NavLink
-            to="/careers/track"
+          <a
+            href="/careers/track"
+            target="_blank"
+            rel="noreferrer"
             onClick={handleLinkClick}
-            className={({ isActive }) =>
-              `w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group ${
-                isActive
-                  ? 'bg-[#1b55f5] text-white shadow-sm'
-                  : 'text-white/70 hover:text-white hover:bg-[#34373e]'
-              }`
-            }
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium text-white/70 hover:text-white hover:bg-[#34373e] transition-all group"
+            title="Buka pelacakan status anonim pelamar di tab baru"
           >
-            {({ isActive }) => (
-              <>
-                <div className="flex items-center gap-3">
-                  <FileCheck2 className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-white/60 group-hover:text-white'}`} />
-                  <span className="tracking-tight">Lacak Berkas Lamaran</span>
-                </div>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white font-semibold">
-                  Lacak
-                </span>
-              </>
-            )}
-          </NavLink>
+            <div className="flex items-center gap-3">
+              <FileCheck2 className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" />
+              <span className="tracking-tight">Lacak Berkas Lamaran</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-colors" />
+          </a>
         </div>
       </div>
 

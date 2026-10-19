@@ -17,7 +17,9 @@ import {
   Info,
   Clock,
   Search,
-  Check
+  Check,
+  EyeOff,
+  Cpu
 } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import DpaModal from './DpaModal';
@@ -104,8 +106,13 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
   const fetchJobs = async () => {
     setLoadingJobs(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/careers`);
-      if (res.ok) {
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}/api/careers`);
+      } catch (directErr) {
+        res = await fetch('/api/careers');
+      }
+      if (res && res.ok) {
         const json = await res.json();
         const activeJobs = json.data && json.data.length > 0 ? json.data : FALLBACK_JOBS;
         setJobs(activeJobs);

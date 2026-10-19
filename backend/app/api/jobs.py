@@ -40,6 +40,106 @@ class PolicySimulationRequest(BaseModel):
     )
 
 
+class CreateJobRequest(BaseModel):
+    title: str = Field(..., min_length=3, max_length=150, description="Judul posisi lowongan")
+    department: str = Field(..., min_length=2, max_length=100, description="Departemen / Divisi")
+    raw_text: str = Field(..., min_length=10, description="Deskripsi lengkap lowongan")
+    core_competencies: List[str] = Field(default_factory=list, description="Daftar kompetensi kunci")
+    weight_config: WeightConfigSchema = Field(default_factory=WeightConfigSchema, description="Konfigurasi bobot 4D")
+    owner_id: int = Field(default=1, description="ID recruiter pemilik lowongan")
+
+
+class UpdateJobRequest(BaseModel):
+    title: Optional[str] = None
+    department: Optional[str] = None
+    raw_text: Optional[str] = None
+    core_competencies: Optional[List[str]] = None
+    weight_config: Optional[WeightConfigSchema] = None
+    status: Optional[str] = None
+
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+async def create_job(payload: CreateJobRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Creates a new job description with custom 4D weights and core competencies stored per job.
+    """
+    # Ensure owner exists or fallback to default
+    user_res = await db.execute(text("SELECT id FROM users WHERE id = :uid"), {"uid": payload.owner_id})
+    if not user_res.first():
+        payload.owner_id = 1
+
+    comp_json = json.dumps(payload.core_competencies)
+    w_json = json.dumps(payload.weight_config.model_dump())
+
+    insert_query = text("""
+        INSERT INTO job_descriptions (owner_id, title, department, raw_text, core_competencies, weight_config, status)
+        VALUES (:owner_id, :title, :department, :raw_text, :core_competencies, :weight_config, 'active')
+    """)
+    res = await db.execute(insert_query, {
+        "owner_id": payload.owner_id,
+        "title": payload.title,
+        "department": payload.department,
+        "raw_text": payload.raw_text,
+        "core_competencies": comp_json,
+        "weight_config": w_json,
+    })
+    await db.commit()
+
+    new_id = res.lastrowid
+    return {
+        "status": "success",
+        "message": "Lowongan kerja dan konfigurasi bobot 4D berhasil disimpan.",
+        "data": {
+            "id": new_id,
+            "title": payload.title,
+            "department": payload.department,
+            "raw_text": payload.raw_text,
+            "core_competencies": payload.core_competencies,
+            "weight_config": payload.weight_config.model_dump(),
+            "status": "active",
+        },
+    }
+
+
+@router.put("/{job_id}")
+async def update_job(job_id: int, payload: UpdateJobRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Updates job opening details or modifies 4D scoring weights per job.
+    """
+    check = await db.execute(text("SELECT id FROM job_descriptions WHERE id = :id"), {"id": job_id})
+    if not check.first():
+        raise HTTPException(status_code=404, detail="JOB_NOT_FOUND")
+
+    updates = []
+    params: Dict[str, Any] = {"id": job_id}
+
+    if payload.title is not None:
+        updates.append("title = :title")
+        params["title"] = payload.title
+    if payload.department is not None:
+        updates.append("department = :department")
+        params["department"] = payload.department
+    if payload.raw_text is not None:
+        updates.append("raw_text = :raw_text")
+        params["raw_text"] = payload.raw_text
+    if payload.core_competencies is not None:
+        updates.append("core_competencies = :core_competencies")
+        params["core_competencies"] = json.dumps(payload.core_competencies)
+    if payload.weight_config is not None:
+        updates.append("weight_config = :weight_config")
+        params["weight_config"] = json.dumps(payload.weight_config.model_dump())
+    if payload.status is not None:
+        updates.append("status = :status")
+        params["status"] = payload.status
+
+    if updates:
+        sql = f"UPDATE job_descriptions SET {', '.join(updates)} WHERE id = :id"
+        await db.execute(text(sql), params)
+        await db.commit()
+
+    return {"status": "success", "message": "Lowongan kerja dan bobot 4D berhasil diperbarui."}
+
+
 @router.get("")
 async def list_jobs(db: AsyncSession = Depends(get_db)):
     """Lists all active job openings with core competencies and baseline weights."""

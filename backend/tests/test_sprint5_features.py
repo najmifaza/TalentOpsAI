@@ -245,3 +245,42 @@ async def test_unmask_candidate_pii_governance():
         assert res_approved.json()["unmasked_data"]["name"] == "Budi Santoso"
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_create_and_update_job_with_custom_weights():
+    """Verifies that recruiters can create a job with 4D weights and update it per job."""
+    mock_db = AsyncMock()
+    mock_user_res = MagicMock()
+    mock_user_res.first.return_value = (1,)
+    mock_insert_res = MagicMock()
+    mock_insert_res.lastrowid = 101
+
+    mock_db.execute.side_effect = [mock_user_res, mock_insert_res]
+
+    async def override_get_db():
+        yield mock_db
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    try:
+        payload = {
+            "title": "Lead DevOps Engineer",
+            "department": "Platform Engineering",
+            "raw_text": "Membangun sistem CI/CD dan observability berbasis Kubernetes dan Docker.",
+            "core_competencies": ["Kubernetes", "Docker", "Terraform", "CI/CD"],
+            "weight_config": {
+                "SKILL": 0.45,
+                "EXPERIENCE": 0.25,
+                "EDUCATION": 0.10,
+                "PORTFOLIO": 0.20
+            }
+        }
+        res = client.post("/api/jobs", json=payload)
+        assert res.status_code == 201
+        data = res.json()["data"]
+        assert data["id"] == 101
+        assert data["title"] == "Lead DevOps Engineer"
+        assert data["weight_config"]["SKILL"] == 0.45
+    finally:
+        app.dependency_overrides.clear()

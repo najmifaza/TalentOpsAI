@@ -22,7 +22,9 @@ export default function CandidateTable({
   candidates, 
   onSelectCandidate, 
   onStreamCandidate,
-  onStartTriage 
+  onStartTriage,
+  onBatchTriage,
+  isBatchRunning = false
 }) {
   const [search, setSearch] = useState('');
   const [filterRec, setFilterRec] = useState('ALL');
@@ -167,10 +169,23 @@ export default function CandidateTable({
           </button>
         </div>
 
-        {/* Right Info Note */}
-        <div className="text-xs text-[#67677e] flex items-center gap-1.5">
-          <Info className="w-3.5 h-3.5 text-[#1b55f5]" />
-          <span>Analisis AI hanya dijalankan saat HR mengklik <strong>"Mulai Analisis AI"</strong></span>
+        {/* Right Info Note / Action */}
+        <div className="flex items-center gap-2">
+          {unscannedCandidates.length > 0 && onBatchTriage && (
+            <button
+              onClick={onBatchTriage}
+              disabled={isBatchRunning}
+              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+              title="Jalankan AI Triage untuk seluruh kandidat yang belum di-scan"
+            >
+              <Zap className={`w-3.5 h-3.5 ${isBatchRunning ? 'animate-spin' : 'fill-current'}`} />
+              <span>{isBatchRunning ? 'Sedang Batch...' : `Scan Semua (${unscannedCandidates.length})`}</span>
+            </button>
+          )}
+          <div className="text-xs text-[#67677e] hidden md:flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-[#1b55f5]" />
+            <span>Klik <strong>"Mulai Analisis AI"</strong> untuk evaluasi berkas</span>
+          </div>
         </div>
       </div>
 

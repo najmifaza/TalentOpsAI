@@ -44,14 +44,14 @@ export default function Header({
           <span className="font-semibold text-[#000000]">PT Solusi Digital</span>
         </div>
 
-        {/* Action Button: Buka Portal Pelamar */}
+        {/* Secondary Action: Preview Portal Pelamar Publik */}
         <button
-          onClick={onActionClick || (() => navigate('/careers/apply'))}
-          className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-[#1b55f5] hover:bg-[#1545c7] text-white rounded-lg text-xs font-semibold shadow-sm transition-all duration-200 shrink-0 btn-interactive"
-          aria-label="Buka Portal Pelamar Publik"
-          title="Buka Portal Pelamar Publik untuk uji coba pengajuan berkas"
+          onClick={onActionClick || (() => window.open('/careers/apply', '_blank'))}
+          className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 bg-white hover:bg-[#f4f4f6] text-[#000000] border border-[#d8d8df] rounded-lg text-xs font-semibold shadow-2xs transition-all duration-200 shrink-0"
+          aria-label="Buka Portal Pelamar Publik di tab baru"
+          title="Buka Portal Pelamar Publik di tab baru"
         >
-          <ExternalLink className="w-3.5 h-3.5 text-white/90" />
+          <ExternalLink className="w-3.5 h-3.5 text-[#1b55f5]" />
           <span className="hidden sm:inline">Portal Pelamar</span>
           <span className="sm:hidden text-[11px]">Portal</span>
         </button>

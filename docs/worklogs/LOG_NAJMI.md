@@ -196,4 +196,22 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 - **Catatan untuk Rekan Tim (Willy & Fardizza):**
   - Triage AI live Gemini 3.8 kini berstatus `source: "LIVE"` dengan pencatatan token usage resmi di VPS.
 
+---
+
+### 2026-10-19 - Najmi - Implementasi Endpoint Manajemen Lowongan & Konfigurasi Bobot 4D Permanen
+- **Komponen / File:**
+  - `backend/app/api/jobs.py`
+  - `backend/tests/test_sprint5_features.py`
+- **Yang Dikerjakan:**
+  - **1. Endpoint Pembuatan & Pembaruan Lowongan (`POST /api/jobs` & `PUT /api/jobs/{id}`):**
+    - Menyediakan endpoint pembuatan lowongan kerja baru dengan validasi Pydantic (`title`, `department`, `raw_text`, `core_competencies`, dan `weight_config` 4D).
+    - Memastikan konfigurasi bobot (`SKILL`, `EXPERIENCE`, `EDUCATION`, `PORTFOLIO`) tersimpan permanen per lowongan di tabel `job_descriptions` MariaDB.
+    - Menambahkan endpoint update parsial untuk memodifikasi deskripsi, kompetensi inti, status aktif/tutup, dan penyesuaian bobot 4D kapan saja oleh recruiter.
+  - **2. Otomasi Pengujian Backend:**
+    - Menambahkan unit test `test_create_and_update_job_with_custom_weights` di `test_sprint5_features.py`.
+- **Status & Verifikasi:** Selesai 100%. Seluruh 63 test pytest lolos 100% (`uv run pytest backend/tests/ -q`).
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - Frontend kini dapat menyimpan dan memuat konfigurasi bobot 4D langsung dari database riil tanpa sandbox simulasi.
+
+
 

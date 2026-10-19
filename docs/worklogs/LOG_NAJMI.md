@@ -172,3 +172,28 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 - **Catatan untuk Rekan Tim (Willy & Fardizza):**
   - Ingestion berkas publik dan HR dropzone telah berfungsi normal tanpa kendala driver database.
 
+---
+
+### 2026-10-19 - Najmi - Integrasi Live 9router LLM Gateway, Resolusi Transport SOCKS Proxy & Model Prefixing
+- **Komponen / File:**
+  - `backend/app/core/llm_adapter.py`
+  - `backend/app/core/config.py`
+  - `backend/app/core/triage_service.py`
+  - `backend/.env.example`
+- **Yang Dikerjakan:**
+  - **1. Resolusi Intersepsi Global SOCKS5 Proxy pada HTTP Client Loopback:**
+    - Mendiagnosis penyebab pemanggilan 9router lokal VPS (`http://127.0.0.1:20128`) gagal dengan `httpx.ProxyError: Proxy Server could not connect: Connection refused`.
+    - Menemukan bahwa `/etc/environment` di VPS mengonfigurasi `http_proxy=socks5://127.0.0.1:40000`, yang secara default dibaca oleh `httpx.AsyncClient` (`trust_env=True`).
+    - Menambahkan `trust_env=False` pada inisialisasi `httpx.AsyncClient` di `llm_adapter.py` agar panggilan loopback lokal ke port 20128 langsung bypass proxy SOCKS.
+  - **2. Standarisasi Model Prefix & Header Autentikasi 9router:**
+    - Memperbaiki pengiriman header `Authorization: Bearer <API_KEY>` tanpa syarat bypass dummy string agar 9router tidak melempar HTTP 401 Unauthorized.
+    - Menyelaraskan nama model default ke `ag/gemini-3.8-flash-low` (dengan prefix provider `ag/`) sesuai manifest 9router VPS guna mengeliminasi error `model_not_found`.
+  - **3. Transparansi Galat Gateway pada SSE Trace:**
+    - Memodifikasi `triage_service.py` untuk mengekspos pesan galat gateway `llm_gateway_error` ke dalam payload SSE broadcaster jika panggilan LLM gagal, mencegah silent failure.
+  - **4. Pengujian & Verifikasi Live Usage Token:**
+    - Menguji pemanggilan langsung model Gemini 3.8 Flash via 9router di VPS: respons `200 OK` (IN 1207, OUT 841 tokens), tercatat aktif di tabel `usageHistory` dan `usageDaily` basis data SQLite 9router.
+- **Status & Verifikasi:** Selesai 100%. Backend FastAPI terhubung langsung secara real-time ke 9router VPS tanpa simulasi fallback offline. Seluruh 62 test pytest lolos 100%.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - Triage AI live Gemini 3.8 kini berstatus `source: "LIVE"` dengan pencatatan token usage resmi di VPS.
+
+

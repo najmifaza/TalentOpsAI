@@ -308,4 +308,36 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
   - Alur antarmuka kini terfokus pada 2 alur nyata (Portal Pelamar dan Dashboard HR). Live Agent Trace dijamin anti-gantung dan status koneksi API di domain kustom Vercel terbebas dari kendala CORS.
 
+---
+
+### 2026-10-19 - Willy - Redesain Enterprise Grafana Labs Sunrise, Kendali On-Demand Triage HR & Visual Pacing Dispatcher
+- **Komponen / File:**
+  - `frontend/src/components/UploadCandidateModal.jsx` (Komponen baru form upload berkas mandiri HR)
+  - `frontend/src/components/CandidateTable.jsx` (Tab filter scan status & trigger manual AI)
+  - `frontend/src/components/DashboardOverview.jsx` (Hero mesh Grafana, button upload, HR terminology)
+  - `frontend/src/components/AgentTraceModal.jsx` (Visual event queue dispatcher 600ms & eliminasi simulasi dummy)
+  - `frontend/src/components/HealthStatusBadge.jsx` (Redesain modal ping ke tema clean enterprise)
+  - `frontend/src/components/EvidenceGraph.jsx` (Redesain node-link React Flow ke palet Royal Blue & slate)
+  - `frontend/src/components/CareerPortal.jsx` (Redesain job list, form, dan box privasi UU PDP)
+  - `frontend/src/components/ApplicationTracker.jsx` (Redesain hero banner, input token, & timeline)
+  - `frontend/src/components/WhatIfStudio.jsx` (Redesain card slider & tabel simulasi)
+- **Yang Dikerjakan:**
+  - **1. Transformasi Tema Menyeluruh ke Grafana Labs Enterprise Theme:**
+    - Mengeliminasi seluruh palet hijau lumut tua (`#0F382C`, `#0B2B26`) dan mint kusam (`#EEF4F0`, `#C2E0C4`).
+    - Menetapkan kanvas netral `#f4f4f6`, kartu putih bersih `#ffffff` ber-border halus `#e6e6ea`, aksen Royal Blue (`#1b55f5`), dan kontainer slate (`#1f2127`, `#2b2d32`).
+    - Memperbarui komponen `HealthStatusBadge`, `EvidenceGraph`, `CareerPortal`, `ApplicationTracker`, `WhatIfStudio`, dan `DashboardOverview` agar selaras 100% dengan standar UI enterprise.
+  - **2. Alur Rekrutmen On-Demand Triage Terkendali HR:**
+    - Mengubah alur otomatisasi agar AI tidak berjalan diam-diam di background saat berkas diunggah.
+    - Menambahkan tab pemisahan antrean: "Semua Pelamar", "Belum Di-scan" (`UNSCANNED`), dan "Sudah Di-scan" (`SCANNED`).
+    - Menambahkan tombol aksi eksplisit `▶ Mulai Analisis AI` pada tabel kandidat sehingga eksekusi AI murni berada di bawah kendali manual HR.
+  - **3. Fitur Unggah CV Mandiri oleh HR (`UploadCandidateModal.jsx`):**
+    - Menyediakan antarmuka modal bagi HR untuk mengunggah berkas PDF/DOCX pelamar langsung dari dashboard internal dengan pemetaan ID riil ke basis data backend.
+  - **4. Visual Event Queue Dispatcher & Live SSE Synchronization (`AgentTraceModal.jsx`):**
+    - Menghapus fungsi simulasi watchdog data palsu (skor 89.2) dan menyambungkan modal langsung ke broadcaster SSE FastAPI riil.
+    - Mengimplementasikan visual pacing queue dispatcher dengan interval 600 ms antar-langkah agar transisi alur 7 tahap dapat diamati pengguna secara nyaman tanpa terputus secara prematur.
+- **Status & Verifikasi:** Selesai 100%. Build bundle Vite lolos uji `npm run build` sukses (1779 modul tertransformasi, zero error). Seluruh UI teruji sinkron di browser.
+- **Catatan untuk Rekan Tim (Najmi & Fardizza):**
+  - Tampilan visual telah sepenuhnya modern dengan tema Grafana Labs Enterprise, transparan secara real-time, dan ramah pengguna HR.
+
+
 

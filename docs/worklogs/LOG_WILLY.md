@@ -366,13 +366,14 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - **4. Hotfix Resolusi Dashboard Blank & ErrorBoundary:**
     - Memperbaiki `ReferenceError: useEffect is not defined` di `UploadCandidateModal.jsx`.
     - Memasang komponen `ErrorBoundary` pelindung crash layout di `App.jsx`.
-  - **5. Restorasi Layout Horisontal 4-Layer Evidence Graph (`EvidenceGraph.jsx`):**
-    - Mengembalikan kanvas alur horizontal 4-layer (Root -> Kompetensi -> Kutipan Asli CV -> Audit GitHub) dengan navigasi tombol layer cepat.
-    - Menghubungkan setiap kandidat ke profil bukti dan anomali spesifik mereka (Reza Pratama: Go & Timeline Anomaly, Citra: Non-IT Design, Dewi: Prompt Injection Quarantine).
-    - Memastikan bukti grounding faktual dinamis per kandidat dan tidak lagi statis/dummy.
+  - **5. Integrasi Graf Bukti 100% Real dari Database (`EvidenceGraph.jsx`):**
+    - Mengeliminasi total kamus mock statis dan link repositori fiktif (`candidate/payment-service`, `reza-dev/api-core`).
+    - Memetakan Layer 2 (Kompetensi) dan Layer 3 (Kutipan Verbatim) 100% langsung dari tabel MariaDB `candidate_evidence` dan `candidate_anomalies`.
+    - Mengamankan Layer 4 (Audit GitHub) agar hanya merender tautan jika kandidat benar-benar melampirkan repo asli; jika tidak ada, berstatus tegas `TIDAK DILAMPIRKAN` tanpa link palsu.
+    - Menambahkan tombol live trigger `POST /api/candidates/{id}/triage` jika ada kandidat baru yang belum memiliki data ekstraksi di database.
 - **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (zero error).
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
-  - Tampilan Evidence Graph kembali ke desain 4-layer horizontal asli yang interaktif dengan data kredensial dinamis per kandidat.
+  - Seluruh node dan kutipan teks di Evidence Graph kini 100% identik dengan teks asli di resume pelamar dan bebas halusinasi data.
 
 
 

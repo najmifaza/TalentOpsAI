@@ -366,9 +366,14 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - **4. Hotfix Resolusi Dashboard Blank & ErrorBoundary:**
     - Memperbaiki `ReferenceError: useEffect is not defined` di `UploadCandidateModal.jsx`.
     - Memasang komponen `ErrorBoundary` pelindung crash layout di `App.jsx`.
+  - **5. Integrasi Penuh Live Evidence Graph (`EvidenceGraph.jsx`):**
+    - Mengeliminasi generator graf dummy/hardcoded mock text di frontend.
+    - Menyambungkan kanvas React Flow langsung ke endpoint live `GET /api/candidates/{id}/evidence-graph`.
+    - Mendaftarkan node kustom berbasis skema MariaDB riil: `candidateRoot`, `dimensionNode`, `evidenceClaimNode`, `riskNode`, `anomalyDetailNode`.
+    - Mengintegrasikan penanganan kandidat yang belum di-scan (empty state dengan CTA ke dashboard triage).
 - **Status & Verifikasi:** Selesai 100%. Kompilasi bundle Vite lolos uji `npm run build` sukses (zero error).
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
-  - Seluruh modul UI kini tersinkronisasi penuh dengan endpoint backend lowongan baru dan bebas crash rendering.
+  - Halaman Evidence Graph kini 100% menampilkan data bukti nyata dari database relasional tanpa teks mock statis.
 
 
 

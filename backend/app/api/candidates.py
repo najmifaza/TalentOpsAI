@@ -595,13 +595,14 @@ async def get_candidate_evidence_graph(
             "recommendation": cand["recommendation"],
             "confidence_level": cand["confidence_level"],
             "unresolved_risk": cand["unresolved_risk"],
+            "github_url": cand["github_url"],
         },
-        "position": {"x": 400, "y": 50},
+        "position": {"x": 540, "y": 40},
     })
 
     # 2. Dimension Nodes
     dimensions = ["SKILL", "EXPERIENCE", "EDUCATION", "PORTFOLIO"]
-    dim_x = [100, 300, 500, 700]
+    dim_x = [60, 380, 700, 1020]
     for idx, dim in enumerate(dimensions):
         dim_node_id = f"dim-{dim.lower()}"
         dim_claims = [e for e in evidence_rows if e["dimension"] == dim]
@@ -635,7 +636,7 @@ async def get_candidate_evidence_graph(
                     "score": float(claim["score_contribution"]),
                     "confidence": float(claim["confidence"]),
                 },
-                "position": {"x": dim_x[idx], "y": 320 + (c_idx * 110)},
+                "position": {"x": dim_x[idx], "y": 330 + (c_idx * 160)},
             })
             edges.append({
                 "id": f"edge-{dim_node_id}-{claim_id}",
@@ -650,7 +651,7 @@ async def get_candidate_evidence_graph(
             "id": anom_root_id,
             "type": "riskNode",
             "data": {"label": "DETECTED ANOMALIES", "count": len(anomalies)},
-            "position": {"x": 900, "y": 200},
+            "position": {"x": 1340, "y": 200},
         })
         edges.append({
             "id": f"edge-root-{anom_root_id}",
@@ -668,7 +669,7 @@ async def get_candidate_evidence_graph(
                     "severity": anom["severity"],
                     "description": anom["description"],
                 },
-                "position": {"x": 900, "y": 320 + (a_idx * 110)},
+                "position": {"x": 1340, "y": 330 + (a_idx * 160)},
             })
             edges.append({
                 "id": f"edge-{anom_root_id}-{anom_id}",

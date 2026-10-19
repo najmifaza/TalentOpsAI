@@ -357,7 +357,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
             <button
               onClick={() => {
                 if (onBackToDashboard) onBackToDashboard();
-                else navigate('/dashboard');
+                else navigate('/admin/dashboard');
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#d8d8df] bg-white hover:bg-[#f4f4f6] text-[#000000] text-xs font-semibold transition-all shrink-0 shadow-2xs"
               title="Kembali ke Dashboard HR"

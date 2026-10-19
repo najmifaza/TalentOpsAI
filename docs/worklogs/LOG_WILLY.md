@@ -385,7 +385,12 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - Integrasi logo resmi `logo.svg` di `Header.jsx` dan sync ke `frontend/public/logo.svg`.
   - Redesign `Sidebar.jsx` dengan dark slate palette (#111318), typography ramping, dan status pill yang bersih.
   - Redesign `DashboardOverview.jsx` dan `CandidateTable.jsx` ke modern card-based breathable layout (slate-50 background, subtle border-slate-200, crisp typography, clean status badges, tombol aksi jelas).
-- **Status & Verifikasi:** Selesai 100%. Kompilasi Vite build lolos tanpa error (bundle lebih ringkas). Test backend 63/63 lolos hijau.
+- **Routing Portal Publik & Dashboard Admin (/admin/*):**
+  - Rute root `/`, `/apply`, `/track`, dan `/track/:token` kini langsung menyajikan portal publik pelamar (Career Portal) secara utuh.
+  - Seluruh modul internal HR (Dashboard & Triage, Kelola Lowongan & Bobot 4D) dipindahkan ke namespace `/admin/*` (`/admin/dashboard`, `/admin/jobs`).
+  - Rute lama `/dashboard`, `/jobs`, `/what-if`, dan `/evidence-graph` otomatis dialihkan (redirect 301/302 SPA) ke rute `/admin/...`.
+  - Tombol navigasi di Sidebar, Header, dan CareerPortal diperbarui sesuai namespace rute baru.
+- **Status & Verifikasi:** Selesai 100%. Kompilasi Vite build lolos tanpa error. Backend test suite 63/63 lolos hijau.
 
 
 

@@ -4,8 +4,8 @@ import { LayoutDashboard, Briefcase, ExternalLink, X, FileCheck2, User, ChevronR
 
 export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {} }) {
   const menuItems = [
-    { path: '/dashboard', label: 'Dashboard & Triage', sublabel: 'Antrean & Evaluasi AI', icon: LayoutDashboard },
-    { path: '/jobs', label: 'Kelola Lowongan', sublabel: 'Bobot 4D & Kriteria', icon: Briefcase },
+    { path: '/admin/dashboard', label: 'Dashboard & Triage', sublabel: 'Antrean & Evaluasi AI', icon: LayoutDashboard },
+    { path: '/admin/jobs', label: 'Kelola Lowongan', sublabel: 'Bobot 4D & Kriteria', icon: Briefcase },
   ];
 
   const handleLinkClick = () => { if (onCloseMobile) onCloseMobile(); };
@@ -14,7 +14,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
     <div className="flex flex-col h-full bg-[#111318] text-slate-300 select-none">
       {/* Brand Header */}
       <div className="px-5 py-5 flex items-center justify-between border-b border-white/6">
-        <Link to="/dashboard" onClick={handleLinkClick} className="flex items-center gap-2.5">
+        <Link to="/admin/dashboard" onClick={handleLinkClick} className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#1b55f5] to-[#0d3bb8] flex items-center justify-center shrink-0 shadow-sm">
             <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
@@ -80,7 +80,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
           </p>
           <div className="space-y-1">
             <a
-              href="/careers/apply"
+              href="/"
               target="_blank"
               rel="noreferrer"
               onClick={handleLinkClick}
@@ -88,13 +88,13 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
             >
               <div className="flex items-center gap-3">
                 <Briefcase className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                <span>Portal Pelamar</span>
+                <span>Portal Pelamar (Publik)</span>
               </div>
               <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-white" />
             </a>
 
             <a
-              href="/careers/track"
+              href="/track"
               target="_blank"
               rel="noreferrer"
               onClick={handleLinkClick}

@@ -10,15 +10,15 @@ const CareerPortal = lazy(() => import('./components/CareerPortal'));
 
 import { WifiOff, Sparkles } from 'lucide-react';
 
-// Loading Fallback Component with Grafana Clean Enterprise Aesthetics
+// Loading Fallback Component with Clean Aesthetics
 function ComponentLoader({ label = "Memuat modul komponen..." }) {
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[350px] space-y-3" role="status" aria-live="polite">
       <div className="relative flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#8ec0ff] border-t-[#1b55f5] rounded-full animate-spin"></div>
-        <Sparkles className="w-4 h-4 text-[#1b55f5] absolute animate-pulse" />
+        <div className="w-9 h-9 border-2 border-blue-200 border-t-[#1b55f5] rounded-full animate-spin"></div>
+        <Sparkles className="w-3.5 h-3.5 text-[#1b55f5] absolute animate-pulse" />
       </div>
-      <p className="text-xs font-semibold text-[#67677e] tracking-wide animate-pulse">
+      <p className="text-xs font-semibold text-slate-500 tracking-wide animate-pulse">
         {label}
       </p>
     </div>
@@ -45,8 +45,8 @@ class ErrorBoundary extends React.Component {
             !
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#000000]">Terjadi Gangguan Tampilan</h3>
-            <p className="text-xs text-[#67677e] mt-1 max-w-md">
+            <h3 className="text-base font-bold text-slate-900">Terjadi Gangguan Tampilan</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-md">
               {this.state.error?.message || "Komponen mengalami kesalahan saat memuat data."}
             </p>
           </div>
@@ -55,7 +55,7 @@ class ErrorBoundary extends React.Component {
               this.setState({ hasError: false, error: null });
               window.location.reload();
             }}
-            className="px-4 py-2 bg-[#1b55f5] text-white rounded-lg text-xs font-semibold hover:bg-[#1545c7] transition-all shadow-xs"
+            className="px-4 py-2 bg-[#1b55f5] text-white rounded-xl text-xs font-semibold hover:bg-[#1545c7] transition-all shadow-xs"
           >
             Muat Ulang Halaman
           </button>
@@ -66,7 +66,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function DashboardLayout({ isDark, onToggleTheme }) {
+function DashboardLayout() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -83,14 +83,14 @@ function DashboardLayout({ isDark, onToggleTheme }) {
   }, []);
 
   const titles = {
-    '/': 'Dashboard & Triage Queue',
-    '/dashboard': 'Dashboard & Triage Queue',
-    '/jobs': 'Kelola Lowongan & Konfigurasi Bobot 4D',
-    '/what-if': 'Kelola Lowongan & Konfigurasi Bobot 4D',
+    '/admin': 'Dashboard & Triage Antrean',
+    '/admin/dashboard': 'Dashboard & Triage Antrean',
+    '/admin/jobs': 'Kelola Lowongan & Konfigurasi Bobot 4D',
+    '/admin/what-if': 'Kelola Lowongan & Konfigurasi Bobot 4D',
   };
 
   const getTitle = () => {
-    return titles[location.pathname] || 'Dashboard & Triage Queue';
+    return titles[location.pathname] || 'Dashboard & Triage Antrean';
   };
 
   const currentTitle = getTitle();
@@ -132,11 +132,9 @@ function DashboardLayout({ isDark, onToggleTheme }) {
               <Routes>
                 <Route index element={<DashboardOverview />} />
                 <Route path="dashboard" element={<DashboardOverview />} />
-                <Route path="evidence-graph" element={<Navigate to="/dashboard" replace />} />
-                <Route path="evidence-graph/:candidateId" element={<Navigate to="/dashboard" replace />} />
                 <Route path="jobs" element={<JobManagement />} />
-                <Route path="what-if" element={<Navigate to="/jobs" replace />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                <Route path="what-if" element={<Navigate to="/admin/jobs" replace />} />
+                <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
               </Routes>
             </Suspense>
           </ErrorBoundary>
@@ -169,17 +167,32 @@ export default function App() {
     <BrowserRouter>
       <Suspense fallback={<ComponentLoader label="Memuat ekosistem TalentOps AI..." />}>
         <Routes>
-          {/* Public Career Portal Routes (Full-screen view) */}
+          {/* Public Career Portal at Root */}
+          <Route path="/" element={<CareerPortal initialTab="apply" />} />
+          <Route path="/apply" element={<CareerPortal initialTab="apply" />} />
+          <Route path="/track" element={<CareerPortal initialTab="track" />} />
+          <Route path="/track/:token" element={<CareerPortal initialTab="track" />} />
+
+          {/* Legacy Career Portal Routes */}
           <Route path="/careers" element={<CareerPortal initialTab="apply" />} />
           <Route path="/careers/apply" element={<CareerPortal initialTab="apply" />} />
           <Route path="/careers/track" element={<CareerPortal initialTab="track" />} />
           <Route path="/careers/track/:token" element={<CareerPortal initialTab="track" />} />
 
-          {/* Internal HR Dashboard Routes */}
-          <Route path="/*" element={<DashboardLayout />} />
+          {/* Internal HR / Admin Dashboard Routes under /admin/... */}
+          <Route path="/admin/*" element={<DashboardLayout />} />
+
+          {/* Legacy root-level dashboard redirects to /admin/... */}
+          <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/jobs" element={<Navigate to="/admin/jobs" replace />} />
+          <Route path="/what-if" element={<Navigate to="/admin/jobs" replace />} />
+          <Route path="/evidence-graph" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/evidence-graph/:candidateId" element={<Navigate to="/admin/dashboard" replace />} />
+
+          {/* Catch-all fallback to root Career Portal */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
   );
 }
-

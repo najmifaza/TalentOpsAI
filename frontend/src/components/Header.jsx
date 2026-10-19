@@ -44,7 +44,7 @@ export default function Header({ currentTitle = "Dashboard & Triage", onActionCl
             src="/logo.svg" 
             alt="TalentOps AI" 
             className="h-8 w-auto object-contain cursor-pointer"
-            onClick={() => window.location.href = '/dashboard'}
+            onClick={() => window.location.href = '/admin/dashboard'}
           />
           <div className="h-4 w-px bg-slate-200 hidden md:block" />
           <span className="text-xs font-medium text-slate-500 hidden md:inline-block">
@@ -79,7 +79,7 @@ export default function Header({ currentTitle = "Dashboard & Triage", onActionCl
 
         {/* Portal Pelamar CTA */}
         <button
-          onClick={onActionClick || (() => window.open('/careers/apply', '_blank'))}
+          onClick={onActionClick || (() => window.open('/', '_blank'))}
           className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1b55f5] hover:bg-[#1545c7] active:scale-98 text-white rounded-xl text-xs font-semibold shadow-xs transition-all shrink-0"
           aria-label="Buka Portal Pelamar Publik di tab baru"
         >

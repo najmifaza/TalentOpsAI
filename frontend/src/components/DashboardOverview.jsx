@@ -445,22 +445,22 @@ export default function DashboardOverview() {
 
       {/* 5. Row 3: 2 Pill Cards + Charcoal Architecture Banner */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
-        {/* Charcoal Pill Card */}
-        <div className="md:col-span-1 lg:col-span-3 bg-[#2b2d32] text-white rounded-2xl p-5 flex items-center gap-4 shadow-sm border border-[#383a42]">
-          <div className="relative w-12 h-12 rounded-full border-2 border-[#1b55f5] bg-white/10 flex items-center justify-center font-extrabold text-sm text-white shrink-0">
+        {/* Pill Card */}
+        <div className="md:col-span-1 lg:col-span-3 clean-card p-5 flex items-center gap-4 shadow-sm">
+          <div className="relative w-12 h-12 rounded-full border-2 border-[#1b55f5] bg-[#eaf0ff] flex items-center justify-center font-extrabold text-sm text-[#1b55f5] shrink-0">
             92.4
           </div>
           <div className="min-w-0">
-            <h5 className="text-xs font-bold text-white truncate">Autonomous Agent Cycle</h5>
-            <p className="text-[11px] text-white/70 leading-tight mt-0.5">
+            <h5 className="text-xs font-bold text-[#000000] truncate">Autonomous Agent Cycle</h5>
+            <p className="text-[11px] text-[#67677e] leading-tight mt-0.5">
               Gemini 3.8 Single-Pass &amp; Bounded Self-Healing
             </p>
           </div>
         </div>
 
         {/* Latency Card */}
-        <div className="md:col-span-1 lg:col-span-3 clean-card p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-[#10B981] bg-emerald-50 flex items-center justify-center font-black text-xs text-[#10B981] shrink-0">
+        <div className="md:col-span-1 lg:col-span-3 clean-card p-5 flex items-center gap-4 shadow-sm">
+          <div className="w-12 h-12 rounded-full border-2 border-emerald-500 bg-emerald-50 flex items-center justify-center font-black text-xs text-emerald-600 shrink-0">
             5.7ms
           </div>
           <div className="min-w-0">
@@ -472,18 +472,18 @@ export default function DashboardOverview() {
         </div>
 
         {/* Architecture Feature Banner */}
-        <div className="md:col-span-2 lg:col-span-6 bg-[#2b2d32] border border-[#383a42] rounded-2xl p-5 text-white flex items-center justify-between relative overflow-hidden shadow-sm">
+        <div className="md:col-span-2 lg:col-span-6 clean-card p-5 text-[#000000] flex items-center justify-between relative overflow-hidden shadow-sm">
           <div className="relative z-10 max-w-sm space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1b55f5]/30 text-[#8ec0ff] font-semibold border border-[#1b55f5]/50">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#eaf0ff] text-[#1b55f5] font-semibold border border-blue-200">
                 Sprint 1-5 Certified
               </span>
-              <span className="text-[10px] text-white/60">SDG 8 &bull; UU PDP No. 27/2022</span>
+              <span className="text-[10px] text-[#67677e]">SDG 8 &bull; UU PDP No. 27/2022</span>
             </div>
-            <h3 className="text-base font-bold text-white">
+            <h3 className="text-base font-bold text-[#000000]">
               Rekrutmen Beretika, Nondiskriminatif &amp; Otonom
             </h3>
-            <p className="text-[11px] text-white/70 leading-relaxed">
+            <p className="text-[11px] text-[#67677e] leading-relaxed">
               Arsitektur terdistribusi live: UI Vercel terhubung stabil ke backend VPS MariaDB &amp; modul scoring 4D.
             </p>
           </div>

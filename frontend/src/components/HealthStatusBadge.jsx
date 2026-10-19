@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Activity, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Database, Server, ShieldCheck, X } from 'lucide-react';
 
 export default function HealthStatusBadge() {
@@ -52,14 +53,120 @@ export default function HealthStatusBadge() {
     return () => clearInterval(interval);
   }, []);
 
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showModal) {
+        setShowModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showModal]);
+
   const isHealthy = health?.status === 'healthy';
   const isConnected = health?.database === 'connected';
+
+  const modalElement = showModal && (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in" 
+      role="dialog" 
+      aria-modal="true"
+      onClick={() => setShowModal(false)}
+    >
+      <div 
+        className="bg-white border border-[#e6e6ea] rounded-2xl max-w-md w-full p-6 shadow-2xl relative my-auto animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between pb-4 border-b border-[#e6e6ea]">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-[#eaf0ff] rounded-xl text-[#1b55f5]">
+              <Activity className="w-5 h-5 text-[#1b55f5]" />
+            </div>
+            <div>
+              <h3 className="font-bold text-[#000000] text-sm">Status Infrastruktur Sistem</h3>
+              <p className="text-[11px] text-[#67677e]">Konektivitas Live API &amp; Basis Data MariaDB</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowModal(false)}
+            className="text-[#67677e] hover:text-[#000000] p-1.5 rounded-lg hover:bg-[#f4f4f6] transition-colors"
+            aria-label="Tutup modal status"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-2.5">
+          <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] flex items-center justify-between">
+            <span className="text-xs text-[#454554] flex items-center gap-2">
+              <Server className="w-4 h-4 text-[#1b55f5]" /> Backend Engine (VPS)
+            </span>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white text-[#000000] border border-[#e6e6ea]">
+              {apiBase}
+            </span>
+          </div>
+
+          <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] flex items-center justify-between">
+            <span className="text-xs text-[#454554] flex items-center gap-2">
+              <Activity className="w-4 h-4 text-emerald-600" /> API Health Endpoint
+            </span>
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${isHealthy ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
+              {isHealthy ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <XCircle className="w-3 h-3" />}
+              {health?.status?.toUpperCase() || 'UNKNOWN'}
+            </span>
+          </div>
+
+          <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] flex items-center justify-between">
+            <span className="text-xs text-[#454554] flex items-center gap-2">
+              <Database className="w-4 h-4 text-[#1b55f5]" /> Database ACID (MariaDB)
+            </span>
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${isConnected ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
+              {isConnected ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <AlertTriangle className="w-3 h-3" />}
+              {health?.database?.toUpperCase() || 'DISCONNECTED'}
+            </span>
+          </div>
+
+          <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] flex items-center justify-between">
+            <span className="text-xs text-[#454554] flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#1b55f5]" /> Demo Mode Active
+            </span>
+            <span className="text-[11px] font-mono text-[#000000] font-semibold">
+              {health?.demo_mode ? 'ENABLED (Safe Sandbox)' : 'DISABLED'}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-center justify-between pt-4 border-t border-[#e6e6ea]">
+          <span className="text-xs text-[#67677e]">
+            Latensi RTT: <strong className="text-[#000000]">{latency} ms</strong>
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowModal(false)}
+              className="px-3 py-1.5 bg-white hover:bg-[#f4f4f6] text-[#000000] font-medium rounded-lg text-xs transition-colors border border-[#e6e6ea]"
+            >
+              Tutup
+            </button>
+            <button
+              onClick={checkHealth}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1b55f5] hover:bg-[#1545c7] text-white font-medium rounded-lg text-xs transition-colors shadow-xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Uji Ulang Ping
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="flex items-center gap-1.5 sm:gap-2.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-[#e6e6ea] hover:border-[#1b55f5] shadow-2xs hover:shadow-xs transition-all duration-200 shrink-0"
+        className="flex items-center gap-1.5 sm:gap-2.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white border border-[#e6e6ea] hover:border-[#1b55f5] shadow-2xs hover:shadow-xs transition-all duration-200 shrink-0 cursor-pointer"
         title="Klik untuk melihat detail koneksi VPS & Database (Sprint 1 Walking Skeleton)"
       >
         <span className="relative flex h-2 w-2 shrink-0">
@@ -90,85 +197,8 @@ export default function HealthStatusBadge() {
         )}
       </button>
 
-      {/* Detail Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in" role="dialog" aria-modal="true">
-          <div className="bg-white border border-[#e6e6ea] rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <div className="flex items-center justify-between pb-4 border-b border-[#e6e6ea]">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[#eaf0ff] rounded-xl text-[#1b55f5]">
-                  <Activity className="w-5 h-5 text-[#1b55f5]" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#000000] text-sm">Status Infrastruktur Sistem</h3>
-                  <p className="text-[11px] text-[#67677e]">Konektivitas Live API &amp; Basis Data MariaDB</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-[#67677e] hover:text-[#000000] p-1.5 rounded-lg hover:bg-[#f4f4f6] transition-colors"
-                aria-label="Tutup modal status"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-2.5">
-              <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] flex items-center justify-between">
-                <span className="text-xs text-[#454554] flex items-center gap-2">
-                  <Server className="w-4 h-4 text-[#1b55f5]" /> Backend Engine (VPS)
-                </span>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white text-[#000000] border border-[#e6e6ea]">
-                  {apiBase}
-                </span>
-              </div>
-
-              <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] flex items-center justify-between">
-                <span className="text-xs text-[#454554] flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-600" /> API Health Endpoint
-                </span>
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${isHealthy ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
-                  {isHealthy ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <XCircle className="w-3 h-3" />}
-                  {health?.status?.toUpperCase() || 'UNKNOWN'}
-                </span>
-              </div>
-
-              <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] flex items-center justify-between">
-                <span className="text-xs text-[#454554] flex items-center gap-2">
-                  <Database className="w-4 h-4 text-[#1b55f5]" /> Database ACID (MariaDB)
-                </span>
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${isConnected ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
-                  {isConnected ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <AlertTriangle className="w-3 h-3" />}
-                  {health?.database?.toUpperCase() || 'DISCONNECTED'}
-                </span>
-              </div>
-
-              <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] flex items-center justify-between">
-                <span className="text-xs text-[#454554] flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#1b55f5]" /> Demo Mode Active
-                </span>
-                <span className="text-[11px] font-mono text-[#000000] font-semibold">
-                  {health?.demo_mode ? 'ENABLED (Safe Sandbox)' : 'DISABLED'}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center justify-between pt-4 border-t border-[#e6e6ea]">
-              <span className="text-xs text-[#67677e]">
-                Latensi RTT: <strong className="text-[#000000]">{latency} ms</strong>
-              </span>
-              <button
-                onClick={checkHealth}
-                disabled={loading}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1b55f5] hover:bg-[#1545c7] text-white font-medium rounded-lg text-xs transition-colors shadow-xs"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                Uji Ulang Ping
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Render modal with createPortal into document.body to break free from header containing block */}
+      {typeof document !== 'undefined' && modalElement && createPortal(modalElement, document.body)}
     </>
   );
 }

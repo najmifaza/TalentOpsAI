@@ -654,17 +654,17 @@ export default function EvidenceGraph() {
   return (
     <div className="space-y-6 animate-fade-in select-none">
       {/* Top Header Card */}
-      <div className="bg-[#2b2d32] border border-[#383a42] p-6 sm:p-8 rounded-2xl relative overflow-hidden shadow-sm text-white">
+      <div className="clean-card p-6 sm:p-8 relative overflow-hidden shadow-sm">
         <div className="relative z-10 max-w-3xl space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1b55f5]/30 text-[#8ec0ff] border border-[#1b55f5]/50 text-xs font-semibold">
-            <GitBranch className="w-3.5 h-3.5 text-[#8ec0ff]" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#eaf0ff] text-[#1b55f5] border border-blue-200 text-xs font-semibold">
+            <GitBranch className="w-3.5 h-3.5 text-[#1b55f5]" />
             <span>Interactive Node-Link Architecture &bull; React Flow</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold font-display text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold font-display text-[#000000] tracking-tight">
             Candidate Evidence Graph Explorer
           </h2>
-          <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
-            Menghubungkan klaim keahlian kandidat langsung ke <strong>kutipan teks asli resume</strong> (grounding validation) dan <strong>repositori GitHub terverifikasi</strong>. Untuk role non-programmer, graf secara otomatis menerapkan aturan status <code className="bg-black/40 px-1.5 py-0.5 rounded text-white font-mono">NOT_APPLICABLE</code> tanpa error.
+          <p className="text-xs sm:text-sm text-[#67677e] leading-relaxed">
+            Menghubungkan klaim keahlian kandidat langsung ke <strong className="text-[#000000]">kutipan teks asli resume</strong> (grounding validation) dan <strong className="text-[#000000]">repositori GitHub terverifikasi</strong>. Untuk role non-programmer, graf secara otomatis menerapkan aturan status <code className="bg-[#f4f4f6] border border-[#e6e6ea] px-1.5 py-0.5 rounded text-[#000000] font-mono">NOT_APPLICABLE</code> tanpa error.
           </p>
         </div>
       </div>

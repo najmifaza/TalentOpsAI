@@ -257,17 +257,17 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
       </div>
 
       {/* Hero Header */}
-      <div className="bg-[#2b2d32] border border-[#383a42] p-6 sm:p-8 rounded-2xl relative overflow-hidden shadow-sm text-white">
+      <div className="clean-card p-6 sm:p-8 relative overflow-hidden shadow-sm">
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1b55f5]/30 text-[#8ec0ff] border border-[#1b55f5]/50 text-xs font-semibold mb-3">
-            <KeyRound className="w-3.5 h-3.5 text-[#8ec0ff]" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#eaf0ff] text-[#1b55f5] border border-blue-200 text-xs font-semibold mb-3">
+            <KeyRound className="w-3.5 h-3.5 text-[#1b55f5]" />
             <span>Kandidat Tracking Portal</span>
           </div>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-tight">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#000000] tracking-tight leading-tight">
             Pantau Status Lamaran Secara Transparan
           </h2>
-          <p className="text-xs sm:text-sm text-white/70 mt-2 leading-relaxed">
-            Masukkan <strong>Secret Tracking Token</strong> yang Anda peroleh saat mengirimkan lamaran untuk melihat perkembangan analisis agen AI secara real-time.
+          <p className="text-xs sm:text-sm text-[#67677e] mt-2 leading-relaxed">
+            Masukkan <strong className="text-[#000000]">Secret Tracking Token</strong> yang Anda peroleh saat mengirimkan lamaran untuk melihat perkembangan analisis agen AI secara real-time.
           </p>
         </div>
       </div>

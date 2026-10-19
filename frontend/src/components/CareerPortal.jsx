@@ -373,33 +373,33 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
         ) : (
           <div className="space-y-8 animate-fade-in">
             {/* Hero Section */}
-            <div className="bg-[#2b2d32] border border-[#383a42] p-6 sm:p-8 md:p-10 rounded-2xl relative overflow-hidden shadow-sm text-white">
+            <div className="clean-card p-6 sm:p-8 md:p-10 relative overflow-hidden shadow-sm">
               <div className="relative z-10 max-w-3xl space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1b55f5]/30 text-[#8ec0ff] border border-[#1b55f5]/50 text-xs font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#8ec0ff]" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#eaf0ff] text-[#1b55f5] border border-blue-200 text-xs font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#1b55f5]" />
                   <span>Kepatuhan Penuh UU PDP No. 27/2022 &bull; Zero-Demographic Bias</span>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-bold font-display text-white tracking-tight leading-tight">
+                <h1 className="text-3xl sm:text-4xl font-bold font-display text-[#000000] tracking-tight leading-tight">
                   Triage Otonom yang Berkeadilan &amp; Terenkripsi
                 </h1>
-                <p className="text-sm text-white/70 leading-relaxed max-w-2xl">
+                <p className="text-sm text-[#67677e] leading-relaxed max-w-2xl">
                   Unggah berkas lamaran Anda dengan rasa aman. Sistem TalentOps AI secara otomatis menyensor nama, gender, kontak, dan kampus asal sebelum dievaluasi secara obyektif berdasarkan kompetensi riil dan portofolio Anda.
                 </p>
               </div>
 
               {/* Badges Bar inside Hero */}
-              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 mt-6 border-t border-white/10 text-xs text-white/80">
+              <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 mt-6 border-t border-[#e6e6ea] text-xs text-[#454554]">
                 <div className="flex items-center gap-2.5">
-                  <Lock className="w-4 h-4 text-[#8ec0ff] shrink-0" />
+                  <Lock className="w-4 h-4 text-[#1b55f5] shrink-0" />
                   <span>Enkripsi Envelope AES-256-GCM</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <ShieldCheck className="w-4 h-4 text-[#8ec0ff] shrink-0" />
-                  <span>Two-Way PII Sanitizer &lt;20ms</span>
+                  <EyeOff className="w-4 h-4 text-[#1b55f5] shrink-0" />
+                  <span>Penyensoran Dua Arah In-Memory</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-4 h-4 text-[#ffae70] shrink-0" />
-                  <span>Scoring Deterministik 4 Dimensi</span>
+                  <Cpu className="w-4 h-4 text-[#1b55f5] shrink-0" />
+                  <span>Audit Kredensial 0 Halusinasi</span>
                 </div>
               </div>
             </div>

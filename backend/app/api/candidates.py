@@ -22,8 +22,8 @@ from app.core.crypto import (
     compute_blind_index,
     generate_tombstone_hash,
 )
-from app.core.sanitizer import sanitize_pii
-from app.core.hidden_text_detector import audit_docx_hidden_text
+from app.core.sanitizer import sanitize_resume
+from app.core.hidden_text_detector import audit_docx_hidden_text, audit_document_hidden_text
 from app.core.file_parser import (
     validate_file_magic_bytes,
     extract_text_from_file,
@@ -362,13 +362,18 @@ async def hr_direct_upload(
 
         hidden_text_detected = False
         hidden_snippets: list[str] = []
-        if file_format == "docx":
-            cleaned_body, hidden_snippets = audit_docx_hidden_text(file_bytes)
-            if hidden_snippets:
-                hidden_text_detected = True
-                raw_text = cleaned_body
+        cleaned_body, hidden_snippets, pdf_audit = audit_document_hidden_text(
+            file_bytes, file_format
+        )
+        if hidden_snippets:
+            hidden_text_detected = True
+            raw_text = cleaned_body
+        elif pdf_audit is not None and pdf_audit.visible_text.strip():
+            raw_text = cleaned_body
 
-        sanitized_text, sanitize_stats = sanitize_pii(raw_text)
+        sanitize_result = sanitize_resume(raw_text)
+        sanitized_text = sanitize_result.text
+        sanitize_stats = sanitize_result.stats
 
         candidate_dek = generate_dek()
         enc_dek = encrypt_dek(candidate_dek)
@@ -427,12 +432,40 @@ async def hr_direct_upload(
                 {"id": cand_id},
             )
 
+        # PRD Bab 6.4: the dropzone path has no form metadata, so any residual
+        # PII risk must be recorded as an anomaly rather than silently accepted.
+        if sanitize_result.has_residual_risk:
+            await db.execute(
+                text("""
+                    INSERT INTO candidate_anomalies (
+                        candidate_id, anomaly_type, severity, description, suggested_verification
+                    ) VALUES (
+                        :cand_id, 'PII_RESIDUAL_RISK', 'MEDIUM',
+                        :desc, 'Manually review the resume for unredacted applicant names.'
+                    )
+                """),
+                {
+                    "cand_id": cand_id,
+                    "desc": (
+                        "Possible unredacted name(s) in free narrative: "
+                        f"{json.dumps(sanitize_result.residual_name_candidates)}. "
+                        f"{' '.join(sanitize_result.limitations)}"
+                    ),
+                },
+            )
+
         uploaded.append({
             "candidate_id": cand_id,
             "filename": file.filename,
             "masked_identifier": masked_id,
             "status": "queued",
             "sanitization_stats": sanitize_stats,
+            "sanitization": {
+                "detected_name": sanitize_result.detected_name,
+                "name_source": sanitize_result.name_source,
+                "residual_risk": sanitize_result.has_residual_risk,
+                "limitations": sanitize_result.limitations,
+            },
         })
 
     await db.commit()

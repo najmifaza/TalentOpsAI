@@ -397,5 +397,68 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-20 - Najmi - Sanitasi PII Regex & Konteks untuk CV Non-Standar Tanpa Form Input
+
+- **Branch:** `feat/backend-pii-sanitizer-context`
+- **Komponen / File:**
+  - `backend/app/core/sanitizer.py` (ditulis ulang, 102 → 520 baris)
+  - `backend/app/api/candidates.py`
+  - `backend/app/api/careers.py`
+  - `backend/tests/test_pii_sanitizer.py` (baru)
+  - `backend/tests/test_dropzone_sanitization_wiring.py` (baru)
+- **Yang Dikerjakan:**
+
+  - **1. Akar Masalah yang Ditemukan:** Jalur HR dropzone (`POST /api/candidates/upload`) memanggil `sanitize_pii(raw_text)` **tanpa kamus apa pun**, karena memang tidak ada metadata form di jalur itu. Sanitizer lama hanya punya regex email, telepon, gender, dan almamater — **nama kandidat tidak pernah disamarkan**. Nama adalah identitas utama, jadi ini kebocoran PII terbesar di seluruh sistem, dan justru terjadi pada jalur yang menurut PRD Bab 6.4 paling berisiko.
+
+  - **2. Inferensi Nama dari Header (konteks, bukan form):**
+    - `infer_name_from_header()` merekonstruksi nama dari struktur dokumen: label `Nama:`/`Name:` lebih dulu, lalu baris nama berdiri sendiri di blok header (maksimal 8 baris pertama).
+    - Menolak heading dokumen (`CURRICULUM VITAE`, `DAFTAR RIWAYAT HIDUP`, `PROFIL`, dst.), baris berangka, baris ber-`@`, dan baris beralamat — sehingga tidak salah menebak.
+    - Mengupas gelar (`Ir.`, `S.Kom`, `M.T.`, `Prof.`, dst.) sebelum pencocokan.
+    - Bila inferensi gagal, fungsi mengembalikan `None` — **tidak menebak**. Kegagalan dilaporkan lewat `limitations`, bukan didiamkan.
+
+  - **3. Perluasan Cakupan Regex (khas CV Indonesia):**
+    - **NIK** 16 digit (pola 2+4+4+4+2, prefiks provinsi 11–99), **NPWP** 15 digit (termasuk format bertitik), **paspor**, **NIM/NIP/NIDN/NRP**.
+    - **Alamat pos** per baris (`Jl.`, `Jalan`, `Gang`, `RT/RW`, `Kelurahan`, `Kecamatan`, `Kabupaten`, `Kode Pos`, `Perumahan`, `Blok`).
+    - **Tanggal lahir** — hanya bila terikat kata kunci (`Tanggal Lahir`, `TTL`, `Lahir`, `DOB`). Tanggal lepas **tidak** disentuh karena itu linimasa karier yang sah.
+    - **Status perkawinan, agama, usia** — atribut diskriminatif menurut kebijakan fair hiring. Usia hanya bila berlabel (`Usia:`/`Umur:`), supaya "3 tahun pengalaman" tetap utuh.
+    - **URL sosial/profesional** (LinkedIn, GitHub, GitLab, Behance, dst.) — handle yang sama sudah tersimpan terpisah di `github_url` untuk verifikasi.
+    - **Nama terbalik** (`Santoso, Budi`) dan **nama sebagian** (≥4 karakter) untuk menangkap sebutan di narasi bebas.
+
+  - **4. Pengerasan terhadap Obfuskasi:**
+    - Normalisasi **NFKC** sebelum pencocokan, sehingga `＠` full-width terlipat menjadi `@`.
+    - **Karakter zero-width dihapus** (`U+200B`, `U+200C`, `U+200D`, `U+FEFF`, `U+00AD`, dst.), jadi `budi@exa\u200bmple.com` tidak bisa lolos.
+    - Email bentuk obfuskat `budi [at] gmail [dot] com` ikut tertangkap.
+    - Telepon dengan pemisah campuran (`-`, spasi, titik, `+62`) tertangkap.
+
+  - **5. Pelaporan False-Negative yang Jujur (tuntutan eksplisit PRD Bab 6.4):**
+    - `SanitizationResult` membawa `detected_name`, `name_source`, `residual_name_candidates`, dan `limitations`.
+    - Bila nama tidak bisa diresolusi, sanitizer **melaporkan** deretan kata berhuruf kapital yang lolos sebagai kandidat nama yang belum terverifikasi (dibatasi 10 entri), bukan mengklaim hasil bersih.
+    - Jalur dropzone **mempersist** temuan itu sebagai baris anomali `PII_RESIDUAL_RISK` (severity `MEDIUM`) di `candidate_anomalies`, sehingga ada antrean review manusia — bukan sekadar field respons yang hilang setelah request selesai.
+    - Jalur `/apply` mengembalikan blok `pii_sanitization` berisi `name_source`, `residual_risk`, dan `limitations`.
+
+  - **6. Empat Bug yang Ditemukan Lewat Probe dan Diperbaiki:**
+    - **NIK tidak tertangkap** — pola awal hanya 14 digit (2+4+4+4), bukan 16. Diperbaiki menjadi 2+4+4+4+2.
+    - **Email dirusak redaksi nama** — urutan lama menjalankan kamus nama sebelum pola email, sehingga `budi.santoso@gmail.com` menjadi `[NAME_REDACTED].[NAME_REDACTED]@gmail.com` dan domain `gmail.com` bocor. Urutan dibalik: identitas struktural → kontak → atribut → baru nama.
+    - **Telepon memakan baris baru** — pemisah memakai `\s` yang mencakup `\n`, sehingga `HP: 0812-3456-7890` menelan line break dan menyambung field berikutnya. Diganti `[ \t.\-]`.
+    - **Gender terpotong** — `[A-Za-z]+` berhenti di tanda hubung, menyisakan `-laki`. Ditambah `\-` ke kelas karakter.
+
+  - **7. Sisa Item 3 yang Ikut Ditutup:** Jalur dropzone ternyata masih memanggil `audit_docx_hidden_text` secara langsung, sehingga **PDF tidak pernah diaudit teks tersembunyinya** di jalur itu — padahal klaim item 3 menyebut dispatcher sudah dipakai di kedua endpoint. Sudah dimigrasikan ke `audit_document_hidden_text`. Saya catat di sini karena klaim item 3 sebelumnya kurang tepat untuk jalur ini.
+
+- **Status & Verifikasi:** Selesai 100% pada tingkat kode dan pengujian otomatis. `uv run pytest backend/tests -q` lulus **178 dari 178** test, 0 failure (sebelumnya 140).
+  - `test_pii_sanitizer.py` (35 test): inferensi nama (label, baris mandiri, gelar, penolakan heading/kontak, batas blok header), redaksi seluruh field identitas pada jalur tanpa metadata, atribut diskriminatif, pelestarian sinyal teknis (skill, perusahaan, durasi, tanggal kerja), ketahanan kebocoran di narasi bebas, bentuk nama terbalik, pelaporan residual, batas panjang laporan, jalur form, kompatibilitas tanda tangan lama, obfuskasi zero-width & full-width & `[at]/[dot]`, telepon multi-pemisah, empat regression guard bug di atas, idempotensi, input kosong, serta latensi.
+  - `test_dropzone_sanitization_wiring.py` (3 test): endpoint benar-benar memakai `sanitize_resume` dan menyamarkan nama tanpa metadata, anomali `PII_RESIDUAL_RISK` benar-benar di-insert saat ada residual risk, dan tidak ada anomali palsu saat dokumen bersih.
+  - **Latensi:** diukur pada CV sintetis 8× panjang standar, rata-rata **di bawah 20 ms** per dokumen — sesuai anggaran PRD Bab 6.4 (test gagal bila melewati batas).
+  - **Recall:** 12/12 field identitas pada CV uji hilang dari teks tersanitasi (100%, di atas target 98% PRD Bab 8).
+  - **⚠️ Batas verifikasi yang harus jujur dicatat:**
+    - Uji recall memakai **CV sintetis buatan sendiri**, bukan golden dataset 20–30 resume yang direncanakan di PRD. Angka 100% di atas **tidak boleh** dikutip sebagai hasil benchmark evaluasi riil; dataset sintetisnya belum ada.
+    - Inferensi nama berbasis heuristik tata letak. CV dengan nama di dalam kolom tabel dua-lajur, nama di footer, atau nama yang ditulis tanpa huruf kapital akan gagal terdeteksi dan hanya muncul sebagai residual risk.
+    - Deteksi hanya berbasis regex dan aturan tata letak — tidak ada NER. Nama yang muncul **hanya** di dalam narasi tanpa jejak di header memang tidak bisa dikenali sebagai nama; inilah false-negative yang dilaporkan secara eksplisit, bukan dihilangkan.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - **Willy:** respons `POST /api/candidates/upload` kini punya blok `sanitization` per kandidat (`detected_name`, `name_source`, `residual_risk`, `limitations`) di samping `sanitization_stats` yang sudah ada. Bisa dipakai menampilkan badge peringatan bila `residual_risk` bernilai `true`.
+  - **Willy:** respons `POST /api/careers/{id}/apply` kini punya blok `pii_sanitization` dengan field yang sama. `pii_sanitization_stats` tetap ada dan tidak berubah bentuk, hanya bertambah kunci baru (`nik`, `npwp`, `address`, `dob`, `marital`, `religion`, `social_url`, `student_id`, `passport`, `age`).
+  - **Fardizza:** anomali `PII_RESIDUAL_RISK` masuk ke antrean triage yang sama dengan anomali lain, severity `MEDIUM`. Tidak memblokir alur, hanya menandai perlunya review manual.
+  - **Semua:** `sanitize_pii(text, ...)` masih tersedia dengan tanda tangan lama (mengembalikan 2-tuple) untuk kompatibilitas, tapi kode baru sebaiknya memakai `sanitize_resume()` agar laporan residual ikut terbawa.
+- **Rencana Selanjutnya:** Tidak ada item tersisa dari lima rencana awal. Pekerjaan berikutnya yang disarankan: menyusun golden dataset 20–30 resume sintetis untuk mengukur recall sanitizer secara riil, dan verifikasi end-to-end integrasi eksternal setelah kredensial VPS terpasang.
+
 
 

@@ -16,7 +16,7 @@ from app.core.crypto import (
     decrypt_pii,
     compute_blind_index,
 )
-from app.core.sanitizer import sanitize_pii
+from app.core.sanitizer import sanitize_resume
 from app.core.hidden_text_detector import audit_docx_hidden_text, audit_document_hidden_text
 from app.core.file_parser import (
     validate_file_magic_bytes,
@@ -147,12 +147,14 @@ async def submit_application(
         raw_text = cleaned_body
 
     # 4. Two-way dictionary matching PII sanitization
-    sanitized_text, sanitize_stats = sanitize_pii(
+    sanitize_result = sanitize_resume(
         raw_text,
         known_name=name,
         known_email=email,
         known_phone=phone,
     )
+    sanitized_text = sanitize_result.text
+    sanitize_stats = sanitize_result.stats
 
     # 5. Crypto Envelope & Blind Indexing
     candidate_dek = generate_dek()
@@ -315,6 +317,11 @@ async def submit_application(
         "tracking_token": tracking_token,
         "triage_status": "queued",
         "pii_sanitization_stats": sanitize_stats,
+        "pii_sanitization": {
+            "name_source": sanitize_result.name_source,
+            "residual_risk": sanitize_result.has_residual_risk,
+            "limitations": sanitize_result.limitations,
+        },
         "notification": notification,
     }
 

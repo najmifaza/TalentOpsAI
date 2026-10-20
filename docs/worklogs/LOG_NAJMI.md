@@ -295,5 +295,34 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-20 - Najmi - Perluasan Kontrak Payload `GET /api/candidates` untuk Dashboard
+
+- **Branch:** `feat/backend-candidates-payload`
+- **Komponen / File:**
+  - `backend/app/api/candidates.py`
+  - `backend/tests/test_candidates_list_payload.py` (baru)
+- **Latar Belakang:** Penghapusan mock data di frontend (pekerjaan Willy) menyingkap bahwa payload `GET /api/candidates` tidak memuat `job_title`, `department`, `github_url`, `portfolio_url`, `flags`, maupun `key_technologies`. Selama mock masih ada, kekurangan ini tersamarkan karena UI mengambil nilai tersebut dari data karangan. Setelah mock dihapus, kolom Job Title selalu placeholder dan status GitHub selalu `UNVERIFIED`.
+- **Yang Dikerjakan:**
+  - **1. Perluasan Query Utama:**
+    - Menambahkan `JOIN job_descriptions j ON c.job_id = j.id` untuk menyediakan `job_title` dan `department`.
+    - Menyertakan `c.github_url` dan `c.portfolio_url` yang sudah ada di skema namun tidak pernah di-select.
+    - Seluruh kolom dan klausa filter kini memakai alias tabel (`c.` / `j.`) agar tidak ambigu setelah JOIN.
+  - **2. Pengambilan Relasi Secara Batch (bukan N+1):**
+    - `flags` diambil dari `candidate_anomalies.anomaly_type` untuk seluruh kandidat di halaman dalam **satu** query dengan `IN :cids` expanding bindparam.
+    - `key_technologies` diambil dari `candidate_evidence.target_competency` dengan pola yang sama, dan di-dedupe di Python.
+    - Saat halaman kosong, kedua query relasi dilewati sepenuhnya (tidak ada `IN ()`).
+  - **3. Suite Uji Kontrak (`test_candidates_list_payload.py`):**
+    - 7 test yang mengunci kontrak: kelengkapan field dashboard, keberadaan `JOIN job_descriptions`, jumlah query batch konstan terhadap jumlah baris, halaman kosong tidak memicu query relasi, kandidat tanpa relasi menghasilkan list kosong (bukan `null`), dan filter `job_id`/`status` memakai alias tabel.
+- **Status & Verifikasi:** Selesai 100%. `uv run pytest backend/tests -q` lulus **99 dari 99** test, 0 failure (sebelumnya 92).
+  - **Validasi SQL terhadap engine nyata:** query utama, klausa filter alias, dan kedua query relasi dieksekusi langsung pada SQLite in-memory dengan data seed (1 job, 1 kandidat, 2 anomali, 3 evidence dengan 1 duplikat). Hasil: `job_title = 'Senior Backend Engineer'`, `department = 'Core Engineering'`, filter `job_id` & `status` masing-masing mengembalikan 1 baris, `flags` berisi 2 entri, dan `key_technologies` ter-dedupe menjadi `['FastAPI', 'PostgreSQL']`.
+  - Catatan: SQL divalidasi pada SQLite (engine yang tersedia di host dev); MariaDB produksi belum diuji langsung karena tidak ada instance di host ini.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - **Willy:** payload `GET /api/candidates` kini menyertakan `job_title`, `department`, `github_url`, `portfolio_url`, `flags`, dan `key_technologies`. Placeholder `'Unknown Role'` hanya akan muncul jika `job_title` benar-benar null. Field `department` siap dipakai bila ingin ditampilkan.
+  - **Fardizza:** `key_technologies` diturunkan dari `candidate_evidence.target_competency` (bukan dari ekstraksi terpisah), dan `flags` dari `candidate_anomalies.anomaly_type`. Jika ingin taksonomi kompetensi yang lebih kaya, tambahkan variasi nilai `target_competency` saat menulis evidence.
+  - **Performa:** endpoint kini menjalankan 3 query per halaman (1 utama + 2 batch), konstan terhadap `limit`. Perlu diperhatikan saat mengukur ulang latensi dashboard.
+- **Rencana Selanjutnya:** Integrasi eksternal live (Google Calendar OAuth2 + SMTP Resend) dan penguatan sanitasi PII untuk CV non-standar.
+
+---
+
 
 

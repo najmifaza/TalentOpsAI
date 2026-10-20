@@ -432,14 +432,15 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
     - `github_status` diturunkan dari keberadaan `c.github_url` (`VERIFIED` / `UNVERIFIED`), bukan dari field mock.
     - `tracking_token` memakai nilai dari API dengan fallback sintetis `tk-{id}` hanya untuk display.
 - **Status & Verifikasi:** Selesai 100%. `npm run build` (Vite 5.4.21) sukses tanpa error, 1777 modul ter-transform, output bundle ter-split normal (`vendor-react`, `vendor-flow`, `vendor-icons`, `CareerPortal`, `JobManagement`). Grep `mockCandidates|MOCK_CANDIDATES` di `frontend/src` menghasilkan 0 hasil — tidak ada sisa referensi.
-- **⚠️ Keterbatasan Teridentifikasi (belum diperbaiki, butuh keputusan tim):**
-  - Payload `GET /api/candidates` di backend **tidak memuat** field `job_title`, `github_url`, `flags`, maupun `key_technologies`. Query hanya mengembalikan: `id, job_id, masked_identifier, tracking_token, overall_score, confidence_level, unresolved_risk, recommendation, triage_priority, status, dimension_scores, is_deleted, created_at`.
-  - Dampak di UI: kolom **Job Title** akan selalu menampilkan placeholder `'Engineering Applicant'`, dan **status GitHub** akan selalu `UNVERIFIED` karena `c.github_url` selalu `undefined`. Sebelumnya nilai ini diambil dari mock sehingga tampak benar padahal palsu.
-  - Perbaikan yang disarankan: backend menambahkan `JOIN job_descriptions` untuk `job_title` dan menyertakan `github_url` pada query list. Ini perubahan kontrak API sehingga perlu disepakati Najmi sebelum frontend mengandalkannya.
+- **✅ Keterbatasan Teridentifikasi — SUDAH DIPERBAIKI (2026-10-20):**
+  - Saat mock dihapus, ditemukan bahwa payload `GET /api/candidates` **tidak memuat** `job_title`, `department`, `github_url`, `portfolio_url`, `flags`, maupun `key_technologies`. Query hanya mengembalikan 13 kolom sehingga kolom **Job Title** selalu placeholder dan **status GitHub** selalu `UNVERIFIED`.
+  - **Najmi sudah memperbaikinya** di commit terpisah: query kini `JOIN job_descriptions` (menyediakan `job_title` & `department`), menyertakan `github_url` & `portfolio_url`, serta mengambil `flags` dari `candidate_anomalies` dan `key_technologies` dari `candidate_evidence` lewat dua query batch (bukan N+1).
+  - Frontend disesuaikan: fallback placeholder `'Engineering Applicant'` diganti `'Unknown Role'` (hanya muncul jika data benar-benar tidak ada), dan field `department` mulai dipetakan.
+  - Verifikasi: 7 test kontrak baru di `backend/tests/test_candidates_list_payload.py` lulus, dan SQL divalidasi langsung terhadap engine SQLite dengan data seed nyata (JOIN, filter alias, dan dedup kompetensi terbukti benar).
 - **Catatan untuk Rekan Tim (Najmi & Fardizza):**
   - **Najmi — penting:** karena mock sudah dihapus, dashboard HR akan tampil **kosong** jika backend tidak dapat dijangkau atau database belum di-seed. Jalankan `python backend/scripts/seed_data.py` dan pastikan `VITE_API_BASE_URL` mengarah ke backend yang hidup.
   - **Najmi — belum ditangani:** frontend masih **belum mengirim header `Authorization`**. Selama `DEMO_MODE=True` di backend, guard RBAC fallback ke recruiter ID 1 sehingga dashboard tetap berjalan. Begitu `DEMO_MODE` dimatikan untuk produksi, seluruh halaman `/admin/*` akan menerima 401 sampai alur login JWT diimplementasikan di sisi klien.
-  - **Najmi — kontrak API:** mohon tambahkan `job_title` (via `JOIN job_descriptions`) dan `github_url` ke payload `GET /api/candidates` agar kolom Job Title dan status GitHub pada tabel dashboard terisi data riil, bukan placeholder.
+  - **Catatan performa:** `GET /api/candidates` kini menjalankan 3 query per halaman (1 utama + 2 batch relasi), bukan 1. Tetap konstan terhadap jumlah baris, namun perlu diperhatikan saat mengukur latensi dashboard.
 - **Rencana Selanjutnya:** Implementasi alur login JWT di frontend (form login, penyimpanan token, dan penyisipan header `Authorization` pada seluruh request `/admin/*`) agar sistem siap ketika `DEMO_MODE` dimatikan.
 
 ---

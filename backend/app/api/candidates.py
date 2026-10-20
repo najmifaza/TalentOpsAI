@@ -49,29 +49,67 @@ async def list_candidates(
     """
     Lists candidates for HR Recruiter Dashboard.
     Omits plaintext PII; displays masked_identifier and evaluation stats.
+
+    Payload contract consumed by the dashboard table:
+    `job_title`, `department`, `github_url`, `portfolio_url`, `flags`, and
+    `key_technologies` are included so the UI never needs mock data. `flags` is
+    derived from `candidate_anomalies` and `key_technologies` from
+    `candidate_evidence`, both fetched in one batched query per relation to
+    avoid an N+1 pattern across the page.
     """
     query_str = """
-        SELECT id, job_id, masked_identifier, tracking_token, overall_score, confidence_level,
-               unresolved_risk, recommendation, triage_priority, status,
-               dimension_scores, is_deleted, created_at
-        FROM candidates
-        WHERE is_deleted = FALSE
+        SELECT c.id, c.job_id, c.masked_identifier, c.tracking_token, c.overall_score,
+               c.confidence_level, c.unresolved_risk, c.recommendation, c.triage_priority,
+               c.status, c.dimension_scores, c.is_deleted, c.created_at,
+               c.github_url, c.portfolio_url,
+               j.title AS job_title, j.department AS job_department
+        FROM candidates c
+        JOIN job_descriptions j ON c.job_id = j.id
+        WHERE c.is_deleted = FALSE
     """
     params = {}
     if job_id:
-        query_str += " AND job_id = :job_id"
+        query_str += " AND c.job_id = :job_id"
         params["job_id"] = job_id
     if status:
-        query_str += " AND status = :status"
+        query_str += " AND c.status = :status"
         params["status"] = status
 
-    query_str += " ORDER BY triage_priority DESC, created_at DESC LIMIT :limit OFFSET :offset"
+    query_str += " ORDER BY c.triage_priority DESC, c.created_at DESC LIMIT :limit OFFSET :offset"
     params["limit"] = limit
     params["offset"] = offset
 
     res = await db.execute(text(query_str), params)
+    raw_rows = list(res.mappings())
+
+    # Batch-fetch relation data for the page (single query each, not per row)
+    candidate_ids = [r["id"] for r in raw_rows]
+    flags_by_candidate: dict[int, list[str]] = {}
+    techs_by_candidate: dict[int, list[str]] = {}
+
+    if candidate_ids:
+        anom_stmt = text(
+            "SELECT candidate_id, anomaly_type FROM candidate_anomalies "
+            "WHERE candidate_id IN :cids ORDER BY candidate_id, anomaly_type"
+        ).bindparams(bindparam("cids", expanding=True))
+        anom_res = await db.execute(anom_stmt, {"cids": candidate_ids})
+        for row in anom_res.mappings():
+            flags_by_candidate.setdefault(row["candidate_id"], []).append(row["anomaly_type"])
+
+        ev_stmt = text(
+            "SELECT candidate_id, target_competency FROM candidate_evidence "
+            "WHERE candidate_id IN :cids AND target_competency IS NOT NULL "
+            "ORDER BY candidate_id, target_competency"
+        ).bindparams(bindparam("cids", expanding=True))
+        ev_res = await db.execute(ev_stmt, {"cids": candidate_ids})
+        for row in ev_res.mappings():
+            bucket = techs_by_candidate.setdefault(row["candidate_id"], [])
+            tech = row["target_competency"]
+            if tech and tech not in bucket:
+                bucket.append(tech)
+
     rows = []
-    for r in res.mappings():
+    for r in raw_rows:
         dim = r["dimension_scores"]
         if isinstance(dim, str):
             try:
@@ -81,8 +119,10 @@ async def list_candidates(
         rows.append({
             "id": r["id"],
             "job_id": r["job_id"],
+            "job_title": r["job_title"],
+            "department": r["job_department"],
             "masked_identifier": r["masked_identifier"],
-            "tracking_token": r.get("tracking_token"),
+            "tracking_token": r["tracking_token"],
             "overall_score": float(r["overall_score"]) if r["overall_score"] is not None else None,
             "confidence_level": r["confidence_level"],
             "unresolved_risk": r["unresolved_risk"],
@@ -90,6 +130,10 @@ async def list_candidates(
             "triage_priority": r["triage_priority"],
             "status": r["status"],
             "dimension_scores": dim,
+            "github_url": r["github_url"],
+            "portfolio_url": r["portfolio_url"],
+            "flags": flags_by_candidate.get(r["id"], []),
+            "key_technologies": techs_by_candidate.get(r["id"], []),
             "created_at": r["created_at"].isoformat() if r["created_at"] else None,
         })
     return {"data": rows, "count": len(rows)}

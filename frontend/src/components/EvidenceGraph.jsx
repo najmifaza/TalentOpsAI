@@ -766,7 +766,8 @@ export default function EvidenceGraph() {
             return {
               id: c.id,
               masked_identifier: c.masked_identifier,
-              job_title: c.job_title || 'Engineering Applicant',
+              job_title: c.job_title || 'Unknown Role',
+              department: c.department || null,
               overall_score: c.overall_score !== null ? c.overall_score : 0,
               recommendation: c.recommendation || 'REVIEW_REQUIRED',
               confidence_level: c.confidence_level || 'MEDIUM',

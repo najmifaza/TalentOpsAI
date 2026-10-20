@@ -15,7 +15,7 @@ from app.core.crypto import (
     compute_blind_index,
 )
 from app.core.sanitizer import sanitize_pii
-from app.core.hidden_text_detector import audit_docx_hidden_text
+from app.core.hidden_text_detector import audit_docx_hidden_text, audit_document_hidden_text
 from app.core.file_parser import (
     validate_file_magic_bytes,
     extract_text_from_file,
@@ -129,14 +129,16 @@ async def submit_application(
     # 3. Extract text in-memory
     raw_text = extract_text_from_file(file_bytes, file_format)
 
-    # Check hidden text if docx
+    # Audit hidden content (DOCX OOXML runs + PDF content streams). For PDFs this
+    # also returns the cleaned visible text and flags image-only pages needing OCR.
     hidden_text_detected = False
     hidden_snippets: list[str] = []
-    if file_format == "docx":
-        cleaned_body, hidden_snippets = audit_docx_hidden_text(file_bytes)
-        if hidden_snippets:
-            hidden_text_detected = True
-            raw_text = cleaned_body
+    cleaned_body, hidden_snippets, pdf_audit = audit_document_hidden_text(file_bytes, file_format)
+    if hidden_snippets:
+        hidden_text_detected = True
+        raw_text = cleaned_body
+    elif pdf_audit is not None and pdf_audit.visible_text.strip():
+        raw_text = cleaned_body
 
     # 4. Two-way dictionary matching PII sanitization
     sanitized_text, sanitize_stats = sanitize_pii(
@@ -235,6 +237,48 @@ async def submit_application(
         await db.execute(
             text("UPDATE candidates SET triage_priority = 'HIGH_ATTENTION' WHERE id = :id"),
             {"id": candidate_id},
+        )
+
+    # 8b. PDF-specific findings (invisible render mode, white text, micro images)
+    if pdf_audit is not None and pdf_audit.findings:
+        for finding in pdf_audit.findings:
+            await db.execute(
+                text("""
+                    INSERT INTO candidate_anomalies (
+                        candidate_id, anomaly_type, severity, description, suggested_verification
+                    ) VALUES (
+                        :cand_id, :atype, :sev, :desc, :verify
+                    )
+                """),
+                {
+                    "cand_id": candidate_id,
+                    "atype": finding["type"],
+                    "sev": finding.get("severity", "MEDIUM"),
+                    "desc": f"PDF page {finding.get('page')}: {finding.get('excerpt', '')}",
+                    "verify": "Inspect PDF content stream for invisible text or covert image objects.",
+                },
+            )
+        if not hidden_text_detected:
+            await db.execute(
+                text("UPDATE candidates SET triage_priority = 'HIGH_ATTENTION' WHERE id = :id"),
+                {"id": candidate_id},
+            )
+
+    # 8c. Scanned PDF with no text layer: downstream triage has nothing to score
+    if pdf_audit is not None and pdf_audit.requires_ocr:
+        await db.execute(
+            text("""
+                INSERT INTO candidate_anomalies (
+                    candidate_id, anomaly_type, severity, description, suggested_verification
+                ) VALUES (
+                    :cand_id, 'PDF_REQUIRES_OCR', 'MEDIUM',
+                    :desc, 'Request a text-based PDF/DOCX or run OCR before automated evaluation.'
+                )
+            """),
+            {
+                "cand_id": candidate_id,
+                "desc": f"Pages without text layer: {pdf_audit.image_only_pages}",
+            },
         )
 
     await db.commit()

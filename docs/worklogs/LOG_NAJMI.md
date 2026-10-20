@@ -272,5 +272,28 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-20 - Najmi - Parser PDF & Deteksi Hidden Text (PRD Bab 6.1)
+
+- **Branch:** `feat/backend-pdf-hidden-text`
+- **Komponen / File:**
+  - `backend/app/core/hidden_text_detector.py` (diperluas)
+  - `backend/app/api/careers.py`
+  - `backend/app/api/candidates.py`
+  - `backend/tests/test_pdf_hidden_text.py` (baru)
+- **Yang Dikerjakan:**
+  - `hidden_text_detector.py` diperluas dari DOCX-only menjadi audit dua format dengan dispatcher `audit_document_hidden_text(content, file_format)` yang mengembalikan `(cleaned_text, hidden_snippets, pdf_result)`.
+  - **PDF:** walker content-stream yang melacak text/graphics state dan mendeteksi: render mode 3/7 (teks invisible), fill putih/nyaris putih (RGB `rg`/`g` dan CMYK `k`), font di bawah 2pt, teks di luar MediaBox (off-page), XObject Form bersarang (maks. kedalaman 2), image mikro 1×1 sebagai penanda covert, serta halaman image-only yang ditandai butuh OCR.
+  - **DOCX:** ditambah pemindaian tabel, yang sebelumnya tidak diperiksa sehingga payload di dalam cell lolos.
+  - **Jebakan pypdf 6.x:** `ContentStream.__iter__` mengembalikan kosong (bukan error), sehingga walker diam-diam melewatkan seluruh teks dan audit selalu "bersih". Diperbaiki dengan mengakses `.operations` secara eksplisit.
+  - Fallback `extract_text()` hanya dipakai bila walker tidak menghasilkan temuan apa pun. Jika ada temuan, fallback justru akan menyuntikkan ulang payload yang sudah dibuang.
+  - `careers.py` & `candidates.py`: kedua jalur ingestion (portal publik dan dropzone HR) kini mengaudit PDF, bukan hanya DOCX. Temuan PDF dipersist ke `candidate_anomalies` dengan tipe spesifik, dan halaman tanpa text layer ditandai `PDF_REQUIRES_OCR`.
+- **Status & Verifikasi:** Selesai 100%. `uv run pytest backend/tests -q` lulus **92 dari 92** test, 0 failure. Test baru `test_pdf_hidden_text.py` (11 test) membangun PDF valid secara manual (tanpa reportlab) dan memverifikasi: teks visible terekstrak, render mode 3 terdeteksi, white fill terdeteksi, font 0.8pt terdeteksi, teks off-page terdeteksi, array `TJ` dengan kerning, halaman image-only ditandai butuh OCR, image 1×1 ditandai, PDF rusak tidak melempar exception, dispatcher dua format, dan hidden run di dalam tabel DOCX.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - **Fardizza:** kandidat dengan temuan PDF kini otomatis mendapat `triage_priority = 'HIGH_ATTENTION'`, dan anomali bertipe `PDF_INVISIBLE_RENDER_MODE` / `PDF_WHITE_TEXT` / `PDF_TINY_FONT` / `PDF_OFFPAGE_TEXT` / `PDF_MICRO_IMAGE` / `PDF_IMAGE_ONLY_PAGE` / `PDF_REQUIRES_OCR` tersedia di `candidate_anomalies` untuk dibaca scoring engine.
+  - **Catatan keterbatasan:** PDF hasil scan murni (tanpa text layer) belum di-OCR — saat ini hanya ditandai `PDF_REQUIRES_OCR` agar tidak diam-diam menghasilkan teks kosong. OCR engine belum ditambahkan karena membutuhkan dependensi biner (tesseract) yang belum tersedia di VPS.
+- **Rencana Selanjutnya:** Integrasi eksternal live (Google Calendar OAuth2 memakai tabel `oauth_tokens` yang sudah ada, dan SMTP Resend), serta penguatan sanitasi PII regex untuk CV non-standar tanpa form input.
+
+---
+
 
 

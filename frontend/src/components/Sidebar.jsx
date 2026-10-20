@@ -13,16 +13,10 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   const navContent = (
     <div className="flex flex-col h-full bg-primary-black text-white select-none">
       {/* Brand Header */}
-      <div className="px-5 py-5 flex items-center justify-between border-b border-white/10">
-        <Link to="/admin/dashboard" onClick={handleLinkClick} className="flex items-center gap-3">
-          <img src="/logo.svg" alt="TalentOps AI" className="h-8 w-auto object-contain brightness-0 invert" />
-          <div className="leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-extrabold text-white tracking-tight font-jkt">TalentOps</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-primary-orange/20 text-primary-orange font-mono font-bold border border-primary-orange/40">AI</span>
-            </div>
-            <p className="text-[10px] text-primary-slate-400 font-medium font-jkt">Recruiter Workspace</p>
-          </div>
+      <div className="px-5 py-5 flex items-center justify-between border-b border-white/10 shrink-0">
+        <Link to="/admin/dashboard" onClick={handleLinkClick} className="flex flex-col gap-1 min-w-0">
+          <img src="/logo.svg" alt="TalentOps AI" className="h-7 w-auto object-contain brightness-0 invert" />
+          <p className="text-[10px] text-primary-slate-400 font-medium font-jkt tracking-wider uppercase pl-0.5">Recruiter Workspace</p>
         </Link>
         <button 
           type="button" 
@@ -107,7 +101,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
       </nav>
 
       {/* User Footer */}
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-white/10 shrink-0">
         <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary-orange text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs font-jkt">
             WN
@@ -124,8 +118,8 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-60 flex-col shrink-0 min-h-screen border-r border-primary-border-200 z-20">
+      {/* Desktop Sidebar: Fixed to Viewport Height (sticky top-0 h-screen) */}
+      <aside className="hidden lg:flex w-64 flex-col shrink-0 h-screen sticky top-0 border-r border-primary-border-200 z-20 overflow-hidden">
         {navContent}
       </aside>
 

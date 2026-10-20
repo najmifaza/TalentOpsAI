@@ -38,17 +38,24 @@ export default function Header({ currentTitle = "Dashboard & Triage", onActionCl
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Brand Logo from /logo.svg */}
-        <div className="flex items-center gap-3">
+        {/* Mobile Brand Logo only (Hidden on desktop because Sidebar already renders logo) */}
+        <div className="flex items-center gap-3 lg:hidden">
           <img 
             src="/logo.svg" 
             alt="TalentOps AI" 
-            className="h-8 w-auto object-contain cursor-pointer"
+            className="h-7 w-auto object-contain cursor-pointer"
             onClick={() => window.location.href = '/admin/dashboard'}
           />
-          <div className="h-4 w-px bg-primary-border-200 hidden md:block" />
-          <span className="text-xs font-bold text-primary-black hidden md:inline-block">
+        </div>
+
+        {/* Desktop Breadcrumb / Title */}
+        <div className="hidden lg:flex items-center gap-2.5">
+          <span className="text-sm font-extrabold text-primary-black font-jkt">
             {currentTitle}
+          </span>
+          <span className="text-primary-border-200 font-mono text-xs">/</span>
+          <span className="text-[11px] font-bold text-primary-slate-500 uppercase tracking-wider">
+            Workspace
           </span>
         </div>
       </div>

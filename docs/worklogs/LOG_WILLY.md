@@ -398,6 +398,10 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - Top promo ticker bar dengan marquee berjalan dan sub-footer dua tingkat (`bg-[#0369a1]` dan `bg-primary-slate-1000`).
   - Tombol aksi utama mengadopsi gaya rounded-full oranye dengan bayangan halus (`rounded-full bg-primary-orange shadow-lg shadow-primary-orange/25`).
 - **Status & Verifikasi:** Selesai 100%. Kompilasi Vite build lolos tanpa error (`npm run build`). Backend test suite 63/63 lolos hijau (`uv run pytest`).
+- **Hotfix Resolusi Tampilan Header & Sidebar Layout Overlap:**
+  - Memperbaiki clipping teks pada brand header sidebar: `logo.svg` merupakan full wordmark ("talentOps.Ai"), sehingga teks inline duplikat dihapus agar tidak overflow ke luar batas sidebar.
+  - Menghilangkan logo duplikat di `Header.jsx` pada tampilan desktop; logo hanya dirender di mobile drawer, sementara desktop menampilkan breadcrumb judul rute yang bersih (`currentTitle / Workspace`).
+  - Menyesuaikan lebar desktop sidebar dari `w-60` (240px) ke `w-64` (256px) untuk kenyamanan padding dan keterbacaan menu navigasi.
 
 
 

@@ -369,7 +369,17 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
   - **4. Keselarasan Lock Hierarchy:** Query lock kandidat pada review **tidak** memakai `JOIN job_descriptions`. Meng-JOIN tabel itu di dalam `SELECT ... FOR UPDATE` akan memperluas himpunan lock melampaui hierarki `users -> interview_slots -> candidates` yang diwajibkan PRD dan berisiko deadlock dengan update lowongan konkuren. Judul lowongan diambil lewat query terpisah setelah lock.
 
-- **Status & Verifikasi:** Selesai 100% pada tingkat kode dan pengujian otomatis. `uv run pytest backend/tests -q` lulus **132 dari 132** test, 0 failure (sebelumnya 99).
+  - **5. Konfirmasi Penghapusan Data pada Withdraw (UU PDP No. 27/2022):**
+    - Menemukan bahwa template `erasure_confirmation` sebelumnya tidak terpakai — pelamar yang menarik lamaran tidak menerima bukti tertulis apa pun bahwa datanya sudah dimusnahkan.
+    - `POST /api/careers/withdraw` kini mengirim konfirmasi tersebut. **Urutannya kritis:** alamat penerima didekripsi **sebelum** `execute_talentops_erasure` dipanggil, karena rutin itu meng-null-kan `encrypted_email` **dan** `encrypted_dek` — membaca alamat setelah shred tidak mungkin lagi.
+    - Email dikirim setelah `db.commit()`, dan kegagalannya tidak pernah menggagalkan withdraw. Hak penghapusan data tidak boleh bergantung pada Resend yang hidup.
+    - Bila dekripsi gagal (envelope rusak), withdraw tetap berjalan dan email dilewati — bukan diblokir.
+    - Bila email dinonaktifkan, DEK tidak disentuh sama sekali dan query judul lowongan tidak dijalankan.
+    - Alamat email tidak pernah dikembalikan di response body endpoint publik ini.
+    - Plain-text alternative template `erasure_confirmation` diperbaiki agar ikut memuat nama posisi (sebelumnya hanya ada di HTML, sehingga pembaca plain-text kehilangan konteks).
+
+- **Status & Verifikasi:** Selesai 100% pada tingkat kode dan pengujian otomatis. `uv run pytest backend/tests -q` lulus **140 dari 140** test, 0 failure (sebelumnya 132).
+  - Test baru `test_withdraw_erasure_email.py` (8 test): urutan dekripsi-sebelum-shred, urutan commit-sebelum-kirim, kegagalan email tidak menggagalkan withdraw, dekripsi gagal tetap melakukan shred, tidak ada dekripsi saat email nonaktif, kegagalan erasure tidak mengirim apa pun, alamat tidak bocor di response, dan nama posisi muncul di konfirmasi.
   - Test baru `test_google_calendar_oauth.py` (16 test): gerbang konfigurasi tanpa panggilan jaringan, konstruksi URL consent (`offline`, scope, state), pertukaran kode, penyegelan token KEK (memverifikasi plaintext tidak ada di parameter INSERT), refresh saat kedaluwarsa, determinisme & format base32hex event ID, idempotensi 409, satu kali refresh-retry pada 401, dan cancel 404 sebagai sukses.
   - Test baru `test_email_resend.py` (17 test): provider nonaktif tidak melempar, validasi penerima, sukses API, 4xx tidak di-retry, 429 di-retry, batas retry, banyak penerima, SMTP sukses, auth SMTP tidak di-retry, connection error retryable, serta escaping HTML dan plain-text pada seluruh template.
   - **⚠️ Batas verifikasi yang harus jujur dicatat:**

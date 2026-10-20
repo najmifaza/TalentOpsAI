@@ -12,6 +12,8 @@ from app.core.crypto import (
     generate_dek,
     encrypt_dek,
     encrypt_pii,
+    decrypt_dek,
+    decrypt_pii,
     compute_blind_index,
 )
 from app.core.sanitizer import sanitize_pii
@@ -358,12 +360,38 @@ async def withdraw_application(
     Executes unified crypto-shredding via talentops_erasure.
     """
     res = await db.execute(
-        text("SELECT id, masked_identifier, is_deleted FROM candidates WHERE tracking_token = :token"),
+        text("""
+            SELECT id, masked_identifier, is_deleted, encrypted_email, encrypted_dek,
+                   job_id
+            FROM candidates WHERE tracking_token = :token
+        """),
         {"token": tracking_token},
     )
     cand = res.mappings().first()
     if not cand or cand["is_deleted"]:
         raise HTTPException(status_code=404, detail="APPLICATION_NOT_FOUND_OR_ALREADY_WITHDRAWN")
+
+    # Capture the recipient before crypto-shredding destroys the DEK, otherwise
+    # the confirmation can never be delivered.
+    erasure_recipient = ""
+    erasure_job_title = "Posisi Rekrutmen"
+    if email_service.configured:
+        try:
+            dek = decrypt_dek(cand["encrypted_dek"])
+            if cand["encrypted_email"]:
+                erasure_recipient = decrypt_pii(cand["encrypted_email"], dek)
+        except Exception as exc:
+            logger.warning("Cannot decrypt recipient before erasure: %s", type(exc).__name__)
+        try:
+            job_res = await db.execute(
+                text("SELECT title FROM job_descriptions WHERE id = :jid"),
+                {"jid": cand["job_id"]},
+            )
+            job_row = job_res.mappings().first()
+            if job_row and job_row["title"]:
+                erasure_job_title = job_row["title"]
+        except Exception:
+            pass
 
     client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1")
     erasure_result = await execute_talentops_erasure(
@@ -378,6 +406,19 @@ async def withdraw_application(
         raise HTTPException(status_code=400, detail=erasure_result.get("error", "ERASURE_FAILED"))
 
     await db.commit()
+
+    # Post-commit confirmation. The recipient was captured before the shred, so
+    # this still works after the DEK is destroyed.
+    if erasure_recipient:
+        try:
+            subject, html_body, text_body = erasure_confirmation(
+                masked_identifier=cand["masked_identifier"],
+                job_title=erasure_job_title,
+            )
+            await email_service.send(erasure_recipient, subject, html_body, text_body)
+        except Exception as exc:
+            logger.warning("Erasure confirmation email failed: %s", type(exc).__name__)
+
     return {
         "status": "success",
         "message": "Application withdrawn and personal data crypto-shredded under UU PDP No. 27/2022.",

@@ -169,9 +169,11 @@ def erasure_confirmation(masked_identifier: str, job_title: str = "") -> Tuple[s
         ID Lamaran: <strong>{_esc(masked_identifier)}</strong>
       </p>
     """
+    role_line = f"Posisi: {job_title}\n" if job_title else ""
     text = (
         "Konfirmasi Penghapusan Data Lamaran\n\n"
         "Permohonan penghapusan data Anda telah diproses sesuai UU No. 27/2022.\n"
+        f"{role_line}"
         f"ID Lamaran: {masked_identifier}\n"
     )
     return subject, _layout(subject, body), text

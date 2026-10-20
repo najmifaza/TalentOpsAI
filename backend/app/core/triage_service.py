@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.broadcaster import sse_broadcaster
+from app.core.state import DistributedSemaphore
 from app.core.llm_adapter import LLMAdapter, compute_file_hash
 from app.core.prompt import build_extraction_prompt, clean_llm_json_response
 from app.core.scoring import DeterministicScoringEngine
@@ -20,8 +21,10 @@ from app.adapters.calendar import MockCalendarAdapter
 
 logger = logging.getLogger(__name__)
 
-# Concurrency semaphore to avoid throttling LLM gateway
-triage_semaphore = asyncio.Semaphore(3)
+# Concurrency limiter to avoid throttling the LLM gateway.
+# Redis-backed when REDIS_URL is reachable, so the limit is enforced across all
+# Uvicorn workers instead of per-process (see app/core/state.py).
+triage_semaphore = DistributedSemaphore("triage", limit=settings.TRIAGE_CONCURRENCY_LIMIT)
 
 
 class AgentTriageService:
@@ -48,7 +51,7 @@ class AgentTriageService:
         use_cache: bool = True,
     ) -> Dict[str, Any]:
         """Runs governed on-demand triage for a single candidate."""
-        async with triage_semaphore:
+        async with triage_semaphore.lease():
             run_id = str(uuid.uuid4())
             start_total = time.time()
 

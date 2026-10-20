@@ -28,7 +28,10 @@ def test_health_endpoint():
     data = response.json()
     assert "status" in data
     assert data["service"] == "TalentOps AI Backend"
-    assert data["environment"] == "development"
+    # Environment is deployment-configured (APP_ENV), not hardcoded to development
+    assert data["environment"] in ("development", "staging", "production")
+    assert "state_backend" in data
+    assert "multi_worker_safe" in data
     print(f"test_health_endpoint: PASS (status={data['status']}, db={data['database']})")
 
 

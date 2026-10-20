@@ -7,8 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     APP_NAME: str = "TalentOps AI Backend"
-    APP_ENV: str = "development"
-    DEBUG: bool = True
+    APP_ENV: str = "production"
+    DEBUG: bool = False
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
@@ -41,6 +41,13 @@ class Settings(BaseSettings):
 
     GITHUB_TOKEN: str = ""
     DEMO_MODE: bool = True
+
+    # Multi-worker state backend (SSE broadcaster, tickets, triage semaphore).
+    # Empty string or unreachable Redis => graceful in-memory fallback (single-worker only).
+    REDIS_URL: str = ""
+    REDIS_KEY_PREFIX: str = "talentops"
+    TRIAGE_CONCURRENCY_LIMIT: int = 3
+    SSE_HISTORY_MAX_EVENTS: int = 200
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

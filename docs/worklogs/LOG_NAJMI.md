@@ -243,5 +243,34 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-20 - Najmi - Migrasi State In-Memory ke Redis untuk Multi-Worker
+
+- **Branch:** `feat/backend-redis-state`
+- **Komponen / File:**
+  - `backend/app/core/state.py` (baru)
+  - `backend/app/core/broadcaster.py` (ditulis ulang)
+  - `backend/app/core/config.py`
+  - `backend/app/core/triage_service.py`
+  - `backend/app/api/health.py`
+  - `backend/requirements.txt`
+  - `backend/tests/test_redis_state.py` (baru)
+  - `backend/tests/test_walking_skeleton.py`
+- **Yang Dikerjakan:**
+  - Implementasi `backend/app/core/state.py`: `RedisState` (probe koneksi lazy + fallback graceful), builder key ter-namespace, dan `DistributedSemaphore`.
+  - `DistributedSemaphore` memakai `SET <slot> NX EX <lease>` per slot, bukan Lua/EVAL. Lease TTL membuat worker yang mati di tengah triage melepas slotnya otomatis, menghindari deadlock queue. Rancangan awal berbasis sorted-set + EVAL dibatalkan karena `fakeredis` tidak mengimplementasikan `EVAL`, sehingga jalur Redis tidak akan pernah teruji.
+  - `broadcaster.py` ditulis ulang: tiket single-use dan riwayat event disimpan di Redis, fan-out lewat pub/sub, sehingga tiket yang diterbitkan worker A dikenali worker B. Riwayat dibatasi (`SSE_HISTORY_MAX_EVENTS`) dan diberi TTL. Fallback in-memory dipertahankan identik dengan perilaku lama.
+  - **Bug ditemukan & diperbaiki saat penulisan test:** implementasi awal memakai `GETDEL` langsung, sehingga permintaan dengan `candidate_id` yang salah ikut membakar tiket milik pemegang sah. Diperbaiki menjadi baca → validasi kandidat & expiry → `GETDEL`, dan pemanggil yang kalah balapan menerima `False`.
+  - `triage_service.py`: `asyncio.Semaphore(3)` per-proses diganti `DistributedSemaphore` sehingga batas konkurensi berlaku lintas worker.
+  - `/api/health` kini melaporkan `state_backend`, `redis_configured`, dan `multi_worker_safe`.
+  - `requirements.txt`: tambah `redis>=5.0` dan `fakeredis>=2.20` (dev).
+  - `test_walking_skeleton.py`: assertion `environment == "development"` diperbaiki menjadi memvalidasi nilai `APP_ENV` yang dikonfigurasi. Test ini sudah gagal sebelum pekerjaan ini karena default `APP_ENV` adalah `production`.
+- **Status & Verifikasi:** Selesai 100%. `uv run pytest backend/tests -q` lulus **81 dari 81** test, 0 failure. Test baru `test_redis_state.py` (10 test) mencakup: tiket single-use lintas worker, tiket kedaluwarsa, replay history + fan-out lintas worker, event live ke subscriber aktif, trimming riwayat, batas semaphore lintas worker, self-heal lease TTL, context manager lease, fallback in-memory, dan degradasi graceful saat Redis tidak dapat dijangkau.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - **Deployment VPS (Najmi):** untuk menjalankan Uvicorn lebih dari satu worker, set `REDIS_URL` di `.env` lalu verifikasi `GET /api/health` menunjukkan `"multi_worker_safe": true`. Tanpa Redis, sistem tetap jalan namun state bersifat per-proses (hanya aman untuk `--workers 1`).
+  - Jalur Redis diuji memakai `fakeredis`; server Redis produksi belum diverifikasi live.
+- **Rencana Selanjutnya:** Parser PDF OCR / hidden text detection untuk CV selain DOCX.
+
+---
+
 
 

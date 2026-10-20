@@ -18,7 +18,7 @@ import {
   Cpu,
   GitBranch
 } from 'lucide-react';
-import { MOCK_CANDIDATES } from '../data/mockCandidates';
+
 
 export default function ApplicationTracker({ initialToken = '', onBackToPortal }) {
   const [tokenInput, setTokenInput] = useState(initialToken);
@@ -54,12 +54,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
     setError(null);
 
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/careers/track/${encodeURIComponent(token)}`);
-      } catch (directErr) {
-        res = await fetch(`/api/careers/track/${encodeURIComponent(token)}`);
-      }
+      const res = await fetch(`${API_BASE_URL}/api/careers/track/${encodeURIComponent(token)}`);
 
       if (res && res.ok) {
         const data = await res.json();
@@ -88,47 +83,14 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
         }
       } catch (e) {}
 
-      const mockMatch = MOCK_CANDIDATES.find(c => c.tracking_token === token || c.masked_identifier === token);
-      if (mockMatch) {
-        setTrackingData({
-          masked_identifier: mockMatch.masked_identifier,
-          job_title: mockMatch.job_title,
-          department: 'Engineering',
-          status: mockMatch.status,
-          recommendation: mockMatch.recommendation,
-          submitted_at: mockMatch.applied_date,
-          scores_4d: mockMatch.scores_4d,
-          verified_github: mockMatch.verified_github,
-          source: 'DEMO_DATASET'
-        });
-        setLastChecked(new Date().toLocaleTimeString('id-ID'));
-        setLoading(false);
-        return;
-      }
-
       if (res.status === 404) {
         setError('Token tidak ditemukan atau berkas lamaran telah dihapus (Right to Erasure).');
       } else {
         setError(`Gagal memuat status lamaran: Server merespons ${res.status}`);
       }
     } catch (err) {
-      console.warn('Network error, checking mock fallback:', err);
-      const mockMatch = MOCK_CANDIDATES.find(c => c.tracking_token === token || c.masked_identifier === token);
-      if (mockMatch) {
-        setTrackingData({
-          masked_identifier: mockMatch.masked_identifier,
-          job_title: mockMatch.job_title,
-          department: 'Core Engineering',
-          status: mockMatch.status,
-          recommendation: mockMatch.recommendation,
-          submitted_at: mockMatch.applied_date,
-          scores_4d: mockMatch.scores_4d,
-          source: 'DEMO_DATASET'
-        });
-        setLastChecked(new Date().toLocaleTimeString('id-ID'));
-      } else {
-        setError('Koneksi ke server gagal. Pastikan jaringan internet aktif.');
-      }
+      console.warn('Network error fetching tracking status:', err);
+      setError('Koneksi ke server gagal. Pastikan jaringan internet aktif.');
     } finally {
       setLoading(false);
     }

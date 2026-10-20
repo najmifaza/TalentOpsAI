@@ -72,34 +72,6 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
   const fileInputRef = useRef(null);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
-  // Fallback jobs if API unreachable
-  const FALLBACK_JOBS = [
-    {
-      id: 1,
-      title: 'Senior Backend Engineer',
-      department: 'Core Engineering',
-      raw_text: 'Bertanggung jawab membangun arsitektur microservices berkinerja tinggi, asynchronous event streaming, integrasi basis data relasional ACID, dan kepatuhan privasi data UU PDP.',
-      core_competencies: ['FastAPI', 'Docker', 'MariaDB', 'PostgreSQL', 'CI/CD', 'Redis'],
-      status: 'active'
-    },
-    {
-      id: 2,
-      title: 'AI Data & Evaluation Engineer',
-      department: 'AI Intelligence Group',
-      raw_text: 'Mengembangkan sistem evaluasi otonom berbasis LLM, skema ekstraksi terstruktur Pydantic v2, anti-hallucination guard, dan algoritma scoring deterministik multi-dimensi.',
-      core_competencies: ['Python', 'Gemini 3.8', 'Pydantic v2', 'Pytest', 'NumPy', 'Data Pipeline'],
-      status: 'active'
-    },
-    {
-      id: 3,
-      title: 'Lead Frontend UI/UX Engineer',
-      department: 'Product Experience',
-      raw_text: 'Membangun antarmuka web SPA kelas enterprise dengan React 18, Vite, Tailwind CSS, visualisasi graf interaktif React Flow, dan listener Server-Sent Events.',
-      core_competencies: ['React 18', 'Vite', 'Tailwind CSS', 'React Flow', 'TypeScript', 'SSE Streaming'],
-      status: 'active'
-    }
-  ];
-
   // Fetch Jobs on Mount
   useEffect(() => {
     fetchJobs();
@@ -108,25 +80,20 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
   const fetchJobs = async () => {
     setLoadingJobs(true);
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/careers`);
-      } catch (directErr) {
-        res = await fetch('/api/careers');
-      }
+      const res = await fetch(`${API_BASE_URL}/api/careers`);
       if (res && res.ok) {
         const json = await res.json();
-        const activeJobs = json.data && json.data.length > 0 ? json.data : FALLBACK_JOBS;
+        const activeJobs = json.data && json.data.length > 0 ? json.data : [];
         setJobs(activeJobs);
-        setSelectedJob(activeJobs[0]);
+        setSelectedJob(activeJobs[0] || null);
       } else {
-        setJobs(FALLBACK_JOBS);
-        setSelectedJob(FALLBACK_JOBS[0]);
+        setJobs([]);
+        setSelectedJob(null);
       }
     } catch (err) {
-      console.warn('Using fallback job list due to network:', err);
-      setJobs(FALLBACK_JOBS);
-      setSelectedJob(FALLBACK_JOBS[0]);
+      console.warn('Failed to fetch job list:', err);
+      setJobs([]);
+      setSelectedJob(null);
     } finally {
       setLoadingJobs(false);
     }
@@ -224,18 +191,10 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
       formData.append('dpa_consent', 'true');
       formData.append('resume_file', resumeFile);
 
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/careers/${selectedJob.id}/apply`, {
-          method: 'POST',
-          body: formData,
-        });
-      } catch (directErr) {
-        res = await fetch(`/api/careers/${selectedJob.id}/apply`, {
-          method: 'POST',
-          body: formData,
-        });
-      }
+      const res = await fetch(`${API_BASE_URL}/api/careers/${selectedJob.id}/apply`, {
+        method: 'POST',
+        body: formData,
+      });
 
       if (res.ok) {
         const data = await res.json();

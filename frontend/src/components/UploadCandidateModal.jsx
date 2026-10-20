@@ -32,12 +32,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
   useEffect(() => {
     async function loadJobs() {
       try {
-        let res;
-        try {
-          res = await fetch(`${API_BASE_URL}/api/jobs`);
-        } catch (e) {
-          res = await fetch('/api/jobs');
-        }
+        const res = await fetch(`${API_BASE_URL}/api/jobs`);
         if (res && res.ok) {
           const json = await res.json();
           if (json.data && json.data.length > 0) {
@@ -108,6 +103,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
       formData.append('files', file);
 
       let serverUploaded = null;
+      let uploadError = null;
       try {
         const res = await fetch(`${API_BASE_URL}/api/candidates/upload`, {
           method: 'POST',
@@ -119,26 +115,27 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
           if (list.length > 0) {
             serverUploaded = list[0];
           }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          uploadError = errData.detail || `Server error ${res.status}`;
         }
       } catch (networkErr) {
-        console.warn('Backend upload network fallback:', networkErr);
+        uploadError = 'Koneksi ke server gagal. Pastikan backend aktif.';
       }
 
-      // Generate masked name
-      const nameParts = candidateName.trim().split(' ');
-      const maskedName = nameParts.map(part => {
-        if (part.length <= 1) return part;
-        return part[0] + '*'.repeat(Math.max(2, part.length - 1));
-      }).join(' ');
+      if (uploadError || !serverUploaded) {
+        setErrorMessage(uploadError || 'Upload berhasil dikirim namun respons kandidat tidak diterima dari server. Refresh dashboard untuk memperbarui data.');
+        setIsSubmitting(false);
+        return;
+      }
 
-      const randomHex = Math.random().toString(16).substring(2, 8).toUpperCase();
       const newCandidate = {
-        id: serverUploaded?.candidate_id || serverUploaded?.id || Date.now(),
-        masked_identifier: serverUploaded?.masked_identifier || `#TK-${randomHex}`,
-        tracking_token: serverUploaded?.tracking_token || `token-${Date.now()}-${randomHex}`,
+        id: serverUploaded.candidate_id || serverUploaded.id,
+        masked_identifier: serverUploaded.masked_identifier,
+        tracking_token: serverUploaded.tracking_token,
         job_title: jobTitle,
         applied_date: new Date().toISOString().replace('T', ' ').slice(0, 16),
-        candidate_name_masked: maskedName || 'A***** P******',
+        candidate_name_masked: serverUploaded.masked_identifier,
         overall_score: null,
         scores_4d: null,
         recommendation: 'PENDING_SCAN',
@@ -148,7 +145,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
         verified_github: null,
         github_status: 'PENDING_SCAN',
         flags: [],
-        key_technologies: ['Menunggu Analisis AI'],
+        key_technologies: [],
         resume_file_name: file.name
       };
 

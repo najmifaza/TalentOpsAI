@@ -31,43 +31,6 @@ import { CandidateEvidenceGraph } from './EvidenceGraph';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
-// Known demographic identity mappings for demo / golden dataset candidates
-const KNOWN_CANDIDATE_IDENTITIES = {
-  1: { name: 'Budi Santoso', email: 'budi.santoso@email.com', phone: '+62 812-3456-7890' },
-  2: { name: 'Reza Pratama', email: 'reza.pratama@email.com', phone: '+62 813-9876-5432' },
-  3: { name: 'Citra Lestari', email: 'citra.lestari@email.com', phone: '+62 815-5555-3344' },
-  4: { name: 'Dewi Sartika', email: 'dewi.sartika@email.com', phone: '+62 818-1234-0011' },
-  5: { name: 'Eko Prasetyo', email: 'eko.prasetyo@email.com', phone: '+62 819-8765-4321' },
-  6: { name: 'Najmi Faza', email: 'najmifaza@gmail.com', phone: '+62 851-2345-6789' },
-  12: { name: 'Syafira Dewi Juwita', email: 'syafira.dewi@email.com', phone: '+62 821-4321-8765' },
-};
-
-const AVAILABLE_SLOTS = [
-  {
-    id: 101,
-    date: 'Senin, 20 Oktober 2026',
-    time: '09:30 - 10:30 WIB',
-    interviewer: 'Najmi Faza (Lead Backend & Security Eng)',
-    type: 'Technical System Architecture Interview',
-    status: 'available',
-  },
-  {
-    id: 102,
-    date: 'Senin, 20 Oktober 2026',
-    time: '14:00 - 15:00 WIB',
-    interviewer: 'Najmi Faza (Lead Backend & Security Eng)',
-    type: 'Code Review & Concurrency Deep Dive',
-    status: 'available',
-  },
-  {
-    id: 103,
-    date: 'Selasa, 21 Oktober 2026',
-    time: '10:00 - 11:00 WIB',
-    interviewer: 'Hiring Committee Lead',
-    type: 'Culture Fit & Problem Solving',
-    status: 'available',
-  },
-];
 
 export default function CandidateModal({ candidate, onClose, onRefresh }) {
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' | 'graph' | 'cv' | 'schedule'
@@ -79,8 +42,8 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
   const [analyzeMessage, setAnalyzeMessage] = useState(null);
 
   // Scheduling states
-  const [slots, setSlots] = useState(AVAILABLE_SLOTS);
-  const [selectedSlotId, setSelectedSlotId] = useState(101);
+  const [slots, setSlots] = useState([]);
+  const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookedEvent, setBookedEvent] = useState(null);
   const [rejectReason, setRejectReason] = useState('Skor keahlian di bawah threshold kompetensi posisi');
@@ -90,12 +53,7 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
     if (!candidate?.id) return;
     setIsLoadingDetail(true);
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}`);
-      } catch (e) {
-        res = await fetch(`/api/candidates/${candidate.id}`);
-      }
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}`);
       if (res && res.ok) {
         const json = await res.json();
         setCandidateDetail(json);
@@ -115,18 +73,10 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
       formData.append('reason', 'HR Recruiter candidate dossier review');
       formData.append('reviewer_role', 'compliance_officer');
 
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/unmask`, {
-          method: 'POST',
-          body: formData,
-        });
-      } catch (e) {
-        res = await fetch(`/api/candidates/${candidate.id}/unmask`, {
-          method: 'POST',
-          body: formData,
-        });
-      }
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/unmask`, {
+        method: 'POST',
+        body: formData,
+      });
 
       if (res && res.ok) {
         const json = await res.json();
@@ -143,12 +93,7 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
   useEffect(() => {
     async function fetchSlots() {
       try {
-        let res;
-        try {
-          res = await fetch(`${API_BASE_URL}/api/slots/available`);
-        } catch (e) {
-          res = await fetch('/api/slots/available');
-        }
+        const res = await fetch(`${API_BASE_URL}/api/slots/available`);
         if (res && res.ok) {
           const json = await res.json();
           if (json.data && json.data.length > 0) {
@@ -200,12 +145,10 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
 
   // Determine candidate real name, email, and phone
   const resolvedIdentity = useMemo(() => {
-    const known = KNOWN_CANDIDATE_IDENTITIES[candidate?.id] || {};
     const unmasked = unmaskedIdentity || {};
     
-    let candidateName = unmasked.name || known.name;
+    let candidateName = unmasked.name;
     if (!candidateName && candidateDetail?.candidate?.sanitized_resume_text) {
-      // Check first line of resume for name if available
       const lines = candidateDetail.candidate.sanitized_resume_text.split('\n').map(l => l.trim()).filter(Boolean);
       for (const line of lines) {
         if (!line.startsWith('[') && line.length > 2 && line.length < 35 && !line.includes('RINGKASAN') && !line.includes('Mahasiswa')) {
@@ -218,8 +161,8 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
       candidateName = candidate.candidate_name_masked || 'Kandidat Pelamar';
     }
 
-    const email = unmasked.email || known.email || 'kandidat@email.com';
-    const phone = unmasked.phone || known.phone || '+62 812-****-****';
+    const email = unmasked.email || 'kandidat@email.com';
+    const phone = unmasked.phone || '+62 812-****-****';
 
     return { name: candidateName, email, phone };
   }, [candidate, candidateDetail, unmaskedIdentity]);
@@ -230,12 +173,7 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
     setIsAnalyzing(true);
     setAnalyzeMessage('Model Gemini 3.8 sedang mengekstrak klaim CV dan menghitung skor 4D...');
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/triage`, { method: 'POST' });
-      } catch (e) {
-        res = await fetch(`/api/candidates/${candidate.id}/triage`, { method: 'POST' });
-      }
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/triage`, { method: 'POST' });
       if (res && res.ok) {
         setAnalyzeMessage('Ekstraksi selesai! Mengambil bukti grounding terbaru...');
         setTimeout(async () => {
@@ -258,13 +196,16 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
     }
   };
 
-  const selectedSlot = slots.find(s => s.id === selectedSlotId) || slots[0] || AVAILABLE_SLOTS[0];
+  const selectedSlot = slots.find(s => s.id === selectedSlotId) || slots[0] || null;
 
   const generateMockEventId = (slotId, candId) => {
     return `talentops_slot${slotId}_cand${candId}_${btoa(`ev_${slotId}`).replace(/=/g, '').toLowerCase()}`;
   };
 
   const handleConfirmSchedule = async () => {
+    if (!selectedSlot) {
+      return;
+    }
     setIsSubmitting(true);
     try {
       const formData = new FormData();
@@ -275,16 +216,13 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
       }
       formData.append('reviewer_id', '1');
 
-      try {
-        await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
-          method: 'POST',
-          body: formData,
-        });
-      } catch (e) {
-        await fetch(`/api/candidates/${candidate.id}/review`, {
-          method: 'POST',
-          body: formData,
-        });
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Review submit failed with status ${res.status}`);
       }
 
       const eventId = generateMockEventId(selectedSlot.id, candidate.id);
@@ -318,17 +256,10 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
       formData.append('notes', rejectReason);
       formData.append('reviewer_id', '1');
 
-      try {
-        await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
-          method: 'POST',
-          body: formData,
-        });
-      } catch (e) {
-        await fetch(`/api/candidates/${candidate.id}/review`, {
-          method: 'POST',
-          body: formData,
-        });
-      }
+      await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
+        method: 'POST',
+        body: formData,
+      });
 
       if (onRefresh) onRefresh();
     } catch (err) {

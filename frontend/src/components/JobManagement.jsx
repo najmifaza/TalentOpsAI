@@ -44,38 +44,8 @@ const PRESETS = {
   },
 };
 
-const FALLBACK_JOBS = [
-  {
-    id: 1,
-    title: 'Senior Backend Engineer',
-    department: 'Core Engineering',
-    raw_text: 'Bertanggung jawab membangun arsitektur microservices berkinerja tinggi, asynchronous event streaming, integrasi basis data relasional ACID, dan kepatuhan privasi data UU PDP.',
-    core_competencies: ['FastAPI', 'Docker', 'MariaDB', 'PostgreSQL', 'CI/CD', 'Redis'],
-    weight_config: { SKILL: 0.4, EXPERIENCE: 0.3, EDUCATION: 0.1, PORTFOLIO: 0.2 },
-    status: 'active'
-  },
-  {
-    id: 2,
-    title: 'AI Data & Evaluation Engineer',
-    department: 'AI Intelligence Group',
-    raw_text: 'Mengembangkan sistem evaluasi otonom berbasis LLM, skema ekstraksi terstruktur Pydantic v2, anti-hallucination guard, dan algoritma scoring deterministik multi-dimensi.',
-    core_competencies: ['Python', 'Gemini 3.8', 'Pydantic v2', 'Pytest', 'NumPy', 'Data Pipeline'],
-    weight_config: { SKILL: 0.45, EXPERIENCE: 0.2, EDUCATION: 0.15, PORTFOLIO: 0.2 },
-    status: 'active'
-  },
-  {
-    id: 3,
-    title: 'Lead Frontend UI/UX Engineer',
-    department: 'Product Experience',
-    raw_text: 'Membangun antarmuka web SPA kelas enterprise dengan React 18, Vite, Tailwind CSS, visualisasi graf interaktif React Flow, dan listener Server-Sent Events.',
-    core_competencies: ['React 18', 'Vite', 'Tailwind CSS', 'React Flow', 'TypeScript', 'SSE Streaming'],
-    weight_config: { SKILL: 0.4, EXPERIENCE: 0.25, EDUCATION: 0.1, PORTFOLIO: 0.25 },
-    status: 'active'
-  }
-];
-
 export default function JobManagement() {
-  const [jobs, setJobs] = useState(FALLBACK_JOBS);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
@@ -93,20 +63,20 @@ export default function JobManagement() {
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/jobs`);
-      } catch (e) {
-        res = await fetch('/api/jobs');
-      }
+      const res = await fetch(`${API_BASE_URL}/api/jobs`);
       if (res && res.ok) {
         const json = await res.json();
         if (json.data && json.data.length > 0) {
           setJobs(json.data);
+        } else {
+          setJobs([]);
         }
+      } else {
+        setJobs([]);
       }
     } catch (err) {
-      console.warn('Using fallback jobs list:', err);
+      console.warn('Failed to fetch jobs list:', err);
+      setJobs([]);
     } finally {
       setLoading(false);
     }
@@ -204,33 +174,17 @@ export default function JobManagement() {
 
       let res;
       if (editingJob) {
-        try {
-          res = await fetch(`${API_BASE_URL}/api/jobs/${editingJob.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-        } catch (e) {
-          res = await fetch(`/api/jobs/${editingJob.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-        }
+        res = await fetch(`${API_BASE_URL}/api/jobs/${editingJob.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
       } else {
-        try {
-          res = await fetch(`${API_BASE_URL}/api/jobs`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-        } catch (e) {
-          res = await fetch('/api/jobs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-        }
+        res = await fetch(`${API_BASE_URL}/api/jobs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
       }
 
       if (res && res.ok) {
@@ -319,6 +273,17 @@ export default function JobManagement() {
       )}
 
       {/* 2. Job Opening Cards Grid */}
+      {jobs.length === 0 && !loading ? (
+        <div className="bg-white rounded-2xl border border-primary-border-200 p-12 flex flex-col items-center justify-center text-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-primary-slate-100 flex items-center justify-center">
+            <Briefcase className="w-6 h-6 text-primary-slate-400" />
+          </div>
+          <p className="text-sm font-bold text-primary-black">Belum Ada Lowongan</p>
+          <p className="text-xs text-primary-slate-500 max-w-xs">
+            Klik "Buat Lowongan Baru" untuk menambahkan posisi dan konfigurasi bobot evaluasi 4D.
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {jobs.map((job) => {
           const w = job.weight_config || { SKILL: 0.4, EXPERIENCE: 0.3, EDUCATION: 0.1, PORTFOLIO: 0.2 };
@@ -438,6 +403,7 @@ export default function JobManagement() {
           );
         })}
       </div>
+      )}
 
       {/* 3. Modal Form: Buat / Edit Lowongan */}
       {isModalOpen && (

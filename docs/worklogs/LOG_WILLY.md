@@ -403,6 +403,48 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - Menghilangkan logo duplikat di `Header.jsx` pada tampilan desktop; logo hanya dirender di mobile drawer, sementara desktop menampilkan breadcrumb judul rute yang bersih (`currentTitle / Workspace`).
   - Menyesuaikan lebar desktop sidebar dari `w-60` (240px) ke `w-64` (256px) untuk kenyamanan padding dan keterbacaan menu navigasi.
 
+---
+
+### 2026-10-20 - Willy - Penghapusan Mock Data & Penyambungan Penuh ke Backend Live
+
+- **Branch:** `feat/ui-live-data`
+- **Komponen / File:**
+  - `frontend/src/data/mockCandidates.js` (dihapus)
+  - `frontend/src/components/DashboardOverview.jsx`
+  - `frontend/src/components/CandidateModal.jsx`
+  - `frontend/src/components/EvidenceGraph.jsx`
+  - `frontend/src/components/JobManagement.jsx`
+  - `frontend/src/components/UploadCandidateModal.jsx`
+  - `frontend/src/components/CareerPortal.jsx`
+  - `frontend/src/components/ApplicationTracker.jsx`
+- **Yang Dikerjakan:**
+  - **1. Penghapusan Sumber Data Palsu (`mockCandidates.js`):**
+    - Menghapus total berkas `src/data/mockCandidates.js` (156 baris) beserta seluruh import `MOCK_CANDIDATES` di 6 komponen.
+    - Seluruh state awal komponen yang sebelumnya di-seed dari mock kini dimulai dari array kosong (`useState([])`) dan diisi murni dari respons API.
+  - **2. Penghapusan Fallback Mock pada Jalur Fetch:**
+    - Pola `try { fetch(API_BASE_URL + path) } catch { fetch(path) }` dihapus. Sebelumnya, jika API live gagal, komponen diam-diam menampilkan data mock sehingga bug backend tersamarkan.
+    - Kini kegagalan API ditampilkan apa adanya sebagai state kosong/error, bukan disamarkan dengan data karangan.
+    - `JobManagement.jsx`: konstanta `FALLBACK_JOBS` (3 lowongan hardcoded) dihapus; daftar lowongan murni dari `GET /api/jobs`.
+    - `DashboardOverview.jsx`: `match?.job_title`, `match?.applied_date`, `match?.key_technologies`, dan `match?.flags` yang mengambil nilai dari mock diganti dengan field riil dari respons API (`c.job_title`, `c.created_at`, `c.github_url`).
+    - `EvidenceGraph.jsx`: `activeCandidate` tidak lagi fallback ke `MOCK_CANDIDATES[0]` saat daftar kosong.
+  - **3. Perbaikan Mapping Data ke Kontrak API Nyata:**
+    - `candidate_name_masked` kini memakai `masked_identifier` dari API, bukan nama tersamar karangan.
+    - `github_status` diturunkan dari keberadaan `c.github_url` (`VERIFIED` / `UNVERIFIED`), bukan dari field mock.
+    - `tracking_token` memakai nilai dari API dengan fallback sintetis `tk-{id}` hanya untuk display.
+- **Status & Verifikasi:** Selesai 100%. `npm run build` (Vite 5.4.21) sukses tanpa error, 1777 modul ter-transform, output bundle ter-split normal (`vendor-react`, `vendor-flow`, `vendor-icons`, `CareerPortal`, `JobManagement`). Grep `mockCandidates|MOCK_CANDIDATES` di `frontend/src` menghasilkan 0 hasil — tidak ada sisa referensi.
+- **⚠️ Keterbatasan Teridentifikasi (belum diperbaiki, butuh keputusan tim):**
+  - Payload `GET /api/candidates` di backend **tidak memuat** field `job_title`, `github_url`, `flags`, maupun `key_technologies`. Query hanya mengembalikan: `id, job_id, masked_identifier, tracking_token, overall_score, confidence_level, unresolved_risk, recommendation, triage_priority, status, dimension_scores, is_deleted, created_at`.
+  - Dampak di UI: kolom **Job Title** akan selalu menampilkan placeholder `'Engineering Applicant'`, dan **status GitHub** akan selalu `UNVERIFIED` karena `c.github_url` selalu `undefined`. Sebelumnya nilai ini diambil dari mock sehingga tampak benar padahal palsu.
+  - Perbaikan yang disarankan: backend menambahkan `JOIN job_descriptions` untuk `job_title` dan menyertakan `github_url` pada query list. Ini perubahan kontrak API sehingga perlu disepakati Najmi sebelum frontend mengandalkannya.
+- **Catatan untuk Rekan Tim (Najmi & Fardizza):**
+  - **Najmi — penting:** karena mock sudah dihapus, dashboard HR akan tampil **kosong** jika backend tidak dapat dijangkau atau database belum di-seed. Jalankan `python backend/scripts/seed_data.py` dan pastikan `VITE_API_BASE_URL` mengarah ke backend yang hidup.
+  - **Najmi — belum ditangani:** frontend masih **belum mengirim header `Authorization`**. Selama `DEMO_MODE=True` di backend, guard RBAC fallback ke recruiter ID 1 sehingga dashboard tetap berjalan. Begitu `DEMO_MODE` dimatikan untuk produksi, seluruh halaman `/admin/*` akan menerima 401 sampai alur login JWT diimplementasikan di sisi klien.
+  - **Najmi — kontrak API:** mohon tambahkan `job_title` (via `JOIN job_descriptions`) dan `github_url` ke payload `GET /api/candidates` agar kolom Job Title dan status GitHub pada tabel dashboard terisi data riil, bukan placeholder.
+- **Rencana Selanjutnya:** Implementasi alur login JWT di frontend (form login, penyimpanan token, dan penyisipan header `Authorization` pada seluruh request `/admin/*`) agar sistem siap ketika `DEMO_MODE` dimatikan.
+
+---
+
+
 
 
 

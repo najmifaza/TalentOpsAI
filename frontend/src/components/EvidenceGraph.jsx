@@ -31,7 +31,7 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react';
-import { MOCK_CANDIDATES } from '../data/mockCandidates';
+
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
@@ -477,12 +477,7 @@ function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false })
     if (!candidate?.id) return;
     setIsLoading(true);
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}`);
-      } catch (e) {
-        res = await fetch(`/api/candidates/${candidate.id}`);
-      }
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}`);
       if (res && res.ok) {
         const json = await res.json();
         setCandidateDetail(json.candidate || null);
@@ -526,12 +521,7 @@ function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false })
     if (!candidate?.id) return;
     setIsTriageRunning(true);
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/triage`, { method: 'POST' });
-      } catch (e) {
-        res = await fetch(`/api/candidates/${candidate.id}/triage`, { method: 'POST' });
-      }
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/triage`, { method: 'POST' });
       if (res && res.ok) {
         // Poll for 3 seconds then reload real data
         setTimeout(async () => {
@@ -763,30 +753,24 @@ function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false })
 export default function EvidenceGraph() {
   const { candidateId } = useParams();
   const navigate = useNavigate();
-  const [candidateList, setCandidateList] = useState(MOCK_CANDIDATES);
+  const [candidateList, setCandidateList] = useState([]);
 
   // Load candidate list from backend
   const loadCandidates = useCallback(async () => {
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/candidates?limit=50`);
-      } catch (e) {
-        res = await fetch('/api/candidates?limit=50');
-      }
+      const res = await fetch(`${API_BASE_URL}/api/candidates?limit=50`);
       if (res && res.ok) {
         const json = await res.json();
         if (json.data && json.data.length > 0) {
           const mapped = json.data.map(c => {
-            const match = MOCK_CANDIDATES.find(m => m.masked_identifier === c.masked_identifier || m.id === c.id);
             return {
               id: c.id,
               masked_identifier: c.masked_identifier,
-              job_title: match?.job_title || 'Pelamar Rekrutmen',
-              overall_score: c.overall_score !== null ? c.overall_score : (match?.overall_score || 0),
-              recommendation: c.recommendation || match?.recommendation || 'REVIEW_REQUIRED',
-              confidence_level: c.confidence_level || match?.confidence_level || 'HIGH',
-              github_url: c.github_url || match?.verified_github || null,
+              job_title: c.job_title || 'Engineering Applicant',
+              overall_score: c.overall_score !== null ? c.overall_score : 0,
+              recommendation: c.recommendation || 'REVIEW_REQUIRED',
+              confidence_level: c.confidence_level || 'MEDIUM',
+              github_url: c.github_url || null,
             };
           });
           setCandidateList(mapped);
@@ -807,18 +791,18 @@ export default function EvidenceGraph() {
     return candidateList.find(c => String(c.id) === String(candidateId) || c.masked_identifier === candidateId);
   }, [candidateId, candidateList]);
 
-  const [selectedCandidateId, setSelectedCandidateId] = useState(
-    candidateFromUrl ? candidateFromUrl.id : candidateList[0].id
-  );
+  const [selectedCandidateId, setSelectedCandidateId] = useState(null);
 
-  // Sync state when URL parameter changes
+  // Sync state when URL parameter changes or candidateList loads
   useEffect(() => {
     if (candidateFromUrl) {
       setSelectedCandidateId(candidateFromUrl.id);
+    } else if (selectedCandidateId === null && candidateList.length > 0) {
+      setSelectedCandidateId(candidateList[0].id);
     }
-  }, [candidateFromUrl]);
+  }, [candidateFromUrl, candidateList, selectedCandidateId]);
 
-  const activeCandidate = candidateList.find(c => c.id === selectedCandidateId) || candidateList[0] || MOCK_CANDIDATES[0];
+  const activeCandidate = candidateList.find(c => c.id === selectedCandidateId) || candidateList[0] || null;
 
   const handleSelectCandidate = (cand) => {
     setSelectedCandidateId(cand.id);
@@ -843,6 +827,18 @@ export default function EvidenceGraph() {
         </div>
       </div>
 
+      {candidateList.length === 0 ? (
+        <div className="clean-card p-12 flex flex-col items-center justify-center text-center gap-3 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-[#f4f4f6] flex items-center justify-center">
+            <Layers className="w-6 h-6 text-[#67677e]" />
+          </div>
+          <p className="text-sm font-bold text-[#000000]">Belum Ada Data Kandidat</p>
+          <p className="text-xs text-[#67677e] max-w-xs">
+            Upload berkas CV kandidat dan jalankan analisis AI triage dari HR Dashboard terlebih dahulu.
+          </p>
+        </div>
+      ) : (
+        <>
       {/* Candidate Selector Bar */}
       <div className="clean-card p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0 scrollbar-none">
@@ -889,6 +885,8 @@ export default function EvidenceGraph() {
           onReloadCandidates={loadCandidates} 
         />
       </ReactFlowProvider>
+        </>
+      )}
     </div>
   );
 }

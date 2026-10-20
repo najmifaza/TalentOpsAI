@@ -3,7 +3,6 @@ import CandidateTable from './CandidateTable';
 import CandidateModal from './CandidateModal';
 import AgentTraceModal from './AgentTraceModal';
 import UploadCandidateModal from './UploadCandidateModal';
-import { MOCK_CANDIDATES } from '../data/mockCandidates';
 import { 
   Users, 
   CheckCircle2, 
@@ -22,7 +21,7 @@ import {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
 export default function DashboardOverview() {
-  const [candidates, setCandidates] = useState(MOCK_CANDIDATES);
+  const [candidates, setCandidates] = useState([]);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [traceCandidate, setTraceCandidate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,51 +33,46 @@ export default function DashboardOverview() {
   const fetchCandidates = useCallback(async () => {
     setIsLoading(true);
     try {
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/candidates?limit=50`);
-      } catch (err) {
-        res = await fetch('/api/candidates?limit=50');
-      }
+      const res = await fetch(`${API_BASE_URL}/api/candidates?limit=50`);
       if (res && res.ok) {
         const json = await res.json();
         if (json.data && json.data.length > 0) {
           const mapped = json.data.map(c => {
-            const match = MOCK_CANDIDATES.find(
-              m => m.masked_identifier === c.masked_identifier || m.id === c.id
-            );
             const dims = c.dimension_scores || {};
             const isUnscanned = c.overall_score === null || c.recommendation === 'PENDING_SCAN' || c.status === 'queued';
             return {
               id: c.id,
               masked_identifier: c.masked_identifier,
-              tracking_token: c.tracking_token || match?.tracking_token || `tk-${c.id}`,
-              job_title: match?.job_title || 'Senior Backend Engineer',
-              applied_date: c.created_at ? c.created_at.replace('T', ' ').slice(0, 16) : (match?.applied_date || '2026-10-18 10:00'),
-              candidate_name_masked: match?.candidate_name_masked || 'K******** *******',
+              tracking_token: c.tracking_token || `tk-${c.id}`,
+              job_title: c.job_title || 'Engineering Applicant',
+              applied_date: c.created_at ? c.created_at.replace('T', ' ').slice(0, 16) : '-',
+              candidate_name_masked: c.masked_identifier,
               overall_score: c.overall_score !== null ? c.overall_score : null,
               scores_4d: c.overall_score !== null ? {
-                s_comp: dims.SKILL || match?.scores_4d?.s_comp || 0,
-                s_port: dims.PORTFOLIO || match?.scores_4d?.s_port || 0,
+                s_comp: dims.SKILL || 0,
+                s_port: dims.PORTFOLIO || 0,
                 s_conf: dims.EDUCATION || (c.confidence_level === 'HIGH' ? 95 : 75),
                 s_risk: c.unresolved_risk === 'HIGH' ? 70 : (c.unresolved_risk === 'MEDIUM' ? 35 : 10),
               } : null,
-              recommendation: isUnscanned ? 'PENDING_SCAN' : (c.recommendation || match?.recommendation || 'REVIEW_REQUIRED'),
+              recommendation: isUnscanned ? 'PENDING_SCAN' : (c.recommendation || 'REVIEW_REQUIRED'),
               status: c.status || (isUnscanned ? 'queued' : 'waiting_approval'),
               scan_status: isUnscanned ? 'UNSCANNED' : 'SCANNED',
               confidence_level: isUnscanned ? null : (c.confidence_level || 'MEDIUM'),
-              verified_github: match?.verified_github || null,
-              github_status: isUnscanned ? 'PENDING_SCAN' : (match?.github_status || 'VERIFIED'),
-              flags: match?.flags || [],
-              key_technologies: match?.key_technologies || ['Python', 'FastAPI', 'PostgreSQL', 'Docker'],
+              verified_github: c.github_url || null,
+              github_status: isUnscanned ? 'PENDING_SCAN' : (c.github_url ? 'VERIFIED' : 'UNVERIFIED'),
+              flags: c.flags || [],
+              key_technologies: c.key_technologies || [],
             };
           });
           setCandidates(mapped);
           setIsLiveConnected(true);
+        } else {
+          setCandidates([]);
+          setIsLiveConnected(true);
         }
       }
     } catch (err) {
-      console.warn('Backend candidates fetch fallback to pre-cached fixtures:', err);
+      console.warn('Backend candidates fetch error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -133,13 +127,13 @@ export default function DashboardOverview() {
   const quarantined = useMemo(() => candidates.filter(c => c.recommendation === 'SECURITY_QUARANTINE' || (c.flags && c.flags.length > 0)).length, [candidates]);
 
   const avgScore = useMemo(() => {
-    if (scannedCandidates.length === 0) return '86.4';
+    if (scannedCandidates.length === 0) return null;
     const total = scannedCandidates.reduce((acc, c) => acc + (c.overall_score || 0), 0);
     return (total / scannedCandidates.length).toFixed(1);
   }, [scannedCandidates]);
 
   const highConfPct = useMemo(() => {
-    if (scannedCandidates.length === 0) return 100;
+    if (scannedCandidates.length === 0) return null;
     const count = scannedCandidates.filter(c => c.confidence_level === 'HIGH').length;
     return Math.round((count / scannedCandidates.length) * 100);
   }, [scannedCandidates]);
@@ -156,19 +150,14 @@ export default function DashboardOverview() {
     setBatchMessage(`Menjalankan batch triage untuk ${unscannedCandidates.length} kandidat...`);
     try {
       const targetIds = unscannedCandidates.map(c => c.id);
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/candidates/batch-triage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidate_ids: targetIds })
-        });
-      } catch (directErr) {
-        res = await fetch('/api/candidates/batch-triage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidate_ids: targetIds })
-        });
+      const res = await fetch(`${API_BASE_URL}/api/candidates/batch-triage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_ids: targetIds })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Batch triage server responded with ${res.status}`);
       }
 
       setTimeout(() => {
@@ -375,10 +364,12 @@ export default function DashboardOverview() {
               Rata-rata Skor Kesesuaian 4D
             </span>
             <div className="text-3xl font-extrabold text-primary-black tracking-tight tabular-nums">
-              {avgScore} <span className="text-xs font-semibold text-primary-slate-400">/ 100</span>
+              {avgScore !== null ? avgScore : '—'} <span className="text-xs font-semibold text-primary-slate-400">/ 100</span>
             </div>
             <p className="text-xs text-primary-slate-600">
-              Dihitung dari <strong className="text-primary-black">{scannedCandidates.length}</strong> berkas terverifikasi
+              {avgScore !== null
+                ? <>Dihitung dari <strong className="text-primary-black">{scannedCandidates.length}</strong> berkas terverifikasi</>
+                : 'Belum ada berkas yang telah dianalisis AI'}
             </p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-primary-orange/10 border border-primary-orange/30 flex items-center justify-center text-primary-orange">
@@ -392,11 +383,11 @@ export default function DashboardOverview() {
               Ketertelusuran Bukti CV (Grounding)
             </span>
             <div className="text-3xl font-extrabold text-primary-black tracking-tight tabular-nums">
-              {highConfPct}% <span className="text-xs font-semibold text-emerald-600">High Conf</span>
+              {highConfPct !== null ? `${highConfPct}%` : '—'} <span className="text-xs font-semibold text-emerald-600">High Conf</span>
             </div>
             <p className="text-xs text-emerald-700 font-medium flex items-center gap-1">
               <Check className="w-3.5 h-3.5" />
-              <span>Substring Guard anti-halusinasi aktif</span>
+              <span>{highConfPct !== null ? 'Substring Guard anti-halusinasi aktif' : 'Menunggu hasil analisis AI pertama'}</span>
             </p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-center text-emerald-600">
@@ -433,14 +424,26 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        <CandidateTable 
-          candidates={candidates} 
-          onSelectCandidate={setSelectedCandidate} 
-          onStreamCandidate={setTraceCandidate}
-          onStartTriage={(cand) => setTraceCandidate(cand)}
-          onBatchTriage={handleBatchTriage}
-          isBatchRunning={isBatchRunning}
-        />
+        {candidates.length === 0 && !isLoading ? (
+          <div className="bg-white rounded-2xl border border-primary-border-200 p-12 flex flex-col items-center justify-center text-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-primary-slate-100 flex items-center justify-center">
+              <Users className="w-6 h-6 text-primary-slate-400" />
+            </div>
+            <p className="text-sm font-bold text-primary-black">Belum Ada Kandidat</p>
+            <p className="text-xs text-primary-slate-500 max-w-xs">
+              Unggah berkas CV lewat tombol "Upload CV Baru" di atas, atau minta pelamar mendaftar via Portal Karier publik.
+            </p>
+          </div>
+        ) : (
+          <CandidateTable 
+            candidates={candidates} 
+            onSelectCandidate={setSelectedCandidate} 
+            onStreamCandidate={setTraceCandidate}
+            onStartTriage={(cand) => setTraceCandidate(cand)}
+            onBatchTriage={handleBatchTriage}
+            isBatchRunning={isBatchRunning}
+          />
+        )}
       </div>
 
       {/* Candidate Dossier Detail Modal */}

@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.auth import require_roles
 from app.adapters.calendar import mock_calendar_adapter
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ class ReserveSlotRequest(BaseModel):
 async def get_available_slots(
     interviewer_id: Optional[int] = Query(None, description="Filter berdasarkan ID pewawancara"),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
 ):
     """
     PRD Bab 8.2 (Item 12):
@@ -73,6 +75,7 @@ async def get_available_slots(
 async def reserve_interview_slot(
     payload: ReserveSlotRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
 ):
     """
     PRD Bab 8.2 (Item 13) & Bab 6.3:

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .api.health import router as health_router
+from .api.auth import router as auth_router
 from .api.careers import router as careers_router
 from .api.candidates import router as candidates_router
 from .api.jobs import router as jobs_router
@@ -9,6 +10,10 @@ from .api.slots import router as slots_router
 from .api.audit import router as audit_router
 
 tags_metadata = [
+    {
+        "name": "Authentication & RBAC",
+        "description": "Autentikasi pengguna berbasis JWT stateless dan manajemen role-based access control (Admin, Recruiter, Hiring Manager, Compliance Officer).",
+    },
     {
         "name": "Public Career Portal",
         "description": "Endpoint publik untuk pelamar: pencarian lowongan kerja, pengunggahan berkas lamaran dengan DPA consent, pelacakan status anonim berbasis tracking token, dan penarikan lamaran mandiri (right to erasure).",
@@ -74,6 +79,7 @@ app.add_middleware(
 )
 
 app.include_router(health_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 app.include_router(careers_router, prefix="/api")
 app.include_router(candidates_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")

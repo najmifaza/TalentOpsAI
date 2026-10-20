@@ -213,5 +213,35 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 - **Catatan untuk Rekan Tim (Willy & Fardizza):**
   - Frontend kini dapat menyimpan dan memuat konfigurasi bobot 4D langsung dari database riil tanpa sandbox simulasi.
 
+---
+
+### 2026-10-20 - Najmi - Autentikasi JWT Stateless & Penegakan RBAC (PRD Bab 8.1)
+
+- **Branch:** `feat/backend-auth`
+- **Komponen / File:**
+  - `backend/app/core/auth.py` (baru)
+  - `backend/app/api/auth.py` (baru)
+  - `backend/app/api/candidates.py`
+  - `backend/app/api/jobs.py`
+  - `backend/app/api/slots.py`
+  - `backend/app/api/audit.py`
+  - `backend/app/main.py`
+  - `backend/scripts/seed_data.py`
+  - `backend/tests/test_auth_rbac.py` (baru)
+- **Yang Dikerjakan:**
+  - Implementasi `backend/app/core/auth.py`: pembuatan & validasi JWT HS256, hashing password, dependency `get_current_user`, dan factory `require_roles(*roles)`.
+  - **Catatan dependensi:** `pyjwt`/`python-jose` dan `argon2-cffi` tidak tersedia di environment, sehingga JWT dibangun dengan `hmac` + `hashlib` + `base64` (stdlib) dan hashing password memakai PBKDF2-HMAC-SHA256 (100.000 iterasi). Tidak menambah dependency baru; tetap HS256 sesuai `JWT_ALGORITHM` di config.
+  - Endpoint `POST /api/auth/login` (login via username **atau** email) dan `GET /api/auth/me`.
+  - Pemasangan guard RBAC pada endpoint `candidates` (12), `jobs` (6), `slots` (2), dan `audit` (1) sesuai matriks otorisasi PRD Bab 8.1.
+  - **Perbaikan celah identitas:** `reviewer_id`, `owner_id` job, dan `user_id` pada erasure kini diambil dari token terautentikasi, bukan dari form/body yang dapat dipalsukan klien. Pada `/unmask`, `reviewer_role` di-override dari token kecuali `DEMO_MODE` aktif.
+  - `scripts/seed_data.py`: hash placeholder `$argon2id$...` yang tidak valid diganti hash PBKDF2 nyata sehingga login demo berfungsi.
+- **Status & Verifikasi:** Selesai 100%. `uv run pytest backend/tests -q` lulus **71 dari 71** test, 0 failure. Test baru `test_auth_rbac.py` (8 test): roundtrip password hash, roundtrip & expiry JWT, penolakan signature dipalsukan, penolakan token malformed, `require_roles` allow/deny, login endpoint, 401 tanpa token saat `DEMO_MODE=False`, 403 untuk role di luar whitelist, dan registrasi router di OpenAPI.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - **Willy — PENTING:** Frontend belum mengirim header `Authorization`. Selama `DEMO_MODE=True` guard fallback ke recruiter ID 1 sehingga dashboard tetap jalan. Jika `DEMO_MODE` dimatikan untuk produksi, **seluruh dashboard HR akan 401** sampai frontend login via `POST /api/auth/login` dan menyertakan `Authorization: Bearer <token>`.
+  - **Willy:** Endpoint SSE legacy `/api/candidates/stream/{id}` yang dipakai `AgentTraceModal.jsx` sengaja dibiarkan tanpa autentikasi agar tidak breaking.
+- **Rencana Selanjutnya:** Migrasi state in-memory (SSE broadcaster & semaphore) ke Redis untuk multi-worker.
+
+---
+
 
 

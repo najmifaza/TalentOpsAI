@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.auth import require_roles
 from app.core.scoring import DeterministicScoringEngine
 
 logger = logging.getLogger(__name__)
@@ -59,10 +60,17 @@ class UpdateJobRequest(BaseModel):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_job(payload: CreateJobRequest, db: AsyncSession = Depends(get_db)):
+async def create_job(
+    payload: CreateJobRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
+):
     """
     Creates a new job description with custom 4D weights and core competencies stored per job.
     """
+    # Authenticated recruiter owns the job record
+    if isinstance(current_user, dict) and current_user.get("id"):
+        payload.owner_id = int(current_user["id"])
     # Ensure owner exists or fallback to default
     user_res = await db.execute(text("SELECT id FROM users WHERE id = :uid"), {"uid": payload.owner_id})
     if not user_res.first():
@@ -102,7 +110,12 @@ async def create_job(payload: CreateJobRequest, db: AsyncSession = Depends(get_d
 
 
 @router.put("/{job_id}")
-async def update_job(job_id: int, payload: UpdateJobRequest, db: AsyncSession = Depends(get_db)):
+async def update_job(
+    job_id: int,
+    payload: UpdateJobRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
+):
     """
     Updates job opening details or modifies 4D scoring weights per job.
     """
@@ -141,7 +154,10 @@ async def update_job(job_id: int, payload: UpdateJobRequest, db: AsyncSession = 
 
 
 @router.get("")
-async def list_jobs(db: AsyncSession = Depends(get_db)):
+async def list_jobs(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
+):
     """Lists all active job openings with core competencies and baseline weights."""
     res = await db.execute(
         text("SELECT id, title, department, core_competencies, weight_config, status FROM job_descriptions WHERE status = 'active'")
@@ -172,7 +188,11 @@ async def list_jobs(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{job_id}")
-async def get_job_detail(job_id: int, db: AsyncSession = Depends(get_db)):
+async def get_job_detail(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
+):
     """Retrieves specific job description and configuration."""
     res = await db.execute(
         text("SELECT * FROM job_descriptions WHERE id = :id"),
@@ -213,6 +233,7 @@ async def simulate_policy(
     job_id: int,
     payload: PolicySimulationRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
 ):
     """
     PRD Bab 8.2 (Item 11) & Bab 5.2:
@@ -373,6 +394,7 @@ async def analyze_job_bias(
     job_id: int,
     payload: Optional[BiasAnalysisRequest] = None,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
 ):
     """
     PRD Bab 8.1 & Bab 8.2 (Item 9):

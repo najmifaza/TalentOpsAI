@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.auth import require_roles
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ async def get_system_audit_trail(
     limit: int = Query(50, ge=1, le=200, description="Jumlah maksimal log"),
     offset: int = Query(0, ge=0, description="Offset paginasi"),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "compliance_officer")),
 ):
     """
     PRD Bab 8.1 & Bab 6.1 (Item 6):

@@ -18,16 +18,17 @@ def seed_initial_data():
         print("Checking existing seed data...")
 
         # 1. Seed Default User (Recruiter / Admin)
-        # Pre-hashed password for demo: 'AdminSecret2026!'
-        # Using a standard dummy argon2id hash representation
-        dummy_argon_hash = "$argon2id$v=19$m=65536,t=3,p=4$dGFsZW50b3BzX3NhbHQ$demo_hash_placeholder_2026"
-        
+        # Password demo: 'AdminSecret2026!' — PBKDF2-HMAC-SHA256 (stdlib, no native argon2 dep)
+        from backend.app.core.auth import hash_password
+
+        pwd_hash = hash_password("AdminSecret2026!")
+
         user_query = text("""
             INSERT INTO users (id, username, email, password_hash, role)
             VALUES (1, 'recruiter_talentops', 'recruiter@talentops.ai', :pwd_hash, 'recruiter')
             ON DUPLICATE KEY UPDATE email = VALUES(email);
         """)
-        conn.execute(user_query, {"pwd_hash": dummy_argon_hash})
+        conn.execute(user_query, {"pwd_hash": pwd_hash})
         print("User seed: recruiter_talentops (ID: 1) created/verified.")
 
         # 2. Seed Default Job Description (Target benchmark role)

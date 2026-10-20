@@ -4,11 +4,13 @@ import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import text
+from pydantic import BaseModel
+from sqlalchemy import text, bindparam
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db, AsyncSessionLocal
+from app.core.auth import require_roles
 from app.core.triage_service import agent_triage_service
 from app.core.crypto import (
     generate_dek,
@@ -42,6 +44,7 @@ async def list_candidates(
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
 ):
     """
     Lists candidates for HR Recruiter Dashboard.
@@ -93,7 +96,11 @@ async def list_candidates(
 
 
 @router.get("/{candidate_id}")
-async def get_candidate_dossier(candidate_id: int, db: AsyncSession = Depends(get_db)):
+async def get_candidate_dossier(
+    candidate_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
+):
     """Retrieves full candidate dossier, anomalies, evidence, and assessments."""
     cand_res = await db.execute(
         text("SELECT * FROM candidates WHERE id = :id AND is_deleted = FALSE"),
@@ -151,6 +158,7 @@ async def hr_direct_upload(
     job_id: int = Form(...),
     files: List[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter")),
 ):
     """
     HR direct multi-file dropzone for candidate resumes.
@@ -259,6 +267,7 @@ async def review_candidate(
     slot_id: Optional[int] = Form(None),
     reviewer_id: int = Form(1),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
 ):
     """
     HITL Candidate Review Decision Gatekeeper:
@@ -266,6 +275,10 @@ async def review_candidate(
     - Handles interview slot confirmation if APPROVED_DISPATCH with slot_id.
     - Updates candidate status & records append-only decision to human_reviews.
     """
+    # Authenticated identity is authoritative over client-supplied reviewer_id
+    if isinstance(current_user, dict) and current_user.get("id"):
+        reviewer_id = int(current_user["id"])
+
     valid_decisions = {
         "APPROVED_DISPATCH",
         "REQUEST_INFO",
@@ -372,18 +385,20 @@ async def right_to_erasure_candidate(
     request: Request,
     reason: str = Form("RIGHT_TO_ERASURE_FULFILLED"),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "compliance_officer", "recruiter")),
 ):
     """
     Executes UU PDP No. 27/2022 compliant Crypto-Shredding soft-erasure
     via unified talentops_erasure service.
     """
     client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1")
+    acting_user_id = int(current_user["id"]) if isinstance(current_user, dict) and current_user.get("id") else 1
     result = await execute_talentops_erasure(
         db=db,
         candidate_id=candidate_id,
         reason=reason,
         ip_address=client_ip,
-        user_id=1,
+        user_id=acting_user_id,
     )
     if not result.get("success"):
         raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_ALREADY_DELETED")
@@ -396,6 +411,7 @@ async def right_to_erasure_candidate(
 async def issue_sse_stream_ticket(
     candidate_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
 ):
     """
     Issues single-use UUID ticket (TTL 60s) for authenticated SSE streaming
@@ -489,6 +505,7 @@ async def trigger_single_candidate_triage(
     candidate_id: int,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
 ):
     """
     On-demand agentic triage trigger for a single candidate (PRD Bab 8.2).
@@ -513,28 +530,47 @@ async def trigger_single_candidate_triage(
     }
 
 
+class BatchTriageRequest(BaseModel):
+    job_id: Optional[int] = None
+    candidate_ids: Optional[List[int]] = None
+
+
 @router.post("/batch-triage")
 async def trigger_batch_candidates_triage(
     background_tasks: BackgroundTasks,
+    payload: Optional[BatchTriageRequest] = None,
     job_id: Optional[int] = None,
-    candidate_ids: Optional[List[int]] = None,
+    candidate_ids: Optional[List[int]] = Query(None),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
 ):
     """
     On-demand batch triage trigger for multiple candidates (PRD Bab 8.2).
     Dispatches autonomous triage pipeline with Semaphore concurrency control.
+    Supports both JSON request body and URL query parameters.
     """
-    if candidate_ids:
-        query = "SELECT id FROM candidates WHERE id IN :cids AND is_deleted = FALSE"
-        params = {"cids": tuple(candidate_ids)}
-    elif job_id:
-        query = "SELECT id FROM candidates WHERE job_id = :jid AND status = 'queued' AND is_deleted = FALSE"
-        params = {"jid": job_id}
-    else:
-        query = "SELECT id FROM candidates WHERE status = 'queued' AND is_deleted = FALSE LIMIT 20"
-        params = {}
+    target_job_id = payload.job_id if payload and payload.job_id is not None else job_id
+    target_cids = payload.candidate_ids if payload and payload.candidate_ids is not None else candidate_ids
 
-    res = await db.execute(text(query), params)
+    if target_cids is not None:
+        if not target_cids:
+            return {
+                "status": "success",
+                "message": "No candidates specified for batch triage.",
+                "dispatched_count": 0,
+                "candidate_ids": [],
+            }
+        stmt = text("SELECT id FROM candidates WHERE id IN :cids AND is_deleted = FALSE").bindparams(
+            bindparam("cids", expanding=True)
+        )
+        res = await db.execute(stmt, {"cids": list(target_cids)})
+    elif target_job_id:
+        stmt = text("SELECT id FROM candidates WHERE job_id = :jid AND status = 'queued' AND is_deleted = FALSE")
+        res = await db.execute(stmt, {"jid": target_job_id})
+    else:
+        stmt = text("SELECT id FROM candidates WHERE status = 'queued' AND is_deleted = FALSE LIMIT 20")
+        res = await db.execute(stmt)
+
     targets = [r[0] for r in res.fetchall()]
 
     for cid in targets:
@@ -552,6 +588,7 @@ async def trigger_batch_candidates_triage(
 async def get_candidate_evidence_graph(
     candidate_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
 ):
     """
     PRD Bab 8.2 (Item 10) & Bab 1.2:
@@ -702,6 +739,7 @@ async def unmask_candidate_pii(
     reviewer_role: str = Form("recruiter"),
     reviewer_id: int = Form(1),
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
 ):
     """
     PRD Bab 8.1 & Bab 6.2 Item 4:
@@ -709,6 +747,12 @@ async def unmask_candidate_pii(
     Only permitted after final approval (status 'approved') OR by compliance officer/admin.
     Mandatory reason is audit-logged into pii_access_logs.
     """
+    # Authenticated identity/role overrides client-supplied form values outside DEMO_MODE
+    if isinstance(current_user, dict) and current_user.get("id"):
+        reviewer_id = int(current_user["id"])
+        if not settings.DEMO_MODE:
+            reviewer_role = current_user.get("role", reviewer_role)
+
     cand_res = await db.execute(
         text("SELECT id, masked_identifier, status, encrypted_name, encrypted_email, encrypted_phone, encrypted_dek, is_deleted FROM candidates WHERE id = :id"),
         {"id": candidate_id},

@@ -440,20 +440,20 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
   if (!candidate) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in select-none">
-      <div className="bg-white border border-[#e6e6ea] rounded-2xl max-w-5xl w-full shadow-2xl relative max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in select-none font-jkt">
+      <div className="bg-white border border-primary-border-200 rounded-2xl max-w-5xl w-full shadow-2xl relative max-h-[92vh] flex flex-col overflow-hidden">
         
         {/* MODAL HEADER: CANDIDATE IDENTITY & ACTIONS */}
-        <div className="p-5 sm:p-6 pb-4 border-b border-[#e6e6ea] bg-white shrink-0">
+        <div className="p-5 sm:p-6 pb-4 border-b border-primary-border-100 bg-white shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             
             {/* Identity Info Block */}
             <div className="space-y-1">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h3 className="text-xl font-bold font-display text-[#000000] tracking-tight">
+                <h3 className="text-xl font-extrabold text-primary-black tracking-tight">
                   {resolvedIdentity.name}
                 </h3>
-                <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-[#f4f4f6] text-[#1b55f5] font-extrabold border border-[#e6e6ea]">
+                <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-primary-slate-100 text-primary-black font-extrabold border border-primary-border-200">
                   {candidate.masked_identifier}
                 </span>
                 <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${recBadge.bg}`}>
@@ -461,20 +461,20 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                   <span>{recBadge.label}</span>
                 </span>
                 {activeCandidateObj.overall_score !== null && activeCandidateObj.overall_score !== undefined && (
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#1b55f5] text-white font-mono font-bold">
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary-orange text-white font-mono font-bold shadow-xs">
                     Skor: {typeof activeCandidateObj.overall_score === 'number' ? activeCandidateObj.overall_score.toFixed(1) : activeCandidateObj.overall_score}
                   </span>
                 )}
               </div>
 
               {/* Subtitle & Contact Badges */}
-              <div className="flex items-center gap-3 text-xs text-[#67677e] flex-wrap pt-0.5">
-                <span className="font-semibold text-[#000000]">
+              <div className="flex items-center gap-3 text-xs text-primary-slate-500 flex-wrap pt-0.5">
+                <span className="font-semibold text-primary-black">
                   {candidate.job_title || 'Senior Backend Engineer'}
                 </span>
                 <span>&bull;</span>
                 <span className="flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5 text-[#1b55f5]" />
+                  <Mail className="w-3.5 h-3.5 text-primary-blue" />
                   <span>{resolvedIdentity.email}</span>
                 </span>
                 <span>&bull;</span>
@@ -491,7 +491,7 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                 type="button"
                 onClick={handleRunAIAnalysis}
                 disabled={isAnalyzing}
-                className="px-3.5 py-2 bg-[#1b55f5] hover:bg-[#1545c7] disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                className="px-4 py-2 bg-primary-orange hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center gap-1.5"
                 title="Picu model Gemini 3.8 untuk memindai berkas dan memperbarui skor 4D di database"
               >
                 <Sparkles className={`w-3.5 h-3.5 text-white ${isAnalyzing ? 'animate-spin' : ''}`} />
@@ -501,7 +501,7 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl text-[#67677e] hover:text-[#000000] hover:bg-[#f4f4f6] transition-colors"
+                className="p-2 rounded-full text-primary-slate-400 hover:text-primary-black hover:bg-primary-slate-100 transition-colors"
                 title="Tutup Modal"
               >
                 <X className="w-5 h-5" />
@@ -511,21 +511,21 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
 
           {/* Real-time Triage Status Notification */}
           {analyzeMessage && (
-            <div className="mt-3 p-2.5 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff] text-[#1b55f5] text-xs font-medium flex items-center gap-2 animate-fade-in">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+            <div className="mt-3 p-2.5 rounded-xl bg-primary-blue/10 border border-primary-blue/30 text-primary-black text-xs font-medium flex items-center gap-2 animate-fade-in">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0 text-primary-blue" />
               <span>{analyzeMessage}</span>
             </div>
           )}
 
           {/* TAB NAVIGATION BAR */}
-          <div className="mt-4 flex items-center gap-1 border-b border-[#e6e6ea] -mb-4 pt-1 overflow-x-auto scrollbar-none">
+          <div className="mt-4 flex items-center gap-1 border-b border-primary-border-100 -mb-4 pt-1 overflow-x-auto scrollbar-none">
             <button
               type="button"
               onClick={() => { setViewState('dossier'); setActiveTab('summary'); }}
               className={`pb-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
                 viewState === 'dossier' && activeTab === 'summary'
-                  ? 'border-[#1b55f5] text-[#1b55f5]'
-                  : 'border-transparent text-[#67677e] hover:text-[#000000]'
+                  ? 'border-primary-orange text-primary-orange font-bold'
+                  : 'border-transparent text-primary-slate-500 hover:text-primary-black'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -537,14 +537,14 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
               onClick={() => { setViewState('dossier'); setActiveTab('graph'); }}
               className={`pb-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
                 viewState === 'dossier' && activeTab === 'graph'
-                  ? 'border-[#1b55f5] text-[#1b55f5]'
-                  : 'border-transparent text-[#67677e] hover:text-[#000000]'
+                  ? 'border-primary-orange text-primary-orange font-bold'
+                  : 'border-transparent text-primary-slate-500 hover:text-primary-black'
               }`}
             >
               <GitBranch className="w-3.5 h-3.5" />
               <span>Evidence Graph Flow</span>
               {candidateDetail?.evidence && candidateDetail.evidence.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#eaf0ff] text-[#1b55f5] font-mono">
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-primary-orange/10 text-primary-orange font-mono font-bold">
                   {candidateDetail.evidence.length}
                 </span>
               )}
@@ -555,8 +555,8 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
               onClick={() => { setViewState('dossier'); setActiveTab('cv'); }}
               className={`pb-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
                 viewState === 'dossier' && activeTab === 'cv'
-                  ? 'border-[#1b55f5] text-[#1b55f5]'
-                  : 'border-transparent text-[#67677e] hover:text-[#000000]'
+                  ? 'border-primary-orange text-primary-orange font-bold'
+                  : 'border-transparent text-primary-slate-500 hover:text-primary-black'
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
@@ -568,8 +568,8 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
               onClick={() => { setViewState('dossier'); setActiveTab('schedule'); }}
               className={`pb-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
                 viewState === 'dossier' && activeTab === 'schedule'
-                  ? 'border-[#1b55f5] text-[#1b55f5]'
-                  : 'border-transparent text-[#67677e] hover:text-[#000000]'
+                  ? 'border-primary-orange text-primary-orange font-bold'
+                  : 'border-transparent text-primary-slate-500 hover:text-primary-black'
               }`}
             >
               <Calendar className="w-3.5 h-3.5" />
@@ -886,11 +886,11 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-4 border-t border-[#e6e6ea] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="pt-4 border-t border-primary-border-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setActiveTab('summary')}
-                  className="px-4 py-2.5 rounded-xl bg-[#f4f4f6] hover:bg-[#e6e6ea] text-[#000000] text-xs font-semibold transition-colors text-center"
+                  className="px-5 py-2.5 rounded-full bg-primary-slate-100 hover:bg-primary-slate-200 text-primary-black text-xs font-semibold transition-colors text-center"
                 >
                   Kembali ke Ringkasan
                 </button>
@@ -899,7 +899,7 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                   type="button"
                   disabled={isSubmitting}
                   onClick={handleConfirmSchedule}
-                  className="px-6 py-2.5 bg-[#1b55f5] hover:bg-[#1545c7] text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-center"
+                  className="px-6 py-2.5 bg-primary-orange hover:opacity-90 text-white font-bold text-xs rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-center"
                 >
                   {isSubmitting ? (
                     <>

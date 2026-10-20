@@ -4,56 +4,55 @@
 
 @layer base {
   body {
-    @apply bg-[#f8fafc] text-slate-900 font-sans transition-colors duration-200;
+    @apply bg-primary-slate-50 text-primary-slate-900 font-sans transition-colors duration-200;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-jkt font-extrabold tracking-tight;
   }
 }
 
-/* Grafana Sunrise Ambient Mesh Gradient */
-.grafana-hero-mesh {
-  background: 
-    radial-gradient(circle at 8% 25%, rgba(254, 215, 170, 0.45) 0%, transparent 42%),
-    radial-gradient(circle at 88% 20%, rgba(233, 213, 255, 0.45) 0%, transparent 45%),
-    radial-gradient(circle at 50% 80%, rgba(186, 230, 253, 0.40) 0%, transparent 50%),
-    #ffffff;
+/* WebEkspor Dot Matrix Grid Background */
+.bg-dot-matrix {
+  background-image: radial-gradient(circle, rgb(35, 56, 118) 1.2px, transparent 1.2px);
+  background-size: 26px 26px;
 }
 
-/* Modern Clean Card & Panel Utilities (Grafana Labs Sunrise Theme) */
-.clean-card {
-  background-color: #ffffff;
-  border: 1px solid #e6e6ea;
-  border-radius: 1.5rem; /* 24px per Grafana spec */
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+/* WebEkspor Promotion Scroll Marquee */
+.promotion-scroll {
+  animation: 30s linear 0s infinite normal none running promotion-scroll;
 }
 
-.clean-card-hover:hover {
-  border-color: #d8d8df;
-  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.04);
-  transform: translateY(-2px);
+@keyframes promotion-scroll {
+  0% { transform: translateX(0px); }
+  100% { transform: translateX(-50%); }
 }
 
-/* Grafana Charcoal Banner Card */
-.forest-card {
-  background: #2b2d32;
-  color: #ffffff;
-  border-radius: 1.5rem;
-  transition: all 0.25s ease;
+/* WebEkspor Signature Highlight Marker */
+.text-highlight-orange {
+  position: relative;
+  display: inline-block;
 }
 
-/* Horizon Wash Banner Gradient */
-.horizon-wash-card {
-  background: linear-gradient(120deg, #f7bfa3 10%, #e6b3e6 40%, #a3d8f7 75%, #7be7e7);
-  border-radius: 1.5rem;
+.text-highlight-orange > span.marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.25rem;
+  height: 0.85rem;
+  background-color: rgba(244, 149, 35, 0.6);
+  z-index: 0;
+  transform: skewX(-6deg);
 }
 
-/* Micro-interaction Button Utilities */
-.btn-interactive {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+/* WebEkspor Card Style */
+.ekspor-card {
+  @apply rounded-2xl border border-primary-border-200 bg-white transition-all duration-300;
 }
 
-.btn-interactive:active {
-  transform: scale(0.97);
+.ekspor-card-hover {
+  @apply hover:border-primary-orange hover:shadow-card-hover;
 }
 
 /* Custom Clean Scrollbar */
@@ -63,23 +62,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f4f4f6;
-}
-
-.dark ::-webkit-scrollbar-track {
-  background: #1b1d22;
+  background: #F1F5F9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d8d8df;
+  background: #CBD5E1;
   border-radius: 9999px;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #2b2d32;
-}
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #1b55f5;
+  background: #F49523;
 }
-

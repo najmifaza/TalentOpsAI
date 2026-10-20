@@ -10,15 +10,15 @@ const CareerPortal = lazy(() => import('./components/CareerPortal'));
 
 import { WifiOff, Sparkles } from 'lucide-react';
 
-// Loading Fallback Component with Clean Aesthetics
+// Loading Fallback Component with Clean WebEkspor Aesthetics
 function ComponentLoader({ label = "Memuat modul komponen..." }) {
   return (
-    <div className="flex flex-col items-center justify-center p-12 min-h-[350px] space-y-3" role="status" aria-live="polite">
+    <div className="flex flex-col items-center justify-center p-12 min-h-[350px] space-y-3 font-jkt" role="status" aria-live="polite">
       <div className="relative flex items-center justify-center">
-        <div className="w-9 h-9 border-2 border-blue-200 border-t-[#1b55f5] rounded-full animate-spin"></div>
-        <Sparkles className="w-3.5 h-3.5 text-[#1b55f5] absolute animate-pulse" />
+        <div className="w-10 h-10 border-2 border-primary-orange/20 border-t-primary-orange rounded-full animate-spin"></div>
+        <Sparkles className="w-4 h-4 text-primary-orange absolute animate-pulse" />
       </div>
-      <p className="text-xs font-semibold text-slate-500 tracking-wide animate-pulse">
+      <p className="text-xs font-bold text-primary-black tracking-wide animate-pulse">
         {label}
       </p>
     </div>
@@ -40,13 +40,13 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center space-y-4">
+        <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center space-y-4 font-jkt">
           <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 font-bold">
             !
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Terjadi Gangguan Tampilan</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-md">
+            <h3 className="text-base font-extrabold text-primary-black">Terjadi Gangguan Tampilan</h3>
+            <p className="text-xs text-primary-slate-600 mt-1 max-w-md">
               {this.state.error?.message || "Komponen mengalami kesalahan saat memuat data."}
             </p>
           </div>
@@ -55,7 +55,7 @@ class ErrorBoundary extends React.Component {
               this.setState({ hasError: false, error: null });
               window.location.reload();
             }}
-            className="px-4 py-2 bg-[#1b55f5] text-white rounded-xl text-xs font-semibold hover:bg-[#1545c7] transition-all shadow-xs"
+            className="px-5 py-2.5 bg-primary-orange text-white rounded-full text-xs font-bold hover:opacity-90 transition-all shadow-md shadow-primary-orange/25"
           >
             Muat Ulang Halaman
           </button>
@@ -96,11 +96,11 @@ function DashboardLayout() {
   const currentTitle = getTitle();
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans antialiased selection:bg-[#1b55f5] selection:text-white relative">
+    <div className="flex min-h-screen bg-primary-slate-50 text-primary-slate-900 font-jkt antialiased selection:bg-primary-orange selection:text-white relative">
       {/* Accessibility Skip Link */}
       <a 
         href="#main-content" 
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 px-4 py-2 bg-[#1b55f5] text-white rounded-lg shadow-xl font-semibold text-xs transition-all"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-50 px-5 py-2.5 bg-primary-orange text-white rounded-full shadow-xl font-bold text-xs transition-all"
       >
         Lewati ke Konten Utama
       </a>
@@ -140,13 +140,13 @@ function DashboardLayout() {
           </ErrorBoundary>
         </main>
 
-        {/* Global Footer */}
-        <footer className="border-t border-slate-200/80 bg-white px-4 sm:px-8 py-4 text-xs text-slate-500 transition-colors duration-200">
+        {/* Global Footer (WebEkspor Clean Sub-Footer) */}
+        <footer className="border-t border-primary-border-100 bg-white px-4 sm:px-8 py-4 text-xs text-primary-slate-500 transition-colors duration-200 font-jkt">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 max-w-7xl mx-auto text-center sm:text-left">
-            <span className="font-medium text-slate-600">
+            <span className="font-semibold text-primary-black">
               TalentOps AI &copy; 2026 &bull; Human-Centric Agentic Recruitment Web Ecosystem
             </span>
-            <span className="font-mono text-[11px] text-slate-400 font-semibold">
+            <span className="font-mono text-[11px] text-primary-slate-400 font-medium">
               Production Hardened &bull; React 18 + Vite Code Splitting &bull; WCAG AA Compliant
             </span>
           </div>

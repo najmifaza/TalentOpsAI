@@ -11,27 +11,23 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   const handleLinkClick = () => { if (onCloseMobile) onCloseMobile(); };
 
   const navContent = (
-    <div className="flex flex-col h-full bg-[#111318] text-slate-300 select-none">
+    <div className="flex flex-col h-full bg-primary-black text-white select-none">
       {/* Brand Header */}
-      <div className="px-5 py-5 flex items-center justify-between border-b border-white/6">
-        <Link to="/admin/dashboard" onClick={handleLinkClick} className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#1b55f5] to-[#0d3bb8] flex items-center justify-center shrink-0 shadow-sm">
-            <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
+      <div className="px-5 py-5 flex items-center justify-between border-b border-white/10">
+        <Link to="/admin/dashboard" onClick={handleLinkClick} className="flex items-center gap-3">
+          <img src="/logo.svg" alt="TalentOps AI" className="h-8 w-auto object-contain brightness-0 invert" />
           <div className="leading-tight">
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-white tracking-tight font-display">TalentOps</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-[#F49523]/20 text-[#F49523] font-mono font-bold border border-[#F49523]/30">AI</span>
+              <span className="text-sm font-extrabold text-white tracking-tight font-jkt">TalentOps</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-primary-orange/20 text-primary-orange font-mono font-bold border border-primary-orange/40">AI</span>
             </div>
-            <p className="text-[10px] text-slate-400 font-medium">Recruiter Workspace</p>
+            <p className="text-[10px] text-primary-slate-400 font-medium font-jkt">Recruiter Workspace</p>
           </div>
         </Link>
         <button 
           type="button" 
           onClick={onCloseMobile} 
-          className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="lg:hidden p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
@@ -39,7 +35,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
 
       {/* Navigation Links */}
       <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-        <p className="px-3 pb-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+        <p className="px-3 pb-2 text-[10px] font-bold tracking-[0.22em] text-white/50 uppercase font-jkt">
           Menu Utama
         </p>
         {menuItems.map((item) => {
@@ -50,23 +46,23 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
               to={item.path}
               onClick={handleLinkClick}
               className={({ isActive }) =>
-                `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
+                `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group font-jkt ${
                   isActive
-                    ? 'bg-[#1b55f5] text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-primary-orange text-white shadow-lg shadow-primary-orange/25 font-bold'
+                    : 'text-white/75 hover:text-white hover:bg-white/10'
                 }`
               }
             >
               {({ isActive }) => (
                 <>
-                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+                  <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-white' : 'text-white/70 group-hover:text-white'}`} />
                   <div className="flex-1 min-w-0">
                     <div className="truncate">{item.label}</div>
-                    <div className={`text-[10px] truncate ${isActive ? 'text-white/80' : 'text-slate-400'}`}>
+                    <div className={`text-[10px] truncate ${isActive ? 'text-white/90' : 'text-white/50'}`}>
                       {item.sublabel}
                     </div>
                   </div>
-                  {isActive && <ChevronRight className="w-3.5 h-3.5 text-white/70" />}
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 text-white/80" />}
                 </>
               )}
             </NavLink>
@@ -75,7 +71,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
 
         {/* Section: Public Portals */}
         <div className="pt-6 pb-2">
-          <p className="px-3 pb-2 text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+          <p className="px-3 pb-2 text-[10px] font-bold tracking-[0.22em] text-white/50 uppercase font-jkt">
             Akses Publik
           </p>
           <div className="space-y-1">
@@ -84,13 +80,13 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
               target="_blank"
               rel="noreferrer"
               onClick={handleLinkClick}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all group"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-white/75 hover:text-white hover:bg-white/10 transition-all group font-jkt"
             >
               <div className="flex items-center gap-3">
-                <Briefcase className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <Briefcase className="w-4 h-4 text-white/60 group-hover:text-white" />
                 <span>Portal Pelamar (Publik)</span>
               </div>
-              <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-white" />
+              <ExternalLink className="w-3 h-3 text-white/60 group-hover:text-white" />
             </a>
 
             <a
@@ -98,27 +94,27 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
               target="_blank"
               rel="noreferrer"
               onClick={handleLinkClick}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-all group"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-white/75 hover:text-white hover:bg-white/10 transition-all group font-jkt"
             >
               <div className="flex items-center gap-3">
-                <FileCheck2 className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                <FileCheck2 className="w-4 h-4 text-white/60 group-hover:text-white" />
                 <span>Lacak Status Berkas</span>
               </div>
-              <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-white" />
+              <ExternalLink className="w-3 h-3 text-white/60 group-hover:text-white" />
             </a>
           </div>
         </div>
       </nav>
 
       {/* User Footer */}
-      <div className="p-4 border-t border-white/6">
-        <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#1b55f5] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+      <div className="p-4 border-t border-white/10">
+        <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary-orange text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs font-jkt">
             WN
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 font-jkt">
             <p className="text-xs font-bold text-white truncate">Willy Narendra</p>
-            <p className="text-[10px] text-slate-400 truncate">Frontend Lead</p>
+            <p className="text-[10px] text-primary-slate-400 truncate">Frontend Lead</p>
           </div>
           <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
         </div>
@@ -129,7 +125,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-60 flex-col shrink-0 min-h-screen border-r border-slate-200/80 z-20">
+      <aside className="hidden lg:flex w-60 flex-col shrink-0 min-h-screen border-r border-primary-border-200 z-20">
         {navContent}
       </aside>
 

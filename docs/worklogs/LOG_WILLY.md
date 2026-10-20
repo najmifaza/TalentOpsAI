@@ -390,7 +390,14 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
   - Seluruh modul internal HR (Dashboard & Triage, Kelola Lowongan & Bobot 4D) dipindahkan ke namespace `/admin/*` (`/admin/dashboard`, `/admin/jobs`).
   - Rute lama `/dashboard`, `/jobs`, `/what-if`, dan `/evidence-graph` otomatis dialihkan (redirect 301/302 SPA) ke rute `/admin/...`.
   - Tombol navigasi di Sidebar, Header, dan CareerPortal diperbarui sesuai namespace rute baru.
-- **Status & Verifikasi:** Selesai 100%. Kompilasi Vite build lolos tanpa error. Backend test suite 63/63 lolos hijau.
+- **Implementasi Komprehensif Desain Sistem WebEkspor (Tutorial.html & Portofolio Website.html):**
+  - Mengintegrasikan tipografi Plus Jakarta Sans (`font-jkt`) pada seluruh layout aplikasi.
+  - Palet warna autentik WebEkspor: `primary-black` (`#233876`), `primary-orange` (`#F49523`), `primary-blue` (`#01A0E4`), `primary-slate-50` (`#F8FAFC`), dan `primary-border-200` (`#E8E8EA`).
+  - Komponen Hero Career Portal dengan dot-matrix ambient, watermark nomor raksasa, badge pill oranye, headline dengan underline oranye miring (`skew-x-6`), dan pilar nilai 01/02/03.
+  - Kartu lowongan dan kartu kandidat bergaya showcase portofolio WebEkspor (`rounded-2xl border hover:border-primary-orange hover:shadow-card-hover`).
+  - Top promo ticker bar dengan marquee berjalan dan sub-footer dua tingkat (`bg-[#0369a1]` dan `bg-primary-slate-1000`).
+  - Tombol aksi utama mengadopsi gaya rounded-full oranye dengan bayangan halus (`rounded-full bg-primary-orange shadow-lg shadow-primary-orange/25`).
+- **Status & Verifikasi:** Selesai 100%. Kompilasi Vite build lolos tanpa error (`npm run build`). Backend test suite 63/63 lolos hijau (`uv run pytest`).
 
 
 

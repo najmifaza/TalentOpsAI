@@ -324,5 +324,68 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-20 - Najmi - Integrasi Eksternal Live: Google Calendar OAuth2 & Resend Email
+
+- **Branch:** `feat/backend-external-integrations`
+- **Komponen / File:**
+  - `backend/app/adapters/google_calendar.py` (baru)
+  - `backend/app/api/calendar_oauth.py` (baru)
+  - `backend/app/core/email.py` (baru)
+  - `backend/app/core/email_templates.py` (baru)
+  - `backend/app/core/crypto.py`
+  - `backend/app/core/config.py`
+  - `backend/app/api/candidates.py`
+  - `backend/app/api/careers.py`
+  - `backend/app/main.py`
+  - `backend/.env.example`
+  - `backend/tests/test_google_calendar_oauth.py` (baru)
+  - `backend/tests/test_email_resend.py` (baru)
+- **Yang Dikerjakan:**
+
+  - **1. Google Calendar OAuth2 Two-Way Sync (PRD Bab 6.3 `[TARGET]`):**
+    - `GoogleCalendarAdapter` dengan gerbang konfigurasi eksplisit: bila `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` kosong, adapter melaporkan `configured=False` dan **tidak pernah** melakukan panggilan keluar. Sistem tetap memakai `[MOCK / SANDBOX]`.
+    - Alur consent OAuth2: `build_authorization_url` memakai `access_type=offline` + `prompt=consent` agar `refresh_token` benar-benar diterbitkan, dan menyertakan nonce `state` untuk CSRF.
+    - Token disegel dengan Master KEK (AES-256-GCM) sebelum disimpan ke tabel `oauth_tokens` yang sudah ada di skema 12 tabel. Plaintext token tidak pernah muncul di query parameter, log, maupun response body.
+    - Refresh token otomatis saat kedaluwarsa (dengan skew 120 detik), dan satu kali refresh-and-retry bila Calendar API membalas 401. Retry dibatasi satu kali karena 401 kedua berarti refresh token sudah mati.
+    - Idempotensi event: `generate_event_id` menghasilkan base32hex lowercase tanpa padding sesuai spesifikasi PRD. Balasan **409 Conflict** diperlakukan sebagai **sukses** (`already_existed=True`) sehingga pengiriman ulang tidak menduplikasi jadwal.
+    - `cancel_event` memperlakukan 404/410 sebagai sukses — keadaan akhir yang diinginkan adalah "tidak ada event".
+    - Endpoint: `GET /api/calendar/status`, `GET /api/calendar/oauth/authorize`, `GET /api/calendar/oauth/callback`, `POST /api/calendar/disconnect`, `GET /api/calendar/events`.
+    - **Keamanan callback:** endpoint callback sengaja tanpa Bearer karena browser datang dari Google. Kepercayaan berasal dari nonce `state` single-use ber-TTL 600 detik yang disimpan di Redis (fallback in-process bila Redis absen). Redirect sukses **tidak** membawa token di URL.
+    - Penambahan `encrypt_with_kek` / `decrypt_with_kek` di `crypto.py` untuk menyegel secret pendek langsung di bawah KEK.
+
+  - **2. Email Transaksional Resend:**
+    - `EmailService` mendukung dua transport: `resend_api` (HTTPS ke api.resend.com) dan `resend_smtp` (relay SMTP_SSL). Dua jalur disediakan karena host dengan egress SMTP tertutup tetap bisa memakai API, dan sebaliknya.
+    - Bila `EMAIL_PROVIDER` atau kredensial kosong, pengiriman **tidak** dilakukan dan mengembalikan `sent=False, reason="EMAIL_NOT_CONFIGURED"` — tidak pernah melempar exception, agar alur rekrutmen tidak gagal karena mail outage.
+    - Retry terbatas dengan backoff eksponensial, hanya untuk kegagalan transien (network, 429, 5xx). Error validasi 4xx dan `SMTPAuthenticationError` tidak di-retry.
+    - `smtplib` blocking dijalankan lewat `asyncio.to_thread` agar tidak memblokir event loop.
+    - Validasi alamat email sebelum transport dipanggil; log hanya mencatat domain, tidak pernah alamat lengkap atau PII.
+    - Template di `email_templates.py`: `interview_scheduled`, `application_received`, `application_status_update`, `erasure_confirmation`, `hr_new_application_alert`. Semua input pengguna di-escape (`html.escape`) dan setiap template menyediakan alternatif plain-text.
+
+  - **3. Penempatan Side-Effect yang Benar:**
+    - Sinkronisasi kalender dan email kandidat dijalankan **setelah** `db.commit()` pada `POST /api/candidates/{id}/review`. Keputusan HR tidak boleh di-rollback hanya karena Google atau Resend sedang down.
+    - Email kandidat hanya dikirim pada keputusan final, tidak pernah saat blind review — sesuai Gatekeeper HITL PRD Bab 7.
+    - Respons endpoint kini menyertakan blok `notifications` berisi hasil per efek (`synced`, `sent`, `reason`), sehingga kegagalan terlihat tanpa menyamarkan status sukses keputusan.
+    - Email acknowledgement juga dikirim pada `POST /api/careers/{id}/apply` (post-commit, best-effort).
+
+  - **4. Keselarasan Lock Hierarchy:** Query lock kandidat pada review **tidak** memakai `JOIN job_descriptions`. Meng-JOIN tabel itu di dalam `SELECT ... FOR UPDATE` akan memperluas himpunan lock melampaui hierarki `users -> interview_slots -> candidates` yang diwajibkan PRD dan berisiko deadlock dengan update lowongan konkuren. Judul lowongan diambil lewat query terpisah setelah lock.
+
+- **Status & Verifikasi:** Selesai 100% pada tingkat kode dan pengujian otomatis. `uv run pytest backend/tests -q` lulus **132 dari 132** test, 0 failure (sebelumnya 99).
+  - Test baru `test_google_calendar_oauth.py` (16 test): gerbang konfigurasi tanpa panggilan jaringan, konstruksi URL consent (`offline`, scope, state), pertukaran kode, penyegelan token KEK (memverifikasi plaintext tidak ada di parameter INSERT), refresh saat kedaluwarsa, determinisme & format base32hex event ID, idempotensi 409, satu kali refresh-retry pada 401, dan cancel 404 sebagai sukses.
+  - Test baru `test_email_resend.py` (17 test): provider nonaktif tidak melempar, validasi penerima, sukses API, 4xx tidak di-retry, 429 di-retry, batas retry, banyak penerima, SMTP sukses, auth SMTP tidak di-retry, connection error retryable, serta escaping HTML dan plain-text pada seluruh template.
+  - **⚠️ Batas verifikasi yang harus jujur dicatat:**
+    - **Belum ada panggilan live ke Google Calendar API** — kredensial OAuth belum tersedia dan host dev tidak punya akun Google terhubung. Seluruh jalur diuji dengan `httpx` yang di-stub.
+    - **Belum ada pengiriman email live ke Resend** — `RESEND_API_KEY` belum diisi. Seluruh jalur diuji dengan httpx/smtplib yang di-patch.
+    - Verifikasi end-to-end nyata memerlukan kredensial di `.env` VPS, lalu memeriksa event yang benar-benar muncul di Google Calendar dan email yang benar-benar diterima.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - **Willy — alur koneksi kalender di frontend:** panggil `GET /api/calendar/oauth/authorize` (dengan Bearer token), lalu arahkan browser ke `authorization_url`. Setelah consent, backend me-redirect ke `OAUTH_SUCCESS_REDIRECT` dengan query `?calendar=connected` atau `?calendar=error&reason=...`. Tampilkan status dari `GET /api/calendar/status` (`configured`, `connected`, `token_expires_at`).
+  - **Willy — tombol disconnect:** `POST /api/calendar/disconnect`.
+  - **Willy:** response `POST /api/candidates/{id}/review` kini punya field tambahan `notifications` (calendar & email). Aman diabaikan, tapi bisa dipakai untuk menampilkan peringatan bila sinkronisasi gagal.
+  - **Fardizza:** email hanya dikirim setelah keputusan manusia, jadi tidak ada jalur otomatis yang mengirim email dari pipeline triage.
+  - **Deployment VPS (Najmi):** isi `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (harus terdaftar di Google Cloud Console), dan `EMAIL_PROVIDER=resend_api` + `RESEND_API_KEY`. Verifikasi `GET /api/calendar/status` menunjukkan `configured: true`.
+  - **Catatan file bersama:** `backend/.env.example` ikut diubah (penambahan variabel baru, tanpa nilai rahasia). Sesuai aturan isolasi modul, ini saya sebutkan agar rekan tim tahu; tidak ada kredensial yang di-commit.
+- **Rencana Selanjutnya:** Penguatan sanitasi PII regex untuk CV non-standar tanpa form input (item terakhir).
+
+---
+
 
 

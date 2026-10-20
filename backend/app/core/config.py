@@ -49,6 +49,35 @@ class Settings(BaseSettings):
     TRIAGE_CONCURRENCY_LIMIT: int = 3
     SSE_HISTORY_MAX_EVENTS: int = 200
 
+    # --- Google Calendar OAuth2 (live two-way sync) -------------------------
+    # Left empty => adapter stays in sandbox mode and no outbound call is made.
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/calendar/oauth/callback"
+    GOOGLE_CALENDAR_ID: str = "primary"
+    GOOGLE_CALENDAR_SCOPES: List[str] = [
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/calendar.readonly",
+    ]
+    GOOGLE_OAUTH_AUTH_URL: str = "https://accounts.google.com/o/oauth2/v2/auth"
+    GOOGLE_OAUTH_TOKEN_URL: str = "https://oauth2.googleapis.com/token"
+    GOOGLE_CALENDAR_API_BASE: str = "https://www.googleapis.com/calendar/v3"
+    GOOGLE_HTTP_TIMEOUT: float = 15.0
+    # Frontend page the OAuth callback redirects back to (no tokens in the URL).
+    OAUTH_SUCCESS_REDIRECT: str = "https://talentops.vercel.app/admin/dashboard"
+
+    # --- Transactional email (Resend) --------------------------------------
+    # provider: "resend_api" (HTTPS) | "resend_smtp" (SMTP relay) | "" (disabled)
+    EMAIL_PROVIDER: str = ""
+    RESEND_API_KEY: str = ""
+    RESEND_SMTP_HOST: str = "smtp.resend.com"
+    RESEND_SMTP_PORT: int = 465
+    RESEND_SMTP_USER: str = "resend"
+    EMAIL_FROM: str = "TalentOps AI <noreply@talentops.fawt.biz.id>"
+    EMAIL_REPLY_TO: str = ""
+    EMAIL_TIMEOUT: float = 15.0
+    EMAIL_MAX_RETRIES: int = 2
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, value):

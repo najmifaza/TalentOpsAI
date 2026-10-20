@@ -64,6 +64,28 @@ def compute_blind_index(value: str) -> str:
     pepper = settings.HMAC_PEPPER.encode("utf-8")
     return hmac.new(pepper, normalized, hashlib.sha256).hexdigest()
 
+
+def encrypt_with_kek(plaintext: str) -> bytes:
+    """
+    Encrypt a short secret (e.g. OAuth access/refresh token) directly under the
+    Master KEK via AES-256-GCM. Returns nonce (12B) + ciphertext + tag.
+    """
+    if not plaintext:
+        return b""
+    aesgcm = AESGCM(_get_master_kek())
+    nonce = os.urandom(12)
+    return nonce + aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
+
+
+def decrypt_with_kek(ciphertext_bytes: bytes) -> str:
+    """Decrypt a KEK-sealed secret. Returns '' for empty input."""
+    if not ciphertext_bytes:
+        return ""
+    aesgcm = AESGCM(_get_master_kek())
+    nonce = ciphertext_bytes[:12]
+    ciphertext = ciphertext_bytes[12:]
+    return aesgcm.decrypt(nonce, ciphertext, None).decode("utf-8")
+
 def generate_tombstone_hash() -> str:
     """Generate random tombstone hash to overwrite blind index on crypto-shredding."""
     return hashlib.sha256(os.urandom(32)).hexdigest()

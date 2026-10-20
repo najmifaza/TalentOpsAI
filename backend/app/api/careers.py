@@ -24,6 +24,8 @@ from app.core.file_parser import (
 )
 from app.core.rate_limiter import apply_rate_limiter
 from app.core.erasure import execute_talentops_erasure
+from app.core.email import email_service
+from app.core.email_templates import application_received, erasure_confirmation
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/careers", tags=["Public Career Portal"])
@@ -115,11 +117,13 @@ async def submit_application(
 
     # 1. Verify Job existence
     job_check = await db.execute(
-        text("SELECT id FROM job_descriptions WHERE id = :id AND status = 'active'"),
+        text("SELECT id, title FROM job_descriptions WHERE id = :id AND status = 'active'"),
         {"id": job_id},
     )
-    if not job_check.first():
+    job_row = job_check.mappings().first()
+    if not job_row:
         raise HTTPException(status_code=404, detail="JOB_NOT_FOUND_OR_CLOSED")
+    job_title = job_row["title"]
 
     # 2. Read & Validate file magic bytes
     file_bytes = await resume_file.read()
@@ -283,6 +287,25 @@ async def submit_application(
 
     await db.commit()
 
+    # Post-commit: acknowledge receipt to the applicant. Best-effort — a mail
+    # outage must not fail an application that is already persisted.
+    notification = {"sent": False, "reason": "EMAIL_NOT_CONFIGURED"}
+    if email_service.configured and email:
+        try:
+            subject, html_body, text_body = application_received(
+                masked_identifier=masked_id,
+                job_title=job_title,
+            )
+            send_result = await email_service.send(email, subject, html_body, text_body)
+            notification = {
+                "sent": bool(send_result.get("sent")),
+                "provider": send_result.get("provider"),
+                "reason": send_result.get("reason"),
+            }
+        except Exception as exc:
+            logger.warning("Application acknowledgement email failed: %s", type(exc).__name__)
+            notification = {"sent": False, "reason": "EMAIL_SEND_ERROR"}
+
     return {
         "status": "success",
         "message": "Application submitted successfully and placed in triage queue.",
@@ -290,6 +313,7 @@ async def submit_application(
         "tracking_token": tracking_token,
         "triage_status": "queued",
         "pii_sanitization_stats": sanitize_stats,
+        "notification": notification,
     }
 
 

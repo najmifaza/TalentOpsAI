@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
@@ -31,10 +32,145 @@ from app.core.file_parser import (
 )
 from app.core.erasure import execute_talentops_erasure
 from app.core.broadcaster import sse_broadcaster
+from app.core.email import email_service
+from app.core.email_templates import interview_scheduled, application_status_update
 from app.adapters.calendar import mock_calendar_adapter
+from app.adapters.google_calendar import google_calendar_adapter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/candidates", tags=["HR Recruiter Candidate Management"])
+
+STATUS_LABELS = {
+    "APPROVED_DISPATCH": "Disetujui - Tahap Wawancara",
+    "REQUEST_INFO": "Menunggu Informasi Tambahan",
+    "OVERRIDE_REJECT": "Tidak Dilanjutkan",
+    "REJECT_CONFIRMED": "Tidak Dilanjutkan",
+}
+
+
+async def _sync_calendar_booking(
+    db: AsyncSession,
+    reviewer_id: int,
+    slot_id: int,
+    candidate_id: int,
+    candidate: dict,
+    job_title: str,
+) -> dict:
+    """
+    Pushes the booked interview to Google Calendar when the reviewer has connected
+    an account; otherwise reports that the sandbox adapter remains in use.
+
+    Never raises: the DB booking is already committed at this point, so a calendar
+    outage must not surface as a failed review.
+    """
+    if not google_calendar_adapter.configured:
+        return {"synced": False, "reason": "GOOGLE_CALENDAR_NOT_CONFIGURED", "adapter": "mock"}
+
+    try:
+        slot_res = await db.execute(
+            text("SELECT start_time, end_time, interviewer_id FROM interview_slots WHERE id = :sid"),
+            {"sid": slot_id},
+        )
+        slot = slot_res.mappings().first()
+        if not slot:
+            return {"synced": False, "reason": "SLOT_NOT_FOUND", "adapter": "google_calendar"}
+
+        interviewer_name = ""
+        try:
+            int_res = await db.execute(
+                text("SELECT username FROM users WHERE id = :uid"),
+                {"uid": slot["interviewer_id"]},
+            )
+            int_row = int_res.mappings().first()
+            if int_row:
+                interviewer_name = int_row["username"]
+        except Exception:
+            pass
+
+        start_time = slot["start_time"]
+        end_time = slot["end_time"]
+        if isinstance(start_time, str):
+            start_time = datetime.fromisoformat(start_time)
+        if isinstance(end_time, str):
+            end_time = datetime.fromisoformat(end_time)
+
+        result = await google_calendar_adapter.create_event(
+            db=db,
+            user_id=reviewer_id,
+            slot_id=slot_id,
+            candidate_id=candidate_id,
+            start_time=start_time,
+            end_time=end_time,
+            summary=f"Wawancara {job_title} - {candidate['masked_identifier']}",
+            description=(
+                f"Kandidat: {candidate['masked_identifier']}\n"
+                f"Posisi: {job_title}\n"
+                f"Pewawancara: {interviewer_name or '-'}\n"
+                "Dibuat otomatis oleh TalentOps AI."
+            ),
+        )
+        return {
+            "synced": bool(result.get("success")),
+            "adapter": "google_calendar",
+            "event_id": result.get("event_id"),
+            "already_existed": result.get("already_existed", False),
+            "reason": result.get("reason"),
+        }
+    except Exception as exc:
+        logger.warning("Calendar sync failed for slot %s: %s", slot_id, type(exc).__name__)
+        return {"synced": False, "adapter": "google_calendar", "reason": "CALENDAR_SYNC_ERROR"}
+
+
+async def _notify_candidate_decision(
+    candidate: dict,
+    job_title: str,
+    decision: str,
+    slot_id: Optional[int],
+    notes: Optional[str],
+) -> dict:
+    """
+    Emails the applicant about a final human decision.
+
+    The recipient address is decrypted from the candidate's envelope here and is
+    never logged or returned in the response body.
+    """
+    if not email_service.configured:
+        return {"sent": False, "reason": "EMAIL_NOT_CONFIGURED"}
+
+    try:
+        dek = decrypt_dek(candidate["encrypted_dek"])
+        recipient = decrypt_pii(candidate["encrypted_email"], dek) if candidate["encrypted_email"] else ""
+    except Exception as exc:
+        logger.warning("Cannot decrypt candidate email for notification: %s", type(exc).__name__)
+        return {"sent": False, "reason": "RECIPIENT_DECRYPT_FAILED"}
+
+    if not recipient:
+        return {"sent": False, "reason": "NO_RECIPIENT_ADDRESS"}
+
+    masked = candidate["masked_identifier"]
+
+    if decision == "APPROVED_DISPATCH" and slot_id is not None:
+        subject, html, text_body = interview_scheduled(
+            masked_identifier=masked,
+            job_title=job_title,
+            start_time="(lihat detail di portal)",
+            end_time="(lihat detail di portal)",
+            meeting_note=notes or "",
+        )
+    else:
+        subject, html, text_body = application_status_update(
+            masked_identifier=masked,
+            job_title=job_title,
+            status_label=STATUS_LABELS.get(decision, decision),
+            note=notes or "",
+        )
+
+    result = await email_service.send(recipient, subject, html, text_body)
+    return {
+        "sent": bool(result.get("sent")),
+        "provider": result.get("provider"),
+        "reason": result.get("reason"),
+    }
 
 
 @router.get("")
@@ -352,14 +488,33 @@ async def review_candidate(
         if slot["status"] == "booked" and slot["candidate_id"] != candidate_id:
             raise HTTPException(status_code=409, detail="SLOT_ALREADY_BOOKED_BY_ANOTHER_CANDIDATE")
 
-    # 3. Lock candidate
+    # 3. Lock candidate (no JOIN here: locking job_descriptions would widen the
+    #    transaction's lock set beyond the PRD's users -> interview_slots ->
+    #    candidates hierarchy and risk deadlock with concurrent job updates)
     cand_res = await db.execute(
-        text("SELECT id, masked_identifier, status, is_deleted, version FROM candidates WHERE id = :cid FOR UPDATE"),
+        text("""
+            SELECT id, job_id, masked_identifier, status, is_deleted, version,
+                   encrypted_email, encrypted_dek
+            FROM candidates
+            WHERE id = :cid FOR UPDATE
+        """),
         {"cid": candidate_id},
     )
     cand = cand_res.mappings().first()
     if not cand or cand["is_deleted"]:
         raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_DELETED")
+
+    job_title = "Posisi Rekrutmen"
+    try:
+        job_row = await db.execute(
+            text("SELECT title FROM job_descriptions WHERE id = :jid"),
+            {"jid": cand["job_id"]},
+        )
+        fetched = job_row.mappings().first()
+        if fetched and fetched["title"]:
+            job_title = fetched["title"]
+    except Exception:
+        pass
 
     # Determine next status
     status_map = {
@@ -413,6 +568,32 @@ async def review_candidate(
     )
 
     await db.commit()
+
+    # --- Post-commit side effects -----------------------------------------
+    # Deliberately after commit: a notification failure must never roll back the
+    # human decision. Each effect is best-effort and reported, not raised.
+    notifications = {}
+
+    # 1. Google Calendar event (only on an approved dispatch with a booked slot)
+    if slot_id is not None and decision == "APPROVED_DISPATCH":
+        notifications["calendar"] = await _sync_calendar_booking(
+            db=db,
+            reviewer_id=reviewer_id,
+            slot_id=slot_id,
+            candidate_id=candidate_id,
+            candidate=cand,
+            job_title=job_title,
+        )
+
+    # 2. Applicant email — only for a final decision, never during blind review
+    notifications["email"] = await _notify_candidate_decision(
+        candidate=cand,
+        job_title=job_title,
+        decision=decision,
+        slot_id=slot_id,
+        notes=notes,
+    )
+
     return {
         "status": "success",
         "candidate_id": candidate_id,
@@ -420,6 +601,7 @@ async def review_candidate(
         "decision": decision,
         "new_candidate_status": next_status,
         "booked_slot_id": slot_id if decision == "APPROVED_DISPATCH" else None,
+        "notifications": notifications,
     }
 
 

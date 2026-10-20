@@ -21,9 +21,17 @@ sys.path.insert(0, str(backend_dir))
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.database import get_db
+from app.core.auth import create_access_token
 from app.core.crypto import generate_dek, encrypt_dek, encrypt_pii
 
 client = TestClient(app)
+
+
+def _auth_headers(role: str = "admin", user_id: int = 1) -> dict:
+    """Real Bearer token; DEMO_MODE is off so no implicit recruiter fallback exists."""
+    token = create_access_token({"sub": str(user_id), "role": role, "username": f"{role}_test"})
+    return {"Authorization": f"Bearer {token}"}
+
 
 
 def test_openapi_schema_generation():
@@ -81,6 +89,7 @@ async def test_analyze_job_bias_endpoint():
         response = client.post(
             "/api/jobs/1/analyze-bias",
             json={"custom_text": sample_biased_text},
+            headers=_auth_headers("admin"),
         )
         assert response.status_code == 200
         data = response.json()
@@ -142,6 +151,10 @@ async def test_evidence_graph_react_flow_schema():
     ]
 
     mock_db.execute.side_effect = [
+        # 0. Auth: get_current_user resolves the Bearer token owner
+        AsyncMock(mappings=lambda: AsyncMock(first=lambda: {
+            "id": 1, "username": "admin_test", "email": "", "role": "admin",
+        })),
         # 1. Candidate lookup
         AsyncMock(mappings=lambda: AsyncMock(first=lambda: mock_cand)),
         # 2. Evidence lookup
@@ -156,7 +169,7 @@ async def test_evidence_graph_react_flow_schema():
     app.dependency_overrides[get_db] = override_get_db
 
     try:
-        response = client.get("/api/candidates/10/evidence-graph")
+        response = client.get("/api/candidates/10/evidence-graph", headers=_auth_headers("admin"))
         assert response.status_code == 200
         data = response.json()
         assert data["candidate_id"] == 10
@@ -215,6 +228,7 @@ async def test_unmask_candidate_pii_governance():
         res_reject = client.post(
             "/api/candidates/15/unmask",
             data={"reason": "Need to call candidate", "reviewer_role": "recruiter"},
+            headers=_auth_headers("recruiter"),
         )
         assert res_reject.status_code == 403
         assert "UNMASK_FORBIDDEN_DURING_BLIND_REVIEW" in res_reject.json()["detail"]
@@ -223,6 +237,7 @@ async def test_unmask_candidate_pii_governance():
         res_compliance = client.post(
             "/api/candidates/15/unmask",
             data={"reason": "Legal audit investigation", "reviewer_role": "compliance_officer"},
+            headers=_auth_headers("compliance_officer", user_id=2),
         )
         assert res_compliance.status_code == 200
         unmasked = res_compliance.json()["unmasked_data"]
@@ -240,6 +255,7 @@ async def test_unmask_candidate_pii_governance():
         res_approved = client.post(
             "/api/candidates/15/unmask",
             data={"reason": "Interview preparation and dispatch", "reviewer_role": "recruiter"},
+            headers=_auth_headers("recruiter"),
         )
         assert res_approved.status_code == 200
         assert res_approved.json()["unmasked_data"]["name"] == "Budi Santoso"
@@ -256,7 +272,14 @@ async def test_create_and_update_job_with_custom_weights():
     mock_insert_res = MagicMock()
     mock_insert_res.lastrowid = 101
 
-    mock_db.execute.side_effect = [mock_user_res, mock_insert_res]
+    mock_db.execute.side_effect = [
+        # 0. Auth: get_current_user resolves the Bearer token owner
+        AsyncMock(mappings=lambda: AsyncMock(first=lambda: {
+            "id": 1, "username": "admin_test", "email": "", "role": "admin",
+        })),
+        mock_user_res,
+        mock_insert_res,
+    ]
 
     async def override_get_db():
         yield mock_db
@@ -276,7 +299,7 @@ async def test_create_and_update_job_with_custom_weights():
                 "PORTFOLIO": 0.20
             }
         }
-        res = client.post("/api/jobs", json=payload)
+        res = client.post("/api/jobs", json=payload, headers=_auth_headers("admin"))
         assert res.status_code == 201
         data = res.json()["data"]
         assert data["id"] == 101

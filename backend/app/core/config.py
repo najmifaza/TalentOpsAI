@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     LLM_MAX_RETRIES: int = 3
 
     GITHUB_TOKEN: str = ""
-    DEMO_MODE: bool = True
+    DEMO_MODE: bool = False
 
     # Multi-worker state backend (SSE broadcaster, tickets, triage semaphore).
     # Empty string or unreachable Redis => graceful in-memory fallback (single-worker only).

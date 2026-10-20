@@ -149,8 +149,11 @@ async def get_current_user(
             {"uid": int(user_id)},
         )
         row = res.mappings().first()
+        # A partial/empty row must not shadow the signed token claims with role=None.
         if row:
-            return dict(row)
+            user_row = dict(row)
+            if user_row.get("role"):
+                return user_row
     except Exception:
         pass
 

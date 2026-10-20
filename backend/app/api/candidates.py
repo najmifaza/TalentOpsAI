@@ -725,12 +725,22 @@ async def trace_stream_agent_execution(
     )
 
 
-@router.get("/stream/{candidate_id}")
-async def stream_agent_triage_trace(candidate_id: int):
+@router.get("/stream/{candidate_id}", include_in_schema=False)
+async def stream_agent_triage_trace(
+    candidate_id: int,
+    ticket: Optional[str] = Query(None),
+):
     """
-    SSE stream endpoint for candidate triage execution.
-    Delivers real-time execution trace to Willy's Frontend listener.
+    DEPRECATED unauthenticated alias. Kept only to reject old clients explicitly
+    instead of silently streaming candidate triage reasoning without a ticket.
+    Use POST /{candidate_id}/sse-ticket -> GET /{candidate_id}/trace-stream.
     """
+    if not ticket:
+        raise HTTPException(status_code=401, detail="MISSING_SSE_STREAM_TICKET")
+    is_valid = await sse_broadcaster.validate_and_burn_ticket(candidate_id=candidate_id, ticket=ticket)
+    if not is_valid:
+        raise HTTPException(status_code=403, detail="INVALID_OR_EXPIRED_SSE_TICKET")
+
     async def event_generator():
         async for event in sse_broadcaster.subscribe(candidate_id):
             yield f"data: {json.dumps(event)}\n\n"
@@ -785,7 +795,8 @@ async def trigger_single_candidate_triage(
         "message": "Autonomous agent triage dispatched in background.",
         "candidate_id": candidate_id,
         "masked_identifier": cand["masked_identifier"],
-        "stream_url": f"/api/candidates/stream/{candidate_id}",
+        "stream_url": f"/api/candidates/{candidate_id}/trace-stream",
+        "sse_ticket_endpoint": f"/api/candidates/{candidate_id}/sse-ticket",
     }
 
 

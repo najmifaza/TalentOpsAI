@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Check
 } from 'lucide-react';
+import { issueSseTicket } from '../lib/api';
 
 // 7 Canonical Steps mapped to Backend Broadcaster events
 const BACKEND_STEPS = [
@@ -183,9 +184,12 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
       return;
     }
 
-    // 2. Open real SSE connection directly to backend broadcaster
+    // 2. Exchange JWT for a single-use SSE ticket, then open the authenticated stream
     try {
-      const sseSource = new EventSource(`${API_BASE_URL}/api/candidates/stream/${candidateId}`);
+      const ticket = await issueSseTicket(candidateId);
+      const sseSource = new EventSource(
+        `${API_BASE_URL}/api/candidates/${candidateId}/trace-stream?ticket=${encodeURIComponent(ticket)}`
+      );
       sseRef.current = sseSource;
 
       // Watchdog: If server stream gives no event within 6s
@@ -448,7 +452,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
                 <div className="text-[#67677e] italic py-8 text-center space-y-2">
                   <RotateCcw className="w-5 h-5 animate-spin mx-auto text-[#1b55f5]" />
                   <div>Menghubungkan ke SSE stream candidate #{candidate?.id}...</div>
-                  <div className="text-[10px] text-[#67677e]">Endpoint: {API_BASE_URL}/api/candidates/stream/{candidate?.id}</div>
+                  <div className="text-[10px] text-[#67677e]">Endpoint: {API_BASE_URL}/api/candidates/{candidate?.id}/trace-stream (tiket sekali pakai)</div>
                 </div>
               )}
 

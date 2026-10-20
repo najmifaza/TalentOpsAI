@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, ExternalLink, Menu, Circle, Sparkles, RefreshCw } from 'lucide-react';
+import { Building2, ExternalLink, Menu, Circle, Sparkles, RefreshCw, LogOut } from 'lucide-react';
+import { getUser, logout } from '../lib/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
 export default function Header({ currentTitle = "Dashboard & Triage", onActionClick, onToggleMobileMenu }) {
   const [apiStatus, setApiStatus] = useState('checking'); // 'ok' | 'error' | 'checking'
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [user] = useState(() => getUser());
 
   const checkHealth = async () => {
     setIsRefreshing(true);
@@ -93,6 +95,23 @@ export default function Header({ currentTitle = "Dashboard & Triage", onActionCl
           <span>Portal Pelamar</span>
           <ExternalLink className="w-3 h-3" />
         </button>
+
+        {/* Authenticated session indicator + logout */}
+        <div className="flex items-center gap-1.5 pl-2 border-l border-primary-border-100">
+          <span className="hidden xl:inline text-[11px] font-semibold text-primary-slate-600">
+            {user?.username || 'Sesi aktif'}
+            {user?.role ? <span className="text-primary-slate-400"> · {user.role}</span> : null}
+          </span>
+          <button
+            type="button"
+            onClick={logout}
+            className="p-2 rounded-xl text-primary-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            aria-label="Keluar dari sesi"
+            title="Keluar"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </header>
   );

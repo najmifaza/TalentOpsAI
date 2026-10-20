@@ -3,10 +3,12 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardOverview from './components/DashboardOverview';
+import { isAuthenticated } from './lib/api';
 
 // Code Splitting via Dynamic Imports (Sprint 5 Vite Optimization)
 const JobManagement = lazy(() => import('./components/JobManagement'));
 const CareerPortal = lazy(() => import('./components/CareerPortal'));
+const LoginPage = lazy(() => import('./components/LoginPage'));
 
 import { WifiOff, Sparkles } from 'lucide-react';
 
@@ -156,6 +158,13 @@ function DashboardLayout() {
   );
 }
 
+function RequireAuth({ children }) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return children;
+}
+
 export default function App() {
   // Enforce pristine Light Mode
   useEffect(() => {
@@ -179,8 +188,11 @@ export default function App() {
           <Route path="/careers/track" element={<CareerPortal initialTab="track" />} />
           <Route path="/careers/track/:token" element={<CareerPortal initialTab="track" />} />
 
+          {/* Internal HR login (public route, no dashboard shell) */}
+          <Route path="/admin/login" element={<LoginPage />} />
+
           {/* Internal HR / Admin Dashboard Routes under /admin/... */}
-          <Route path="/admin/*" element={<DashboardLayout />} />
+          <Route path="/admin/*" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
 
           {/* Legacy root-level dashboard redirects to /admin/... */}
           <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />

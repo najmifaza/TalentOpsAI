@@ -126,6 +126,20 @@ def seed_candidates():
 
     with engine.connect() as conn:
         print("Seeding 5 demo candidates into MariaDB...")
+
+        # job_id used to be hardcoded to 1, so a missing/recreated job surfaced as an
+        # opaque FK error (1452) instead of "run seed_data.py first".
+        job_row = conn.execute(
+            text("SELECT id, title FROM job_descriptions WHERE status = 'active' ORDER BY id LIMIT 1")
+        ).first()
+        if not job_row:
+            raise SystemExit(
+                "No active job found. Run scripts/seed_data.py first to create "
+                "'Senior Backend Engineer' (id 1)."
+            )
+        job_id = job_row[0]
+        print(f"Target job: {job_row[1]} (id {job_id})")
+
         for p in DEMO_PROFILES:
             txt_path = DATASET_DIR / p["filename"]
             raw_text = ""
@@ -158,7 +172,7 @@ def seed_candidates():
                     confidence_level, unresolved_risk, recommendation, triage_priority,
                     status, is_deleted, version
                 ) VALUES (
-                    :id, 1, :enc_name, :enc_email, :enc_phone, :enc_dek,
+                    :id, :job_id, :enc_name, :enc_email, :enc_phone, :enc_dek,
                     :blind_idx, :masked_id, :token, :filename,
                     :file_hash, :raw_text, :dims, :overall,
                     :conf, :risk, :rec, :prio,
@@ -176,6 +190,7 @@ def seed_candidates():
 
             conn.execute(insert_query, {
                 "id": p["id"],
+                "job_id": job_id,
                 "enc_name": enc_name,
                 "enc_email": enc_email,
                 "enc_phone": enc_phone,

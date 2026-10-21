@@ -5,6 +5,21 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-21 - Najmi - Skrip Seed Tidak Bisa Dijalankan (namespace `app` vs `backend.app`)
+- **Komponen / File:**
+  - `backend/scripts/seed_data.py` (sys.path + import)
+  - `backend/scripts/seed_demo_candidates.py` (job_id tidak lagi hardcoded)
+  - `backend/tests/test_seed_scripts_importable.py` (berkas baru, 4 test)
+- **Catatan:** Ditemukan saat memulihkan DB produksi setelah purge: `seed_data.py` gagal dengan `ModuleNotFoundError: No module named 'app'`, lalu `seed_demo_candidates.py` gagal dengan FK 1452.
+- **Yang Dikerjakan:**
+  - **Penyebab pertama — namespace campur.** `seed_data.py` hanya menaruh root repo di `sys.path` lalu mengimpor `backend.app.core.config`. Itu berhasil, tetapi `backend.app.core.auth` di dalamnya mengimpor `from app.core.config import settings` — dan `app` tidak ada di path. Perbaikan: `sys.path` juga memuat direktori `backend/`, dan impor diseragamkan ke `app.*` seperti skrip seed lainnya. Ini kelas bug yang sama dengan logger (`backend.app.*` vs `app.*`): dua nama untuk satu paket.
+  - **Penyebab kedua — `job_id` hardcoded.** `seed_demo_candidates.py` menulis `job_id = 1` di dalam SQL. Setelah `job_descriptions` dikosongkan, insert kandidat gagal dengan `IntegrityError 1452` yang tidak menyebut penyebab sebenarnya. Sekarang skrip mencari lowongan `active` pertama, mencetak `Target job: <judul> (id N)`, dan berhenti dengan pesan `No active job found. Run scripts/seed_data.py first` bila tidak ada — bukan FK error mentah.
+  - Test `test_seed_scripts_importable.py` mengimpor ketiga skrip seed dan memastikan entrypoint-nya ada. Tanpa test ini, kerusakan impor hanya terlihat saat menjalankan skrip di server, yang sudah dua kali memakan waktu.
+- **Status & Verifikasi:** Selesai. `pytest tests/` → **233 passed** (229 + 4). Dijalankan lokal dari root repo: `seed_data.py` melewati fase impor dan berhenti di koneksi DB (tidak ada MariaDB lokal) — artinya perbaikan impor bekerja.
+- **Rencana Selanjutnya:** Jalankan berurutan di VPS dari `/var/www/talentops`: `seed_data.py` → `seed_demo_candidates.py` → `seed_interview_slots.py`. Set `SEED_ADMIN_PASSWORD` sebelum `seed_data.py` agar akun recruiter tidak memakai password default repo.
+
+---
+
 ### 2026-10-21 - Najmi - Skrip Seed Slot Wawancara (tabel tidak pernah terisi)
 - **Komponen / File:**
   - `backend/scripts/seed_interview_slots.py` (berkas baru)

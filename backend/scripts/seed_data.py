@@ -8,8 +8,11 @@ from sqlalchemy import create_engine, text
 # Add backend directory to sys.path
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir.parent))
+# Also expose the package as `app.*`: core modules import each other that way
+# (`from app.core.config import settings`), so `backend.*` alone breaks the import chain.
+sys.path.insert(0, str(backend_dir))
 
-from backend.app.core.config import settings
+from app.core.config import settings
 
 # Dev-only fallback. Production must supply SEED_ADMIN_PASSWORD.
 DEFAULT_SEED_PASSWORD = "AdminSecret2026!"
@@ -45,7 +48,7 @@ def seed_initial_data():
 
         # 1. Seed Default User (Recruiter / Admin)
         # PBKDF2-HMAC-SHA256 (stdlib, no native argon2 dep).
-        from backend.app.core.auth import hash_password
+        from app.core.auth import hash_password
 
         pwd_hash = hash_password(resolve_seed_password())
 

@@ -5,6 +5,22 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-21 - Willy - Banner "Gunakan Data Sintetis" di UI Demo
+- **Komponen / File:**
+  - `frontend/src/components/DemoDataBanner.jsx` (komponen baru)
+  - `frontend/src/App.jsx` (mount di `DashboardLayout`)
+  - `frontend/.env.example` (`VITE_DEMO_BANNER`)
+- **Yang Dikerjakan:**
+  - PRD Bab 6.2 (baris 388) mewajibkan antarmuka demo memasang peringatan _"Gunakan data sintetis untuk pengujian live demo"_. Sebelumnya tidak ada sama sekali di `frontend/src` (nol hasil pencarian `sintetis`/`synthetic`).
+  - Banner ditempatkan di `DashboardLayout`, tepat di atas `Header`, sehingga muncul di seluruh halaman `/admin/*` — termasuk dashboard tempat HR/juri mengunggah CV lewat tombol "Upload CV Baru".
+  - Sengaja dirender dalam alur normal (`border-b`, bukan `fixed top-0`) karena banner offline yang sudah ada memakai `fixed top-0 z-50`; dua banner fixed akan saling menimpa.
+  - Tidak bisa ditutup (tidak ada state dismiss): ini peringatan kepatuhan, bukan notifikasi informasi. Biaya vertikalnya satu strip ~32px.
+  - Dikendalikan `VITE_DEMO_BANNER`; tampil secara default dan hanya hilang bila di-set `false`. Deploy saat ini memang lingkungan demo, jadi default yang benar adalah tampil.
+- **Status & Verifikasi:** Selesai. `node node_modules/vite/bin/vite.js build` sukses, 1781 modul. Belum diuji visual di browser.
+- **Rencana Selanjutnya:** Cek tampilan di mobile (strip bisa membungkus dua baris pada layar sempit) dan pastikan tidak menutupi `Header` saat offline banner aktif.
+
+---
+
 ### 2026-10-21 - Willy - What-If Simulation Studio Berperute + Kartu Lowongan di Dashboard
 - **Komponen / File:**
   - `frontend/src/components/WhatIfStudio.jsx` (komponen baru)

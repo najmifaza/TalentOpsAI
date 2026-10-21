@@ -1,31 +1,22 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  X, 
-  ShieldCheck, 
-  Github, 
+  ArrowLeft,
   Calendar, 
   CheckCircle2, 
   XCircle, 
   AlertTriangle, 
-  Code2, 
   FileText, 
   GitBranch, 
   Clock, 
-  UserCheck, 
   Lock, 
   ArrowRight, 
-  RotateCcw, 
   Sparkles, 
   Info,
-  Play,
-  ExternalLink,
   RefreshCw,
-  Eye,
-  User,
   Mail,
   Phone,
-  Layers,
-  Check
+  Eye
 } from 'lucide-react';
 import { CandidateEvidenceGraph } from './EvidenceGraph';
 
@@ -87,14 +78,30 @@ function DeliveryReport({ notifications }) {
 }
 
 
-export default function CandidateModal({ candidate, onClose, onRefresh }) {
+export default function CandidateDetailPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const candidateId = Number(id);
+
+  // Row-level fields (score, technologies, flags) live on the list payload; the
+  // dossier payload adds resume text, anomalies, evidence and assessments.
+  const [candidate, setCandidate] = useState(null);
+  const [isLoadingCandidate, setIsLoadingCandidate] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' | 'graph' | 'cv' | 'schedule'
   const [viewState, setViewState] = useState('dossier'); // 'dossier' | 'scheduled_done' | 'reject_confirm' | 'reject_done'
   const [candidateDetail, setCandidateDetail] = useState(null);
   const [unmaskedIdentity, setUnmaskedIdentity] = useState(null);
+  const [unmaskReason, setUnmaskReason] = useState('');
+  const [isUnmaskFormOpen, setIsUnmaskFormOpen] = useState(false);
+  const [isUnmasking, setIsUnmasking] = useState(false);
+  const [unmaskError, setUnmaskError] = useState(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeMessage, setAnalyzeMessage] = useState(null);
+  // Decision submission failure. Never render a success receipt off a failed POST.
+  const [submitError, setSubmitError] = useState(null);
 
   // Scheduling states
   const [slots, setSlots] = useState([]);
@@ -105,53 +112,134 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
   // backend, so the UI must show a failure instead of assuming delivery.
   const [notifications, setNotifications] = useState(null);
   const [rejectReason, setRejectReason] = useState('Skor keahlian di bawah threshold kompetensi posisi');
+  const messageTimeoutRef = useRef(null);
 
-  // Load candidate full detail from backend
-  const loadCandidateDetail = useCallback(async () => {
-    if (!candidate?.id) return;
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate('/admin/dashboard');
+  };
+
+  // Load dossier detail + the matching list row for this candidate
+  const loadCandidateDetail = useCallback(async (signal) => {
+    if (!candidateId) {
+      setIsLoadingCandidate(false);
+      setLoadError('ID kandidat tidak valid pada URL.');
+      return;
+    }
     setIsLoadingDetail(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}`);
-      if (res && res.ok) {
-        const json = await res.json();
-        setCandidateDetail(json);
+      const [detailRes, listRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/candidates/${candidateId}`, { signal }),
+        fetch(`${API_BASE_URL}/api/candidates?limit=200`, { signal }),
+      ]);
+
+      if (!detailRes.ok) {
+        setLoadError(
+          detailRes.status === 404
+            ? 'Kandidat tidak ditemukan atau sudah dihapus.'
+            : `Gagal memuat dossier kandidat (${detailRes.status}).`
+        );
+        return;
       }
+
+      const json = await detailRes.json();
+      setCandidateDetail(json);
+      setLoadError(null);
+
+      let row = null;
+      if (listRes.ok) {
+        const list = await listRes.json().catch(() => ({}));
+        row = (list.data || []).find((c) => c.id === candidateId) || null;
+      }
+
+      const dossier = json.candidate || {};
+      if (!row) {
+        // Row missing from the list page: derive what the dossier alone can supply.
+        row = {
+          id: dossier.id ?? candidateId,
+          masked_identifier: dossier.masked_identifier,
+          status: dossier.status,
+          overall_score: dossier.overall_score,
+          recommendation: dossier.recommendation,
+          confidence_level: dossier.confidence_level,
+          github_url: dossier.github_url,
+          job_title: null,
+          scores_4d: null,
+          key_technologies: (json.evidence || [])
+            .map((e) => e.target_competency)
+            .filter((t, i, arr) => t && arr.indexOf(t) === i),
+          flags: (json.anomalies || []).map((a) => a.anomaly_type).filter(Boolean),
+        };
+      } else {
+        const dims = row.dimension_scores || {};
+        row = {
+          ...row,
+          candidate_name_masked: row.masked_identifier,
+          verified_github: row.github_url || null,
+          scores_4d: row.overall_score !== null && row.overall_score !== undefined ? {
+            s_comp: dims.SKILL || 0,
+            s_port: dims.PORTFOLIO || 0,
+            s_conf: dims.EDUCATION || (row.confidence_level === 'HIGH' ? 95 : 75),
+            s_risk: row.unresolved_risk === 'HIGH' ? 70 : (row.unresolved_risk === 'MEDIUM' ? 35 : 10),
+          } : null,
+        };
+      }
+      setCandidate(row);
     } catch (err) {
-      console.warn('Failed to load candidate detail from backend:', err);
+      if (err?.name !== 'AbortError') {
+        console.warn('Failed to load candidate detail from backend:', err);
+        setLoadError('Gagal menghubungi backend untuk memuat dossier kandidat.');
+      }
     } finally {
       setIsLoadingDetail(false);
+      setIsLoadingCandidate(false);
     }
-  }, [candidate?.id]);
+  }, [candidateId]);
 
-  // Attempt to fetch unmasked PII for compliance inspection
-  const loadUnmaskedPII = useCallback(async () => {
-    if (!candidate?.id) return;
+  // PII unmasking is reviewer-initiated and reason-logged: every call writes a
+  // row into pii_access_logs, so it must never fire automatically on mount.
+  const handleUnmask = useCallback(async () => {
+    const reason = unmaskReason.trim();
+    if (!candidateId || !reason) return;
+    setIsUnmasking(true);
+    setUnmaskError(null);
     try {
       const formData = new FormData();
-      formData.append('reason', 'HR Recruiter candidate dossier review');
-      formData.append('reviewer_role', 'compliance_officer');
+      formData.append('reason', reason);
+      // Role is derived server-side from the session token; sending it here is a
+      // display hint only and carries no authorization weight.
 
-      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/unmask`, {
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}/unmask`, {
         method: 'POST',
         body: formData,
       });
 
-      if (res && res.ok) {
-        const json = await res.json();
-        if (json.unmasked_data) {
-          setUnmaskedIdentity(json.unmasked_data);
-        }
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setUnmaskError(payload.detail || `Gagal membuka identitas (${res.status})`);
+        return;
+      }
+      if (payload.unmasked_data) {
+        setUnmaskedIdentity(payload.unmasked_data);
+        setIsUnmaskFormOpen(false);
+        setUnmaskReason('');
+      } else {
+        setUnmaskError('Backend tidak mengembalikan data identitas.');
       }
     } catch (err) {
-      console.warn('Unmasking request fallback:', err);
+      setUnmaskError('Gagal menghubungi backend untuk membuka identitas.');
+      console.warn('Unmasking request failed:', err);
+    } finally {
+      setIsUnmasking(false);
     }
-  }, [candidate?.id]);
+  }, [candidateId, unmaskReason]);
 
   // Fetch live available slots from backend
   useEffect(() => {
+    const controller = new AbortController();
     async function fetchSlots() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/slots/available`);
+        const res = await fetch(`${API_BASE_URL}/api/slots/available`, { signal: controller.signal });
         if (res && res.ok) {
           const json = await res.json();
           if (json.data && json.data.length > 0) {
@@ -164,26 +252,40 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                 id: s.id,
                 date: dateStr,
                 time: timeStr,
-                interviewer: `${s.interviewer_name || 'Interviewer'} (Lead Backend & Security)`,
+                interviewer: s.interviewer_name || 'Interviewer belum ditentukan',
                 type: 'Technical System Architecture Interview',
                 status: s.status,
               };
             });
             setSlots(formatted);
             setSelectedSlotId(formatted[0].id);
+          } else {
+            setSlots([]);
+            setSelectedSlotId(null);
           }
         }
       } catch (err) {
-        console.warn('Backend slot fetch fallback to pre-cached slots:', err);
+        if (err?.name !== 'AbortError') {
+          console.warn('Available slot fetch failed:', err);
+          setSlots([]);
+          setSelectedSlotId(null);
+        }
       }
     }
     fetchSlots();
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    loadCandidateDetail();
-    loadUnmaskedPII();
-  }, [loadCandidateDetail, loadUnmaskedPII]);
+    const controller = new AbortController();
+    loadCandidateDetail(controller.signal);
+    return () => controller.abort();
+  }, [loadCandidateDetail]);
+
+  // Clear any pending status-message timer on unmount
+  useEffect(() => () => {
+    if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
+  }, []);
 
   // Merge candidate info with real backend candidate record
   const activeCandidateObj = useMemo(() => {
@@ -201,56 +303,69 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
     };
   }, [candidate, candidateDetail]);
 
-  // Determine candidate real name, email, and phone
+  // Identity is only ever unmasked through the explicit reviewer action above.
+  // Until then show a neutral placeholder, never a plausible-looking fake value.
   const resolvedIdentity = useMemo(() => {
     const unmasked = unmaskedIdentity || {};
-    
-    let candidateName = unmasked.name;
-    if (!candidateName && candidateDetail?.candidate?.sanitized_resume_text) {
-      const lines = candidateDetail.candidate.sanitized_resume_text.split('\n').map(l => l.trim()).filter(Boolean);
-      for (const line of lines) {
-        if (!line.startsWith('[') && line.length > 2 && line.length < 35 && !line.includes('RINGKASAN') && !line.includes('Mahasiswa')) {
-          candidateName = line;
-          break;
-        }
-      }
-    }
-    if (!candidateName) {
-      candidateName = candidate.candidate_name_masked || 'Kandidat Pelamar';
-    }
-
-    const email = unmasked.email || 'kandidat@email.com';
-    const phone = unmasked.phone || '+62 812-****-****';
-
-    return { name: candidateName, email, phone };
-  }, [candidate, candidateDetail, unmaskedIdentity]);
+    return {
+      name: unmasked.name || candidate.candidate_name_masked || 'Identitas disembunyikan',
+      email: unmasked.email || 'Disembunyikan',
+      phone: unmasked.phone || 'Disembunyikan',
+      isUnmasked: Boolean(unmasked.name || unmasked.email || unmasked.phone),
+    };
+  }, [candidate, unmaskedIdentity]);
 
   // Trigger live AI triage
+  const scheduleMessageClear = (delay) => {
+    if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
+    messageTimeoutRef.current = setTimeout(() => setAnalyzeMessage(null), delay);
+  };
+
   const handleRunAIAnalysis = async () => {
-    if (!candidate?.id) return;
+    if (!candidateId) return;
     setIsAnalyzing(true);
-    setAnalyzeMessage('Model Gemini 3.8 sedang mengekstrak klaim CV dan menghitung skor 4D...');
+    setAnalyzeMessage('Model sedang mengekstrak klaim CV dan menghitung skor 4D...');
+    const before = candidateDetail?.candidate || {};
+    const beforeScore = before.overall_score ?? null;
+    const beforeRec = before.recommendation ?? null;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/triage`, { method: 'POST' });
-      if (res && res.ok) {
-        setAnalyzeMessage('Ekstraksi selesai! Mengambil bukti grounding terbaru...');
-        setTimeout(async () => {
-          await loadCandidateDetail();
-          if (onRefresh) onRefresh();
-          setIsAnalyzing(false);
-          setAnalyzeMessage('Analisis AI berhasil diperbarui! Seluruh bukti telah tersimpan di database.');
-          setTimeout(() => setAnalyzeMessage(null), 3500);
-        }, 3200);
-      } else {
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}/triage`, { method: 'POST' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
         setIsAnalyzing(false);
-        setAnalyzeMessage('Gagal mengeksekusi analisis AI.');
-        setTimeout(() => setAnalyzeMessage(null), 3000);
+        setAnalyzeMessage(`Gagal memicu analisis AI: ${err.detail || res.status}`);
+        scheduleMessageClear(4000);
+        return;
       }
+
+      // Triage is dispatched as a background task, so completion has to be observed
+      // by polling the dossier. A fixed sleep would report success on a job that
+      // may still be running or may have failed.
+      setAnalyzeMessage('Triage berjalan di latar belakang. Menunggu hasil...');
+      const deadline = Date.now() + 120000;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        const poll = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}`);
+        if (!poll.ok) continue;
+        const json = await poll.json();
+        const fresh = json?.candidate || {};
+        if (fresh.overall_score !== beforeScore || fresh.recommendation !== beforeRec) {
+          setCandidateDetail(json);
+          loadCandidateDetail();
+          setIsAnalyzing(false);
+          setAnalyzeMessage('Analisis AI selesai. Skor dan bukti terbaru sudah dimuat.');
+          scheduleMessageClear(4000);
+          return;
+        }
+      }
+      setIsAnalyzing(false);
+      setAnalyzeMessage('Triage melewati batas tunggu 2 menit. Muat ulang dossier beberapa saat lagi.');
+      scheduleMessageClear(6000);
     } catch (err) {
       console.error('Triage run error:', err);
       setIsAnalyzing(false);
       setAnalyzeMessage('Gagal menghubungi backend triage.');
-      setTimeout(() => setAnalyzeMessage(null), 3000);
+      scheduleMessageClear(4000);
     }
   };
 
@@ -262,79 +377,78 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
 
   const handleConfirmSchedule = async () => {
     if (!selectedSlot) {
+      setSubmitError('Tidak ada slot wawancara yang bisa dipilih.');
       return;
     }
+    setSubmitError(null);
     setIsSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('decision', 'APPROVED_DISPATCH');
       formData.append('notes', 'Wawancara teknis disetujui via HR Recruiter Dashboard');
-      if (selectedSlot?.id) {
-        formData.append('slot_id', String(selectedSlot.id));
-      }
-      formData.append('reviewer_id', '1');
+      formData.append('slot_id', String(selectedSlot.id));
+      // reviewer_id is ignored by the backend, which derives the reviewer from the
+      // authenticated session; it is not sent as an authorization claim.
 
-      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}/review`, {
         method: 'POST',
         body: formData,
       });
 
       if (!res.ok) {
-        throw new Error(`Review submit failed with status ${res.status}`);
+        const err = await res.json().catch(() => ({}));
+        setSubmitError(err.detail || `Gagal menyimpan keputusan (${res.status})`);
+        loadCandidateDetail();
+        return; // stay on the schedule tab: the slot was NOT locked
       }
 
       const payload = await res.json().catch(() => ({}));
       setNotifications(payload.notifications || null);
 
-      const eventId =
-        payload.notifications?.calendar?.event_id ||
-        generateMockEventId(selectedSlot.id, candidate.id);
+      const eventId = payload.notifications?.calendar?.event_id || null;
       setBookedEvent({
         eventId,
         slot: selectedSlot,
         timestamp: new Date().toLocaleString('id-ID'),
       });
       setViewState('scheduled_done');
-      if (onRefresh) onRefresh();
+      loadCandidateDetail();
     } catch (err) {
-      console.warn('Live review submit failed, falling back to local receipt:', err);
-      setNotifications(null);
-      const eventId = generateMockEventId(selectedSlot.id, candidate.id);
-      setBookedEvent({
-        eventId,
-        slot: selectedSlot,
-        timestamp: new Date().toLocaleString('id-ID'),
-      });
-      setViewState('scheduled_done');
-      if (onRefresh) onRefresh();
+      setSubmitError('Gagal menghubungi backend. Jadwal belum terkunci.');
+      console.warn('Review submit failed:', err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleConfirmReject = async () => {
+    setSubmitError(null);
     setIsSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('decision', 'REJECT_CONFIRMED');
       formData.append('notes', rejectReason);
-      formData.append('reviewer_id', '1');
 
-      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}/review`, {
         method: 'POST',
         body: formData,
       });
-      const payload = res.ok ? await res.json().catch(() => ({})) : {};
-      setNotifications(payload.notifications || null);
 
-      if (onRefresh) onRefresh();
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setSubmitError(err.detail || `Gagal menyimpan penolakan (${res.status})`);
+        return; // stay on reject_confirm
+      }
+
+      const payload = await res.json().catch(() => ({}));
+      setNotifications(payload.notifications || null);
+      setViewState('reject_done');
+      loadCandidateDetail();
     } catch (err) {
-      console.warn('Live reject submit failed, falling back to local state:', err);
-      setNotifications(null);
-      if (onRefresh) onRefresh();
+      setSubmitError('Gagal menghubungi backend. Penolakan belum tersimpan.');
+      console.warn('Reject submit failed:', err);
     } finally {
       setIsSubmitting(false);
-      setViewState('reject_done');
     }
   };
 
@@ -380,74 +494,128 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
     }
   }, [activeCandidateObj.recommendation]);
 
-  // AI Narrative Explanation Generator
+  // A quarantined dossier must be resolved by compliance before any scheduling.
+  const isQuarantined = activeCandidateObj.recommendation === 'SECURITY_QUARANTINE';
+
+  // Decision-support copy built from the candidate's own record (score, extracted
+  // technologies, recorded anomalies). This is a template, not model output: if the
+  // backend ever returns a triage rationale, that text is used verbatim instead.
   const aiExplanation = useMemo(() => {
     const rec = activeCandidateObj.recommendation;
     const score = activeCandidateObj.overall_score;
     const scoreStr = typeof score === 'number' ? score.toFixed(1) : '-';
+    const tech = activeCandidateObj.key_technologies || [];
+    const flags = activeCandidateObj.flags || [];
+    const anomalies = candidateDetail?.anomalies || [];
+    const backendRationale = activeCandidateObj.rationale || activeCandidateObj.ai_rationale || null;
+
+    const anomalyText = anomalies.length
+      ? anomalies.map((a) => a.description || a.anomaly_type).filter(Boolean).join('; ')
+      : (flags.length ? flags.join('; ') : null);
+
+    const strengthList = tech.length
+      ? [`Teknologi terekstrak dari berkas: ${tech.join(', ')}.`]
+      : ['Belum ada teknologi yang terekstrak dari berkas.'];
 
     if (rec === 'STRONG_MATCH') {
       return {
-        summary: `Pelamar memperoleh skor evaluasi tinggi (${scoreStr}/100) dan dikategorikan "Sangat Sesuai". Model AI mendeteksi penguasaan mendalam pada ekosistem backend modern (FastAPI, Redis, PostgreSQL, Docker) dengan konteks arsitektur layanan mikro berskala besar.`,
-        strengths: [
-          'Pengalaman terverifikasi membangun async REST microservices dengan throughput tinggi.',
-          'Portofolio kode repositori GitHub asli terbukti aktif dan valid.',
-          'Nol anomali manipulasi atau pemalsuan format linimasa.',
-        ],
-        risks: 'Tidak ditemukan resiko integritas maupun ketidaksesuaian latar belakang.',
-        recommendation: 'Direkomendasikan segera lanjut ke tahap wawancara arsitektur teknis sistem.',
+        isTemplate: !backendRationale,
+        summary: backendRationale || `Skor evaluasi ${scoreStr}/100 dengan kategori "Sangat Sesuai". Berkas tidak memiliki anomali integritas tercatat.`,
+        strengths: strengthList,
+        risks: anomalyText || 'Tidak ada anomali tercatat pada berkas ini.',
+        recommendation: 'Lanjut ke wawancara arsitektur teknis sistem.',
       };
     } else if (rec === 'REVIEW_REQUIRED') {
       return {
-        summary: `Pelamar memiliki kompetensi teknis yang relevan (skor ${scoreStr}/100), namun sistem menandai berkas ini dengan status "Perlu Review HR" akibat adanya anomali linimasa karier.`,
-        strengths: [
-          'Menguasai stack backend yang dibutuhkan (Go, Docker, PostgreSQL, sistem terdistribusi).',
-          'Bukti implementasi proyek jelas pada riwayat pekerjaan sebelumnya.',
-        ],
-        risks: 'Terdeteksi tumpang tindih linimasa kerja full-time ganda (misal: 17 bulan overlapping concurrent full-time employment) yang memerlukan konfirmasi HR.',
-        recommendation: 'Klarifikasi komitmen waktu dan status kerja simultan pada sesi wawancara awal sebelum dispatch penawaran.',
+        isTemplate: !backendRationale,
+        summary: backendRationale || `Skor evaluasi ${scoreStr}/100 dengan kategori "Perlu Review HR". Ada anomali tercatat yang perlu klarifikasi sebelum keputusan diambil.`,
+        strengths: strengthList,
+        risks: anomalyText || 'Status "Perlu Review HR" namun detail anomali tidak dikembalikan backend.',
+        recommendation: 'Klarifikasi temuan anomali pada sesi wawancara sebelum dispatch penawaran.',
       };
     } else if (rec === 'SECURITY_QUARANTINE') {
       return {
-        summary: `PERINGATAN KEAMANAN ATS: Berkas kandidat ini diisolasi otomatis dalam status "Karantina Keamanan". Engine deteksi mendeteksi upaya injeksi instruksi tersembunyi (prompt injection delimiter / zero-font text).`,
-        strengths: [
-          'Memiliki dasar pemrograman Python / database ringan.',
-        ],
-        risks: 'Integritas berkas dicurigai: Teks resume mengandung string manipulasi model LLM yang berupaya memaksa pemberian skor 100.',
-        recommendation: 'Tolak berkas kandidat atau lakukan audit manual mendalam oleh tim kepatuhan informasi (Compliance Officer).',
+        isTemplate: !backendRationale,
+        summary: backendRationale || `Berkas diisolasi otomatis dengan status "Karantina Keamanan" karena indikasi manipulasi dokumen.`,
+        strengths: strengthList,
+        risks: anomalyText || 'Indikasi injeksi instruksi / teks tersembunyi terdeteksi, detail tidak dikembalikan backend.',
+        recommendation: 'Tolak berkas atau lakukan audit manual oleh Compliance Officer.',
       };
     } else if (rec === 'WEAK_FIT') {
       return {
-        summary: `Pelamar memperoleh evaluasi skor rendah (${scoreStr}/100) dengan rekomendasi "Kurang Sesuai" akibat ketidakcocokan kualifikasi inti (Skill Mismatch).`,
-        strengths: [
-          'Memiliki pengalaman aktif di bidang desain komunikasi, media grafis, atau kepemimpinan organisasi non-teknis.',
-        ],
-        risks: 'Keahlian teknis backend (FastAPI, containerization, scalable database) sama sekali tidak dicantumkan di CV.',
-        recommendation: 'Arsipkan berkas pelamar atau pertimbangkan kandidat untuk divisi media/desain internal yang lebih relevan.',
+        isTemplate: !backendRationale,
+        summary: backendRationale || `Skor evaluasi ${scoreStr}/100 dengan kategori "Kurang Sesuai". Kualifikasi inti posisi tidak terpenuhi.`,
+        strengths: strengthList,
+        risks: anomalyText || 'Keahlian teknis inti posisi tidak ditemukan pada berkas.',
+        recommendation: 'Arsipkan berkas atau pertimbangkan untuk posisi lain yang lebih relevan.',
       };
     } else {
       return {
-        summary: 'Berkas kandidat saat ini berada dalam antrean pemindaian. Klik tombol "Jalankan Analisis AI" di atas untuk memicu ekstraksi kompetensi dan perhitungan skor deterministik 4D.',
-        strengths: ['Menunggu hasil ekstraksi AI.'],
+        isTemplate: true,
+        summary: 'Berkas kandidat belum dievaluasi. Jalankan analisis AI untuk memicu ekstraksi kompetensi dan perhitungan skor 4D.',
+        strengths: ['Menunggu hasil ekstraksi.'],
         risks: 'Menunggu audit integritas berkas.',
         recommendation: 'Jalankan analisis AI untuk mengevaluasi dossier ini.',
       };
     }
-  }, [activeCandidateObj.recommendation, activeCandidateObj.overall_score]);
+  }, [
+    activeCandidateObj.recommendation,
+    activeCandidateObj.overall_score,
+    activeCandidateObj.key_technologies,
+    activeCandidateObj.flags,
+    activeCandidateObj.rationale,
+    activeCandidateObj.ai_rationale,
+    candidateDetail?.anomalies,
+  ]);
 
-  if (!candidate) return null;
+  if (isLoadingCandidate && !candidate) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 min-h-[350px] space-y-3 font-jkt" role="status" aria-live="polite">
+        <div className="w-10 h-10 border-2 border-primary-orange/20 border-t-primary-orange rounded-full animate-spin"></div>
+        <p className="text-xs font-bold text-primary-black">Memuat dossier kandidat...</p>
+      </div>
+    );
+  }
+
+  if (loadError || !candidate) {
+    return (
+      <div className="max-w-lg mx-auto p-8 text-center space-y-4 font-jkt">
+        <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto text-rose-600 font-bold">
+          !
+        </div>
+        <div>
+          <h3 className="text-base font-extrabold text-primary-black">Dossier Tidak Dapat Dimuat</h3>
+          <p className="text-xs text-primary-slate-600 mt-1">{loadError || 'Data kandidat tidak tersedia.'}</p>
+        </div>
+        <button
+          type="button"
+          onClick={goBack}
+          className="px-5 py-2.5 bg-primary-orange text-white rounded-full text-xs font-bold hover:opacity-90 transition-all shadow-md shadow-primary-orange/25"
+        >
+          Kembali ke Dashboard
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in select-none font-jkt">
-      <div className="bg-white border border-primary-border-200 rounded-2xl max-w-5xl w-full shadow-2xl relative max-h-[92vh] flex flex-col overflow-hidden">
-        
-        {/* MODAL HEADER: CANDIDATE IDENTITY & ACTIONS */}
-        <div className="p-5 sm:p-6 pb-4 border-b border-primary-border-100 bg-white shrink-0">
+    <div className="max-w-5xl mx-auto bg-white border border-primary-border-200 rounded-2xl shadow-sm overflow-hidden font-jkt">
+      
+        {/* PAGE HEADER: CANDIDATE IDENTITY & ACTIONS */}
+        <div className="p-5 sm:p-6 pb-4 border-b border-primary-border-100 bg-white">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             
             {/* Identity Info Block */}
             <div className="space-y-1">
               <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="p-1.5 rounded-full text-primary-slate-500 hover:text-primary-black hover:bg-primary-slate-100 transition-colors"
+                  title="Kembali ke daftar kandidat"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
                 <h3 className="text-xl font-extrabold text-primary-black tracking-tight">
                   {resolvedIdentity.name}
                 </h3>
@@ -468,7 +636,7 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
               {/* Subtitle & Contact Badges */}
               <div className="flex items-center gap-3 text-xs text-primary-slate-500 flex-wrap pt-0.5">
                 <span className="font-semibold text-primary-black">
-                  {candidate.job_title || 'Senior Backend Engineer'}
+                  {candidate.job_title || 'Posisi tidak dilaporkan'}
                 </span>
                 <span>&bull;</span>
                 <span className="flex items-center gap-1">
@@ -480,7 +648,47 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                   <Phone className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{resolvedIdentity.phone}</span>
                 </span>
+                {!resolvedIdentity.isUnmasked && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsUnmaskFormOpen(v => !v); setUnmaskError(null); }}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-slate-100 hover:bg-primary-slate-200 text-primary-black font-semibold border border-primary-border-200 transition-colors"
+                    title="Membuka PII dicatat ke audit log (UU PDP) beserta alasannya"
+                  >
+                    <Eye className="w-3 h-3" />
+                    <span>Tampilkan identitas</span>
+                  </button>
+                )}
               </div>
+
+              {/* Reason-gated unmask: every access is written to pii_access_logs */}
+              {isUnmaskFormOpen && !resolvedIdentity.isUnmasked && (
+                <div className="mt-2 p-3 rounded-xl bg-[#f8f9fc] border border-[#e6e6ea] space-y-2">
+                  <p className="text-[11px] text-[#454554]">
+                    Akses PII akan tercatat pada audit log beserta alasan dan identitas reviewer Anda.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={unmaskReason}
+                      onChange={(e) => setUnmaskReason(e.target.value)}
+                      placeholder="Alasan akses, mis. verifikasi berkas untuk wawancara"
+                      className="flex-1 bg-white border border-[#e6e6ea] rounded-lg text-xs text-[#000000] px-2.5 py-1.5 focus:outline-none focus:border-[#1b55f5]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleUnmask}
+                      disabled={isUnmasking || !unmaskReason.trim()}
+                      className="px-3 py-1.5 bg-[#1b55f5] hover:bg-[#1545c7] disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
+                    >
+                      {isUnmasking ? 'Memproses...' : 'Buka Identitas'}
+                    </button>
+                  </div>
+                  {unmaskError && (
+                    <p className="text-[11px] text-rose-700 font-medium">{unmaskError}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Action Buttons: Run AI Triage + Close */}
@@ -490,20 +698,12 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                 onClick={handleRunAIAnalysis}
                 disabled={isAnalyzing}
                 className="px-4 py-2 bg-primary-orange hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center gap-1.5"
-                title="Picu model Gemini 3.8 untuk memindai berkas dan memperbarui skor 4D di database"
+                title="Picu triage AI untuk memindai berkas dan memperbarui skor 4D di database"
               >
                 <Sparkles className={`w-3.5 h-3.5 text-white ${isAnalyzing ? 'animate-spin' : ''}`} />
                 <span>{isAnalyzing ? 'Menganalisis Berkas CV...' : 'Jalankan Analisis AI'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-full text-primary-slate-400 hover:text-primary-black hover:bg-primary-slate-100 transition-colors"
-                title="Tutup Modal"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
           </div>
 
@@ -576,8 +776,8 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
           </div>
         </div>
 
-        {/* MODAL BODY (SCROLLABLE) */}
-        <div className="p-5 sm:p-7 overflow-y-auto flex-1 bg-white">
+        {/* PAGE BODY */}
+        <div className="p-5 sm:p-7 bg-white">
           
           {/* TAB 1: SUMMARY & AI EXPLANATION */}
           {viewState === 'dossier' && activeTab === 'summary' && (
@@ -589,11 +789,11 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-[#1b55f5]" />
                     <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]">
-                      Rasional Evaluasi &amp; Penjelasan AI (Gemini 3.8)
+                      Rasional Evaluasi {aiExplanation.isTemplate ? '(Template Kategori Rekomendasi)' : '(Dari Hasil Triage Backend)'}
                     </h4>
                   </div>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-[#1b55f5] font-semibold border border-[#8ec0ff]">
-                    Suhu 0.0 &bull; Deterministic
+                    {aiExplanation.isTemplate ? 'TEMPLATE' : 'BACKEND RATIONALE'}
                   </span>
                 </div>
 
@@ -648,23 +848,23 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                 <h4 className="text-xs font-bold text-[#67677e] uppercase tracking-wider mb-2.5">
                   4 Dimensi Evaluasi Obyektif (PRD Bab 4.2)
                 </h4>
-                {candidate.scores_4d ? (
+                {activeCandidateObj.scores_4d ? (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
                       <span className="text-[10px] text-[#67677e] uppercase font-semibold">Keahlian Inti</span>
-                      <div className="text-xl font-extrabold text-[#1b55f5] mt-0.5">{candidate.scores_4d.s_comp}%</div>
+                      <div className="text-xl font-extrabold text-[#1b55f5] mt-0.5">{activeCandidateObj.scores_4d.s_comp}%</div>
                     </div>
                     <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
                       <span className="text-[10px] text-[#67677e] uppercase font-semibold">Portofolio Kode</span>
-                      <div className="text-xl font-extrabold text-[#10B981] mt-0.5">{candidate.scores_4d.s_port}%</div>
+                      <div className="text-xl font-extrabold text-[#10B981] mt-0.5">{activeCandidateObj.scores_4d.s_port}%</div>
                     </div>
                     <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
                       <span className="text-[10px] text-[#67677e] uppercase font-semibold">Keyakinan Bukti</span>
-                      <div className="text-xl font-extrabold text-[#1b55f5] mt-0.5">{candidate.scores_4d.s_conf}%</div>
+                      <div className="text-xl font-extrabold text-[#1b55f5] mt-0.5">{activeCandidateObj.scores_4d.s_conf}%</div>
                     </div>
                     <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
                       <span className="text-[10px] text-[#67677e] uppercase font-semibold">Indikator Resiko</span>
-                      <div className="text-xl font-extrabold text-rose-600 mt-0.5">{candidate.scores_4d.s_risk}%</div>
+                      <div className="text-xl font-extrabold text-rose-600 mt-0.5">{activeCandidateObj.scores_4d.s_risk}%</div>
                     </div>
                   </div>
                 ) : (
@@ -680,22 +880,26 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                   Taksonomi Teknologi Terverifikasi
                 </h4>
                 <div className="flex flex-wrap gap-1.5">
-                  {candidate.key_technologies && candidate.key_technologies.map((tech, idx) => (
-                    <span key={idx} className="text-xs px-3 py-1 rounded-xl bg-[#f4f4f6] text-[#000000] border border-[#e6e6ea] font-medium font-mono">
-                      {tech}
-                    </span>
-                  ))}
+                  {activeCandidateObj.key_technologies && activeCandidateObj.key_technologies.length > 0 ? (
+                    activeCandidateObj.key_technologies.map((tech, idx) => (
+                      <span key={idx} className="text-xs px-3 py-1 rounded-xl bg-[#f4f4f6] text-[#000000] border border-[#e6e6ea] font-medium font-mono">
+                        {tech}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-[#67677e]">Belum ada teknologi yang terekstrak.</span>
+                  )}
                 </div>
               </div>
 
               {/* Anomaly & Risk Flags */}
-              {candidate.flags && candidate.flags.length > 0 && (
+              {activeCandidateObj.flags && activeCandidateObj.flags.length > 0 && (
                 <div>
                   <h4 className="text-xs font-bold text-rose-700 uppercase tracking-wider mb-2">
                     Peringatan Anomali &amp; Manipulasi Dokumen
                   </h4>
                   <div className="space-y-1.5">
-                    {candidate.flags.map((flag, idx) => (
+                    {activeCandidateObj.flags.map((flag, idx) => (
                       <div key={idx} className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
                         <span className="font-mono font-medium">{flag}</span>
@@ -730,7 +934,9 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                   <button
                     type="button"
                     onClick={() => setActiveTab('schedule')}
-                    className="px-4 py-2.5 bg-[#1b55f5] hover:bg-[#1545c7] text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5"
+                    disabled={isQuarantined}
+                    title={isQuarantined ? 'Kandidat dalam karantina keamanan — tidak dapat dijadwalkan' : undefined}
+                    className="px-4 py-2.5 bg-[#1b55f5] hover:bg-[#1545c7] text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Calendar className="w-3.5 h-3.5 text-white" />
                     <span>Approve &amp; Schedule</span>
@@ -830,58 +1036,84 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                 </h4>
 
                 <div className="space-y-2.5">
-                  {slots.map((slot) => {
-                    const isSelected = slot.id === selectedSlotId;
-                    return (
-                      <div
-                        key={slot.id}
-                        onClick={() => setSelectedSlotId(slot.id)}
-                        className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
-                          isSelected
-                            ? 'bg-[#f8f9fc] border-[#1b55f5] shadow-xs'
-                            : 'bg-white border-[#e6e6ea] hover:border-[#8ec0ff]'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#000000]">{slot.date}</span>
-                            <span className="font-mono text-xs text-[#1b55f5] font-bold bg-[#eaf0ff] px-2 py-0.5 rounded-md">
-                              {slot.time}
-                            </span>
+                  {slots.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-xs text-[#67677e] text-center">
+                      Belum ada slot wawancara tersedia. Hubungi tim rekrutmen untuk membuka slot baru.
+                    </div>
+                  ) : (
+                    slots.map((slot) => {
+                      const isSelected = slot.id === selectedSlotId;
+                      const isAvailable = !slot.status || slot.status === 'available';
+                      return (
+                        <div
+                          key={slot.id}
+                          onClick={() => isAvailable && setSelectedSlotId(slot.id)}
+                          className={`p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between ${
+                            !isAvailable
+                              ? 'bg-[#f4f4f6] border-[#e6e6ea] opacity-60 cursor-not-allowed'
+                              : isSelected
+                                ? 'bg-[#f8f9fc] border-[#1b55f5] shadow-xs cursor-pointer'
+                                : 'bg-white border-[#e6e6ea] hover:border-[#8ec0ff] cursor-pointer'
+                          }`}
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-[#000000]">{slot.date}</span>
+                              <span className="font-mono text-xs text-[#1b55f5] font-bold bg-[#eaf0ff] px-2 py-0.5 rounded-md">
+                                {slot.time}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[#454554]">
+                              Pewawancara: <strong>{slot.interviewer}</strong>
+                            </p>
+                            <p className="text-[10px] text-[#67677e] font-mono">
+                              Agenda: {slot.type}
+                            </p>
                           </div>
-                          <p className="text-[11px] text-[#454554]">
-                            Pewawancara: <strong>{slot.interviewer}</strong>
-                          </p>
-                          <p className="text-[10px] text-[#67677e] font-mono">
-                            Agenda: {slot.type}
-                          </p>
-                        </div>
 
-                        <div className="shrink-0 flex items-center gap-2">
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-mono font-bold border border-emerald-200">
-                            AVAILABLE
-                          </span>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            isSelected ? 'border-[#1b55f5] bg-[#1b55f5]' : 'border-gray-300'
-                          }`}>
-                            {isSelected && <span className="w-2 h-2 rounded-full bg-white"></span>}
+                          <div className="shrink-0 flex items-center gap-2">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold border ${
+                              isAvailable
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-[#e6e6ea] text-[#454554] border-[#d5d5db]'
+                            }`}>
+                              {(slot.status || 'available').toUpperCase()}
+                            </span>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              isSelected ? 'border-[#1b55f5] bg-[#1b55f5]' : 'border-gray-300'
+                            }`}>
+                              {isSelected && <span className="w-2 h-2 rounded-full bg-white"></span>}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
-              {/* Deterministic Event ID Preview */}
-              <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] text-xs space-y-1">
-                <span className="text-[10px] text-[#67677e] font-mono uppercase font-bold block">
-                  Deterministic Calendar Event ID Preview:
-                </span>
-                <code className="text-[#1b55f5] font-mono text-[11px] block truncate font-semibold">
-                  {generateMockEventId(selectedSlot.id, candidate.id)}
-                </code>
-              </div>
+              {/* Deterministic Event ID Preview (preview only — the real ID comes from the backend) */}
+              {selectedSlot && (
+                <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] text-xs space-y-1">
+                  <span className="text-[10px] text-[#67677e] font-mono uppercase font-bold block">
+                    Deterministic Calendar Event ID Preview:
+                  </span>
+                  <code className="text-[#1b55f5] font-mono text-[11px] block truncate font-semibold">
+                    {generateMockEventId(selectedSlot.id, candidateId)}
+                  </code>
+                </div>
+              )}
+
+              {/* Decision failure: the slot was NOT locked */}
+              {submitError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Jadwal belum tersimpan.</p>
+                    <p className="leading-snug">{submitError}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="pt-4 border-t border-primary-border-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -895,9 +1127,10 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
 
                 <button
                   type="button"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !selectedSlot || isQuarantined}
                   onClick={handleConfirmSchedule}
-                  className="px-6 py-2.5 bg-primary-orange hover:opacity-90 text-white font-bold text-xs rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-center"
+                  title={isQuarantined ? 'Kandidat dalam karantina keamanan' : (!selectedSlot ? 'Pilih slot terlebih dahulu' : undefined)}
+                  className="px-6 py-2.5 bg-primary-orange hover:opacity-90 text-white font-bold text-xs rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-center"
                 >
                   {isSubmitting ? (
                     <>
@@ -947,7 +1180,7 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                 <div className="py-1">
                   <span className="text-[#67677e] block mb-0.5">Event ID Transaksional:</span>
                   <code className="text-[#1b55f5] font-mono text-[10px] break-all bg-white p-1 rounded border border-[#e6e6ea] block">
-                    {bookedEvent.eventId}
+                    {bookedEvent.eventId || 'Tidak dilaporkan backend — cek status notifikasi di bawah'}
                   </code>
                 </div>
               </div>
@@ -959,10 +1192,10 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
               <div className="pt-2">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={goBack}
                   className="px-6 py-2.5 bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-semibold rounded-xl shadow-xs transition-all"
                 >
-                  Selesai &amp; Tutup
+                  Selesai &amp; Kembali ke Daftar
                 </button>
               </div>
             </div>
@@ -1023,6 +1256,16 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                   {isSubmitting ? 'Memproses Penolakan...' : 'Konfirmasi Penolakan Berkas'}
                 </button>
               </div>
+
+              {submitError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Penolakan belum tersimpan.</p>
+                    <p className="leading-snug">{submitError}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1046,17 +1289,16 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
               <div className="pt-2">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={goBack}
                   className="px-6 py-2.5 bg-[#2b2d32] hover:bg-[#1f2127] text-white text-xs font-semibold rounded-xl transition-all"
                 >
-                  Tutup
+                  Kembali ke Daftar
                 </button>
               </div>
             </div>
           )}
 
         </div>
-      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardOverview from './components/DashboardOverview';
@@ -10,6 +10,7 @@ const JobManagement = lazy(() => import('./components/JobManagement'));
 const CareerPortal = lazy(() => import('./components/CareerPortal'));
 const LoginPage = lazy(() => import('./components/LoginPage'));
 const CalendarPanel = lazy(() => import('./components/CalendarPanel'));
+const CandidateDetailPage = lazy(() => import('./components/CandidateDetailPage'));
 
 import { WifiOff, Sparkles } from 'lucide-react';
 
@@ -103,6 +104,7 @@ function DashboardLayout() {
   };
 
   const getTitle = () => {
+    if (location.pathname.startsWith('/admin/candidates/')) return 'Dossier Kandidat';
     return titles[location.pathname] || 'Dashboard & Triage Antrean';
   };
 
@@ -147,6 +149,7 @@ function DashboardLayout() {
                 <Route path="dashboard" element={<DashboardOverview />} />
                 <Route path="jobs" element={<JobManagement />} />
                 <Route path="calendar" element={<CalendarPanel />} />
+                <Route path="candidates/:id" element={<CandidateDetailPage />} />
                 <Route path="what-if" element={<Navigate to="/admin/jobs" replace />} />
                 <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
               </Routes>
@@ -168,6 +171,13 @@ function DashboardLayout() {
       </div>
     </div>
   );
+}
+
+// Keeps the short /candidates/:id URL working while the page itself lives in the
+// authenticated /admin/* shell.
+function CandidateAliasRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/admin/candidates/${id}`} replace />;
 }
 
 function RequireAuth({ children }) {
@@ -205,6 +215,9 @@ export default function App() {
 
           {/* Internal HR / Admin Dashboard Routes under /admin/... */}
           <Route path="/admin/*" element={<RequireAuth><DashboardLayout /></RequireAuth>} />
+
+          {/* Candidate dossier deep-link alias: same authed shell as /admin/... */}
+          <Route path="/candidates/:id" element={<RequireAuth><CandidateAliasRedirect /></RequireAuth>} />
 
           {/* Legacy root-level dashboard redirects to /admin/... */}
           <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />

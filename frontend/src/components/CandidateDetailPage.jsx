@@ -287,19 +287,22 @@ export default function CandidateDetailPage() {
     if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
   }, []);
 
-  // Merge candidate info with real backend candidate record
+  // Merge candidate info with real backend candidate record. Both sources are
+  // empty on the first render (candidate is fetched here, not passed in), so every
+  // read must tolerate null.
   const activeCandidateObj = useMemo(() => {
     const rawCandidate = candidateDetail?.candidate || {};
+    const row = candidate || {};
     return {
-      ...candidate,
+      ...row,
       ...rawCandidate,
       overall_score: rawCandidate.overall_score !== undefined && rawCandidate.overall_score !== null 
         ? rawCandidate.overall_score 
-        : candidate.overall_score,
-      recommendation: rawCandidate.recommendation || candidate.recommendation,
-      confidence_level: rawCandidate.confidence_level || candidate.confidence_level,
-      status: rawCandidate.status || candidate.status,
-      github_url: rawCandidate.github_url || candidate.verified_github || candidate.github_url,
+        : row.overall_score,
+      recommendation: rawCandidate.recommendation || row.recommendation,
+      confidence_level: rawCandidate.confidence_level || row.confidence_level,
+      status: rawCandidate.status || row.status,
+      github_url: rawCandidate.github_url || row.verified_github || row.github_url,
     };
   }, [candidate, candidateDetail]);
 
@@ -308,7 +311,7 @@ export default function CandidateDetailPage() {
   const resolvedIdentity = useMemo(() => {
     const unmasked = unmaskedIdentity || {};
     return {
-      name: unmasked.name || candidate.candidate_name_masked || 'Identitas disembunyikan',
+      name: unmasked.name || candidate?.candidate_name_masked || 'Identitas disembunyikan',
       email: unmasked.email || 'Disembunyikan',
       phone: unmasked.phone || 'Disembunyikan',
       isUnmasked: Boolean(unmasked.name || unmasked.email || unmasked.phone),

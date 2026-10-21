@@ -54,8 +54,9 @@ logging.basicConfig(
     format="%(levelname)s:     %(name)s - %(message)s",
 )
 # basicConfig is a no-op when root already has handlers (pytest, some process managers),
-# so pin the level on the package logger too; messages still propagate to root handlers.
-logging.getLogger("app").setLevel(_log_level)
+# so pin the level on root explicitly. Pinning it on a package name would not work:
+# tests import `app.*` while the systemd unit runs `backend.app.main:app`.
+logging.getLogger().setLevel(_log_level)
 
 # PRD Bab 6.3 & Bab 8.2: periodic maintenance runs on the event loop, not on request traffic.
 @asynccontextmanager

@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -42,6 +43,19 @@ tags_metadata = [
         "description": "Pemeriksaan kesiapan operasional backend FastAPI, engine MariaDB, dan gateway LLM.",
     },
 ]
+
+# Every module logs through `logging.getLogger(__name__)`, but uvicorn only attaches
+# handlers to its own `uvicorn.*` loggers — so app-level INFO (maintenance ticks,
+# fallback warnings, erasure trails) never reached stderr/journald. A root handler fixes
+# all 16 modules at once instead of renaming each logger.
+_log_level = logging.DEBUG if settings.DEBUG else logging.INFO
+logging.basicConfig(
+    level=_log_level,
+    format="%(levelname)s:     %(name)s - %(message)s",
+)
+# basicConfig is a no-op when root already has handlers (pytest, some process managers),
+# so pin the level on the package logger too; messages still propagate to root handlers.
+logging.getLogger("app").setLevel(_log_level)
 
 # PRD Bab 6.3 & Bab 8.2: periodic maintenance runs on the event loop, not on request traffic.
 @asynccontextmanager

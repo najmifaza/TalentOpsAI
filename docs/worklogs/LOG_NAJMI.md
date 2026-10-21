@@ -5,6 +5,27 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-21 - Najmi - Pembersih Slot Periodik & Klaim Append-Only Diluruskan
+- **Komponen / File:**
+  - `backend/app/core/maintenance.py` (berkas baru)
+  - `backend/app/main.py` (lifespan)
+  - `backend/app/core/config.py` (`MAINTENANCE_ENABLED`, `DEMO_PURGE_ENABLED`)
+  - `backend/app/api/audit.py` (teks `compliance.retention_policy`)
+  - `backend/tests/conftest.py` (berkas baru), `backend/tests/test_maintenance.py` (berkas baru)
+  - `docs/PRD_TALENTOPS_AI_MASTER.md` §6.1 butir 6
+- **Yang Dikerjakan:**
+  - **Akar masalah pembersih slot:** `release_expired_tentative_slots()` (`adapters/calendar.py:147`) sudah benar, tetapi satu-satunya pemanggil ada di dalam handler `GET /api/slots/available` (`slots.py:36`). Slot `tentative` karena itu hanya kembali `available` bila ada orang lain membuka daftar slot — bergantung pada lalu lintas request, bukan pada waktu. Slot yang TTL-nya lewat bisa menggantung berjam-jam dan tampak terpakai bagi kandidat lain.
+  - Menambahkan `maintenance.py` berisi dua job dan satu runner: `_run_forever()` yang membungkus tiap tick dengan `try/except` agar satu kegagalan (DB down, lock timeout) tidak mematikan loop, sementara `asyncio.CancelledError` tetap diteruskan supaya shutdown bersih.
+  - `main.py` sekarang memakai `lifespan` async context manager: task dimulai saat startup dan dibatalkan saat shutdown. Sebelumnya tidak ada `lifespan`, `asyncio.create_task`, maupun scheduler sama sekali.
+  - Interval: slot cleaner 300 detik (PRD Bab 6.3 minta 5 menit), demo purge 4 jam (PRD baris 388).
+  - **Demo purge sengaja dipisah dari `DEMO_MODE`.** Tidak ada kolom penanda unggahan demo versus dataset golden, sehingga `DELETE FROM candidates WHERE created_at < cutoff` akan menghapus **seluruh** kandidat termasuk dataset yang dipakai untuk penjurian. Karena itu ia berdiri di balik `DEMO_PURGE_ENABLED` (default `False`), bukan mengikuti `DEMO_MODE`. Kandidat yang dihapus membawa serta `candidate_evidence`, `candidate_anomalies`, `candidate_assessments`, `consent_records`, dan `human_reviews` lewat `ON DELETE CASCADE`, sementara `agent_steps` dan `pii_access_logs` memakai `SET NULL` sehingga baris auditnya bertahan — sesuai maksud append-only. Nama file CV di `resume_file_path` hanya string, tidak ada berkas fisik yang ditulis di jalur unggah, jadi tidak ada orphan file.
+  - `conftest.py` mematikan kedua flag agar loop tidak hidup melewati sesi pytest. `MAINTENANCE_ENABLED=False` juga membuat `start_background_tasks()` mengembalikan list kosong tanpa menyentuh event loop, sehingga aman dipanggil dari konteks non-async.
+  - **Append-only:** klaim `REVOKE UPDATE, DELETE` sebelumnya dicetak ke konsumen API di `audit.py:132` padahal tidak ada migrasi yang menjalankannya dan user `willy@%` di VPS masih memegang `GRANT ALL ON *.* WITH GRANT OPTION`. Teks itu diganti menjadi pernyataan jujur bahwa sifat append-only ditegakkan oleh konvensi aplikasi, bukan database engine. Keputusan pemilik: migrasi `004` REVOKE dan trigger **tidak** dikerjakan sekarang; dicatat sebagai rencana beserta jalur upgrade-nya (trigger `SIGNAL SQLSTATE '45000'` lebih kuat karena tetap berlaku bagi user dengan hak penuh).
+- **Status & Verifikasi:** Selesai. `pytest tests/` → **220 passed** (217 sebelumnya + 3 test baru: flag mati mengembalikan list kosong, demo purge hanya muncul saat flag-nya dinyalakan, dan `_run_forever` tetap berjalan setelah satu tick melempar exception). Perintah harus dijalankan dari `backend/` karena `conftest.py` mengimpor `app.core.config`.
+- **Rencana Selanjutnya:** Setelah deploy, cek `journalctl -u talentops-backend` memuat `maintenance: started maintenance:slot-cleaner` saat startup, dan pastikan tidak muncul traceback tick. Uji perilaku nyata: kunci slot dengan `tentative_minutes` kecil, tunggu TTL lewat, lalu verifikasi slot kembali `available` tanpa ada request apa pun. `DEMO_PURGE_ENABLED` jangan dinyalakan di DB yang memuat dataset penjurian.
+
+---
+
 ### 2026-10-21 - Najmi - init_db.py Tidak Lagi Mencetak Password Database
 - **Komponen / File:**
   - `backend/scripts/init_db.py`

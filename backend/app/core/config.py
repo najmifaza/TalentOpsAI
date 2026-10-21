@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: str = ""
     DEMO_MODE: bool = False
 
+    # --- Periodic background maintenance (app/core/maintenance.py) ---------
+    # MAINTENANCE_ENABLED: slot `tentative` cleaner, every 5 minutes (PRD Bab 6.3).
+    # Disabled under pytest so the loop does not outlive the test session.
+    MAINTENANCE_ENABLED: bool = True
+    # DEMO_PURGE_ENABLED: hard-delete candidates older than 4 hours (PRD Bab 8.2).
+    # Separate from DEMO_MODE on purpose: the purge deletes every candidate past the
+    # cutoff, including the seeded judging dataset. Enable only on a throwaway demo DB.
+    DEMO_PURGE_ENABLED: bool = False
+
     # Multi-worker state backend (SSE broadcaster, tickets, triage semaphore).
     # Empty string or unreachable Redis => graceful in-memory fallback (single-worker only).
     REDIS_URL: str = ""

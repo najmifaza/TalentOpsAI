@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from .core.config import settings
+from .core.maintenance import start_background_tasks, stop_background_tasks
 from .api.health import router as health_router
 from .api.auth import router as auth_router
 from .api.careers import router as careers_router
@@ -41,9 +43,18 @@ tags_metadata = [
     },
 ]
 
+# PRD Bab 6.3 & Bab 8.2: periodic maintenance runs on the event loop, not on request traffic.
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    tasks = start_background_tasks()
+    yield
+    await stop_background_tasks(tasks)
+
+
 app = FastAPI(
     title=f"{settings.APP_NAME} - Core Engine",
     version="2.5.2",
+    lifespan=lifespan,
     description="""
 # TalentOps AI: Human-Centric Agentic Recruitment Web Ecosystem
 

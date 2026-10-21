@@ -129,7 +129,9 @@ async def get_system_audit_trail(
             "pii_governance": pii_logs,
         },
         "compliance": {
-            "retention_policy": "Append-Only Immutable Audit Trail (REVOKE UPDATE, DELETE)",
+            # Honest wording: no UPDATE/DELETE path exists in the application layer, but
+            # there is no DB-level REVOKE or trigger yet, so do not claim one.
+            "retention_policy": "Append-Only by application convention (DB-level REVOKE/trigger not yet enforced)",
             "legal_basis": "UU No. 27/2022 tentang Pelindungan Data Pribadi & ISO 27001",
         },
     }

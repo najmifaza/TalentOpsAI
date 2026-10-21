@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardOverview from './components/DashboardOverview';
@@ -9,6 +9,7 @@ import { isAuthenticated } from './lib/api';
 const JobManagement = lazy(() => import('./components/JobManagement'));
 const CareerPortal = lazy(() => import('./components/CareerPortal'));
 const LoginPage = lazy(() => import('./components/LoginPage'));
+const CalendarPanel = lazy(() => import('./components/CalendarPanel'));
 
 import { WifiOff, Sparkles } from 'lucide-react';
 
@@ -70,8 +71,17 @@ class ErrorBoundary extends React.Component {
 
 function DashboardLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // Google redirects back to /admin/dashboard?calendar=<result>; hand the result
+  // to the calendar panel instead of dropping it.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has('calendar')) {
+      navigate(`/admin/calendar${location.search}`, { replace: true });
+    }
+  }, [location.search, navigate]);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -89,6 +99,7 @@ function DashboardLayout() {
     '/admin/dashboard': 'Dashboard & Triage Antrean',
     '/admin/jobs': 'Kelola Lowongan & Konfigurasi Bobot 4D',
     '/admin/what-if': 'Kelola Lowongan & Konfigurasi Bobot 4D',
+    '/admin/calendar': 'Integrasi Google Calendar',
   };
 
   const getTitle = () => {
@@ -135,6 +146,7 @@ function DashboardLayout() {
                 <Route index element={<DashboardOverview />} />
                 <Route path="dashboard" element={<DashboardOverview />} />
                 <Route path="jobs" element={<JobManagement />} />
+                <Route path="calendar" element={<CalendarPanel />} />
                 <Route path="what-if" element={<Navigate to="/admin/jobs" replace />} />
                 <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
               </Routes>

@@ -268,20 +268,34 @@ class DeterministicScoringEngine:
     @staticmethod
     def _collapse_exact_duplicates(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Merges rows that name the same technology with different casing/punctuation
-        ("Next.js" vs "nextjs") and cover the same requirement. Rows naming the same
-        technology for *different* requirements are kept: each one is the only record
-        that requirement is covered by.
+        One node per technology. The engine emits a row per (technology, requirement)
+        pair, so a CV listing only "PostgreSQL" for two database requirements used to
+        render as two identical nodes. Requirements are folded into the surviving row's
+        `matched_requirement` so coverage is not lost.
         """
-        kept: Dict[tuple, Dict[str, Any]] = {}
+        kept: Dict[str, Dict[str, Any]] = {}
+        requirements: Dict[str, List[str]] = {}
+
         for rec in records:
             key = normalize_technology_key(rec.get("target_competency") or "")
             if not key:
                 continue
-            bucket = (key, rec.get("matched_requirement"))
-            existing = kept.get(bucket)
+
+            requirement = rec.get("matched_requirement")
+            if requirement:
+                bucket = requirements.setdefault(key, [])
+                if requirement not in bucket:
+                    bucket.append(requirement)
+
+            existing = kept.get(key)
             if existing is None or (rec.get("score_contribution") or 0) > (existing.get("score_contribution") or 0):
-                kept[bucket] = rec
+                kept[key] = rec
+
+        for key, rec in kept.items():
+            joined = ", ".join(requirements.get(key) or [])
+            # Column is VARCHAR(100); keep it well inside the limit.
+            rec["matched_requirement"] = joined[:100] if joined else None
+
         return list(kept.values())
 
     @classmethod
@@ -420,8 +434,12 @@ class DeterministicScoringEngine:
                 ),
             })
 
-        # Check full-time overlap > 3 months
-        full_time_roles = [t for t in timeline if t.get("employment_type", "full_time") == "full_time"]
+        # Check full-time overlap > 3 months. Roles without a start date cannot be
+        # placed on a timeline, so they are skipped rather than defaulted to "now".
+        full_time_roles = [
+            t for t in timeline
+            if t.get("employment_type", "full_time") == "full_time" and str(t.get("start") or "").strip()
+        ]
         for i in range(len(full_time_roles)):
             for j in range(i + 1, len(full_time_roles)):
                 r1_start = parse_date_to_months(str(full_time_roles[i].get("start", "")))

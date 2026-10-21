@@ -5,6 +5,22 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 
 ---
 
+### 2026-10-21 - Fardizza - Career Gap `company: null` & Satu Node per Teknologi
+- **Komponen / File:**
+  - `backend/app/schemas/extraction.py`
+  - `backend/app/core/scoring.py`
+  - `backend/tests/test_evidence_traceability.py`
+- **Catatan:** Dikerjakan & di-commit atas nama Fardizza, tindak lanjut laporan deploy VPS. Commit sebelumnya `7d33e60` hanya menyembuhkan `employment_type`; validasi berikutnya muncul di field lain.
+- **Yang Dikerjakan:**
+  - `CareerTimelineItem` sekarang menerima `null` pada `role`, `company`, `start`, `end`. LLM mengeluarkan `company: null` untuk baris jeda karier, dan satu nilai `null` menggagalkan seluruh `CandidateExtractionSchema` sehingga kandidat turun ke heuristic fallback. `role`/`company` kosong dinormalisasi menjadi `"-"` agar tidak tampil sebagai kartu kosong; `start`/`end` kosong dibiarkan `""`.
+  - `evaluate_risk` melewati baris timeline tanpa `start`. Sebelumnya `parse_date_to_months("")` jatuh ke nilai "sekarang", sehingga baris tanpa tanggal bisa dibandingkan dengan tanggal palsu.
+  - `_collapse_exact_duplicates` sekarang mengelompokkan **per nama teknologi saja**, bukan per pasangan (teknologi, requirement). Kandidat yang CV-nya hanya menulis "PostgreSQL" untuk dua requirement database sebelumnya tampil sebagai dua node identik. Requirement yang tercakup digabung ke `matched_requirement` baris yang bertahan (dipisah koma, dipotong 100 karakter sesuai lebar kolom), dan baris dengan skor tertinggi yang dipertahankan. Skor tidak berubah karena `match_scores` tidak disentuh.
+  - Tes: ditambah 3 — `company: null` tidak meruntuhkan skema, tanggal kosong tidak memicu overlap palsu, dan satu teknologi yang menutup dua requirement menjadi satu node dengan kedua requirement di badge.
+- **Status & Verifikasi:** Selesai. `pytest backend/tests/` → **215 passed**.
+- **Rencana Selanjutnya:** Triage ulang kandidat yang masih fallback (5, 8, 10, 13, 14) dan periksa alasan fallback masing-masing di `journalctl` — laporan VPS hanya menyebut alasan untuk ID 5.
+
+---
+
 ### 2026-10-21 - Fardizza - Koreksi Hitungan Bulan Overlap & Ketahanan Skema Ekstraksi
 - **Komponen / File:**
   - `backend/app/core/scoring.py`

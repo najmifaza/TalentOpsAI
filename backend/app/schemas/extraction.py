@@ -55,8 +55,8 @@ class ClaimItem(BaseModel):
 class CareerTimelineItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    role: str = Field(description="Job title or role name")
-    company: str = Field(description="Company identifier or pseudonymized tag")
+    role: str = Field(default="-", description="Job title or role name")
+    company: str = Field(default="-", description="Company identifier or pseudonymized tag")
     is_relevant_role: bool = Field(
         default=True,
         description="True if role aligns with target job domain",
@@ -64,8 +64,28 @@ class CareerTimelineItem(BaseModel):
     employment_type: Literal[
         "full_time", "part_time", "contract", "internship", "freelance"
     ] = "full_time"
-    start: str = Field(description="Start date formatted YYYY-MM or YYYY")
-    end: str = Field(description="End date formatted YYYY-MM, YYYY, or 'present'")
+    start: str = Field(default="", description="Start date formatted YYYY-MM or YYYY")
+    end: str = Field(default="", description="End date formatted YYYY-MM, YYYY, or 'present'")
+
+    @field_validator("role", "company", "start", "end", mode="before")
+    @classmethod
+    def coerce_missing_text(cls, value):
+        """
+        The model emits null for fields a career-gap entry has no answer for
+        (company: null). A single null used to fail the whole CandidateExtractionSchema
+        and silently drop the candidate to heuristic fallback.
+        """
+        if value is None:
+            return ""
+        if not isinstance(value, str):
+            return str(value)
+        return value.strip()
+
+    @field_validator("role", "company")
+    @classmethod
+    def label_blank_as_dash(cls, value):
+        """Blank after coercion reads as a missing value in the UI, not an empty card."""
+        return value or "-"
 
     @field_validator("employment_type", mode="before")
     @classmethod

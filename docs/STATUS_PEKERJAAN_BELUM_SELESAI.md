@@ -1,8 +1,8 @@
 # Status Pekerjaan Backend — Apa yang Belum Selesai
 
-**Terakhir diperbarui:** 21 Oktober 2026 (revisi kedua)
-**Branch acuan:** `main` @ `69c904a`
-**Status pengujian:** `uv run pytest backend/tests -q` → **202 passed, 0 failed**
+**Terakhir diperbarui:** 21 Oktober 2026 (revisi keempat)
+**Branch acuan:** `main` @ `2b04e75`
+**Status pengujian:** `pytest backend/tests -q` → **217 passed, 0 failed**
 
 Dokumen ini mendaftar pekerjaan yang **belum** selesai setelah lima item penguatan backend
 (auth/RBAC, Redis multi-worker, PDF hidden-text, integrasi eksternal, sanitasi PII).
@@ -25,6 +25,12 @@ sudah dibersihkan — 398 baris, 0 tersisa (§5.1).
 **Revisi ketiga:** pembersihan produksi selesai dan diverifikasi. Satu klaim di revisi kedua
 dikoreksi: anomali palsu itu **tidak** menaikkan `triage_priority` kandidat mana pun (§3.5).
 Tidak ada lagi pekerjaan yang murni kode tanpa masukan luar.
+
+**Revisi keempat:** Evidence Graph diperbaiki agar sinkron dengan isi CV dan anomalinya
+berbahasa manusia (§6), lalu tiga cacat susulan ditemukan dari laporan operator VPS dan
+diperbaiki berurutan (§6.4). Pengerasan keamanan VPS juga dilakukan — port 3306 ditutup dari
+publik dan dua password database dirotasi (§7). Seluruh kandidat sudah di-triage ulang; tidak
+ada lagi yang jatuh ke heuristic fallback.
 
 ---
 
@@ -394,6 +400,10 @@ Hasil:
 | Kandidat #17 (`#TK-2FD8DC`) anomali tersisa | `CONCURRENT_FULLTIME_OVERLAP_23_MONTHS` (HIGH) — sah |
 | Kandidat #4 (`#TK-D99A12`) | `HIGH_ATTENTION` + `PROMPT_INJECTION` tetap utuh |
 
+> **Catatan revisi keempat:** anomali #17 kini bertipe `CONCURRENT_FULLTIME_OVERLAP` tanpa angka
+> di kode, dengan deskripsi "24 bulan". Angka 23 pada tabel di atas adalah rekaman saat
+> pembersihan 21 Oktober; perbaikan hitungan dan triage ulang mengoreksinya menjadi 24 (§6.4).
+
 Temuan penting: **eskalasi `triage_priority` palsu ternyata tidak pernah terjadi.** #16 dan #17
 sudah `STANDARD` sebelum pembersihan, jadi `UPDATE` memang no-op — bukan karena filter bekerja,
 tapi karena tidak ada yang perlu diperbaiki. Yang benar-benar merusak hanya 398 baris sampah
@@ -405,6 +415,149 @@ tapi karena tidak ada yang perlu diperbaiki. Yang benar-benar merusak hanya 398 
 Rollback bila diperlukan: `INSERT INTO candidate_anomalies SELECT * FROM
 candidate_anomalies_bak_20261021;` — nilai `triage_priority` yang sudah di-reset tidak ikut
 kembali, karena `UPDATE` no-op maka tidak ada yang perlu dipulihkan.
+
+---
+
+## 6. Evidence Graph — Sinkron dengan CV & Anomali yang Menjelaskan Diri
+
+> **Status bagian ini: SELESAI (21 Oktober 2026).** Ditemukan dari keluhan pemakaian, bukan
+> dari test: graf bukti tidak memuat teknologi yang tertulis jelas di CV, dan kartu anomali
+> hanya menampilkan kode teknis tanpa penjelasan.
+
+### 6.1 Graf hanya memuat requirement lowongan, bukan isi CV
+
+**Berkas:** `backend/app/core/scoring.py:171`, `:214`
+
+Loop pembuatan evidence berjalan atas `core_competencies` (kebutuhan lowongan), bukan atas
+klaim CV. Akibatnya CV yang menyebut Next.js, Prisma, Tailwind, NextAuth, Supabase, dan React
+hanya menampilkan node untuk requirement backend — enam teknologi hilang dari graf meskipun
+terbaca jelas oleh parser. Jumlah node maksimum selalu sama dengan jumlah requirement lowongan,
+sehingga graf terbaca sebagai "apa yang diminta job", bukan "apa isi CV".
+
+**Perbaikan:** evidence dibuat per **teknologi CV**. Teknologi yang tidak diminta lowongan tetap
+menjadi baris dengan skor 0 dan `matched_requirement = NULL`; UI menandainya "Tidak diminta
+lowongan". Teknologi yang cocok diberi label "Memenuhi syarat: X".
+
+### 6.2 Anomali hanya berupa kode, tanpa konteks
+
+**Berkas:** `backend/app/core/triage_service.py:297`, `:304`; `backend/app/core/scoring.py:354`
+
+Isi `description` satu-satunya adalah `f"Automated risk detection flag: {flag}"`, dan
+`suggested_verification` di-hardcode `"Review during HR interview."`. Flag-nya sendiri hanya
+berupa `CONCURRENT_FULLTIME_OVERLAP_{n}_MONTHS` — tanpa peran, perusahaan, atau periode. HR
+menerima kode yang tidak bisa ditindaklanjuti.
+
+**Perbaikan:** `evaluate_risk` mengembalikan tiga nilai `(risk, flags, details)`; `details`
+memuat deskripsi manusia, periode overlap, kedua peran dan perusahaan, serta
+`suggested_verification` yang spesifik. `anomaly_details` disimpan ke
+`candidate_anomalies`. Contoh keluaran sekarang: *"Dua pekerjaan penuh waktu berjalan bersamaan
+selama 24 bulan (2024-01 s/d 2025-12): 'Guru KMI' di Pondok Modern Tazakka tumpang tindih dengan
+'Staff Media' di Media Center Pondok Modern Tazakka."*
+
+### 6.3 Kutipan parafrase tampil sebagai kutipan verbatim
+
+**Berkas:** `backend/app/schemas/extraction.py:95`
+
+Substring guard hanya menurunkan `has_implementation_detail` saat narasi tidak ditemukan di teks
+CV; `context_narrative` tetap tersimpan. UI lalu menampilkan parafrase LLM dengan label "Kutipan
+Asli CV". Itu klaim integritas yang tidak benar.
+
+**Perbaikan:** guard men-null-kan `context_narrative` dan `metric_string` saat gagal. Lebih baik
+kosong daripada menampilkan teks yang tidak ada di CV. Di UI, label "Kutipan Asli CV" hanya
+muncul bila `verified`; selain itu "Sebutan di CV" atau "Belum terverifikasi".
+
+### 6.4 Cacat susulan dari laporan operator VPS
+
+Setelah deploy, operator melaporkan hasil triage ulang. Tiga cacat ditemukan, dua di antaranya
+kesalahan penulis sendiri:
+
+| # | Cacat | Sebab | Perbaikan |
+|---|---|---|---|
+| 1 | Overlap dilaporkan 23 bulan untuk periode 2024-01 s/d 2025-12 | `evaluate_risk` memakai selisih eksklusif sementara `merge_employment_intervals` memakai `end - start + 1` — dua konvensi di satu berkas | Keduanya inklusif; periode itu = 24 bulan. Ambang klasifikasi tidak berubah |
+| 2 | Lima kandidat jatuh ke heuristic fallback | `Literal` ketat pada output LLM; satu label meleset menggagalkan seluruh `CandidateExtractionSchema` | `_match_enum()` di ketiga field enum (§6.5) |
+| 3 | Node teknologi dobel (PostgreSQL dua kali) | Dedupe mengelompokkan per pasangan (teknologi, requirement) | Satu node per nama teknologi; requirement digabung ke `matched_requirement` |
+
+**Kesalahan penulis yang perlu dicatat.** Tes overlap awalnya menegaskan 16 bulan, gagal (kode
+memberi 15), lalu **tesnya** yang diubah menjadi 15 — memaksa tes setuju dengan kode yang salah.
+Assertion sudah dikembalikan ke 16. Tes harus menjadi pengukur, bukan yang disesuaikan.
+
+### 6.5 `Literal` ketat pada output LLM — akar masalah, bukan gejala
+
+Bug yang sama muncul **tiga kali berturut-turut**, masing-masing di kandidat berbeda, dan
+gejalanya bergeser setiap kali satu field ditambal:
+
+1. `employment_type = 'career_break'` → kandidat ID 5
+2. `company = null` pada baris jeda karier → kandidat ID 5 (setelah tambalan pertama)
+3. `graduation_status = 'Sedang Menempuh Pendidikan'` → kandidat ID 8
+
+Tambalan per field akan terus memunculkan field berikutnya. **Perbaikan:** `_match_enum()` —
+cocok persis, lalu tabel alias, lalu pencocokan substring (alias terpanjang lebih dulu, agar
+"belum lulus" tidak terbaca "lulus"), terakhir nilai fallback. Tidak pernah melempar error
+validasi. Dipasang di `ClaimItem.dimension`, `CareerTimelineItem.employment_type`, dan
+`EducationItem.graduation_status`, plus toleransi `null` pada `technology`, `degree`,
+`field_of_study`, `role`, `company`, `start`, `end`.
+
+**Pelajaran untuk kode berikutnya:** jangan pasang `Literal` ketat pada field yang diisi model
+bahasa. Pakai validator dengan alias sejak awal.
+
+### 6.6 Batas yang masih berlaku
+
+- **Label rekomendasi masih template.** `aiExplanation` di frontend menyusun narasi dari
+  `switch` pada `recommendation`, bukan dari keluaran model. Labelnya sudah diubah menjadi
+  "Template Kategori Rekomendasi" dengan badge `TEMPLATE`, dan memakai `rationale` backend bila
+  tersedia. Untuk narasi per kandidat yang benar-benar dari AI, backend perlu mengembalikan
+  field rationale dari triage.
+- **Anomali tetap perlu triage ulang.** Teks anomali disimpan saat triage, bukan dihitung saat
+  halaman dibuka. Perbaikan kode tidak mengubah baris lama — semua kandidat sudah di-triage
+  ulang 21 Oktober 2026, tetapi kandidat baru yang masuk sebelum deploy akan memakai format lama.
+- **Ambang overlap >3 bulan** berasal dari PRD, belum divalidasi terhadap data karier nyata.
+
+---
+
+## 7. Pengerasan Keamanan VPS (21 Oktober 2026)
+
+Ditemukan dari laporan operator saat menjalankan migrasi, bukan dari audit terjadwal.
+
+### 7.1 Password database tercetak di log — SELESAI
+
+`backend/scripts/init_db.py:21` mencetak `settings.SYNC_DATABASE_URL` utuh, sehingga password
+user MariaDB muncul di stdout, riwayat shell, dan `journalctl` setiap kali migrasi dijalankan.
+Nilai itu ikut tersalin ke laporan eksekusi dan ke log internal agent CLI di
+`/home/willynaren/.gemini/antigravity-cli/brain/steps/`.
+
+**Perbaikan:** `_mask_dsn()` mengganti bagian password menjadi `***` sebelum dicetak; DSN asli
+tetap dipakai untuk `create_engine`.
+
+**Rotasi:** password `talentops_app` dan `willy` sudah diganti, password lama ditolak
+(`ERROR 1045`). Password `willy` (32 karakter acak) disimpan di
+`/root/.talentops-willy-db-pass` mode `0600`. Journal dibersihkan (`--vacuum-time=1s`, 173,8 MB)
+dan file log yang memuat DSN dihapus.
+
+### 7.2 Port 3306 terbuka ke publik — SELESAI
+
+`/etc/mysql/mariadb.conf.d/50-server.cnf:27` berisi `bind-address = 0.0.0.0` dan UFW
+`inactive`, sehingga MariaDB dapat dijangkau dari internet. Ditemukan bersamaan dengan
+pemeriksaan sebelum rotasi password.
+
+**Perbaikan:** `bind-address = 127.0.0.1`, MariaDB di-restart. Verifikasi: hanya
+`127.0.0.1:3306` yang listen. Backup konfigurasi di `/root/50-server.cnf.bak.2026-10-21_0528`.
+Pre-check sebelum perubahan: seluruh koneksi `established` berasal dari `127.0.0.1` dan tidak ada
+sesi eksternal, sehingga tidak ada klien yang terputus.
+
+### 7.3 Yang masih terbuka
+
+- **`willy@%` tetap ada** dengan `GRANT ALL PRIVILEGES ON *.* WITH GRANT OPTION`. Host wildcard
+  kini tidak berbahaya dari luar (port tertutup), tetapi akun ini setara root DB dan dapat
+  memberi izin ke akun lain. **Diputuskan dibiarkan** oleh pemilik sistem. Bila berubah pikiran:
+  `DROP USER 'willy'@'%'` (tidak ada cron, systemd unit, atau sesi yang memakainya) atau batasi
+  ke `'willy'@'localhost'`.
+- **UFW masih `inactive`.** Jangan diaktifkan tanpa `ufw allow 22/tcp` lebih dulu — urutan yang
+  salah akan memutus SSH dan mengunci akses ke VPS. Sebaiknya lewat console penyedia, bukan SSH.
+- **Agent CLI merekam rahasia ke disk.** Setiap perintah yang mencetak secret tersimpan di
+  `~/.gemini/antigravity-cli/brain/steps/*/output.txt`. Jangan jalankan perintah berisi password
+  lewat agent; pakai `MYSQL_PWD` atau `--defaults-extra-file`.
+- **`mysql_native_password`** masih dipakai `willy`. Hash SHA1, sudah deprecated. Bila akun itu
+  dipertahankan, pertimbangkan `caching_sha2_password`.
 
 ---
 
@@ -420,6 +573,9 @@ kembali, karena `UPDATE` no-op maka tidak ada yang perlu dipulihkan.
 | 6 | Simpan identitas asli pada jalur dropzone | Melengkapi item 5 agar identitas bisa dibuka secara sah | Belum — butuh keputusan produk |
 | 7 | Sambungkan UI kalender, notifikasi, badge residual risk | Membuat fitur backend terlihat | **Selesai** — `0647247`, `dbc41ed`, `a2909ca` |
 | 8 | Bersihkan baris `PDF_MICRO_IMAGE` lama + reset `triage_priority` palsu | Perbaikan kode tidak menyentuh data yang sudah masuk | **Selesai** 21 Okt 2026 — 398 baris dihapus, §5.1 |
+| 9 | Sinkronkan Evidence Graph dengan isi CV + anomali berbahasa manusia | Graf terbaca HR sebagai isi CV, bukan daftar requirement | **Selesai** — `22d7292`, `f39af8a`, `50d2e5f`, §6 |
+| 10 | Tutup `bind-address` 3306 + rotasi password DB | Port DB terbuka ke internet dengan UFW mati | **Selesai** — `127.0.0.1`, kedua password dirotasi, §7 |
+| 11 | Hilangkan `Literal` ketat pada output LLM | Satu label meleset = seluruh ekstraksi gagal; sudah terulang 3× | **Selesai** — `_match_enum()`, §6.5 |
 
 Catatan: prioritas 4 dan 6 butuh masukan dari luar repositori. Prioritas 4 butuh akun Google
 Cloud + Resend (dan domain pengirim terverifikasi). Prioritas 6 butuh keputusan produk lebih
@@ -427,8 +583,8 @@ dulu: dari mana identitas asli diperoleh pada jalur dropzone — kolom form tamb
 atau ekstraksi header dengan konfirmasi HR — karena sanitizer sengaja tidak menyimpan nilai yang
 ia redaksi. Prioritas 8 hanya butuh akses ke MariaDB produksi.
 
-**Tidak ada lagi pekerjaan yang murni kode tanpa masukan luar.** Prioritas 8 sudah selesai; sisa
-daftar ini seluruhnya menunggu keputusan produk (6), kredensial eksternal (4), atau pihak
+**Tidak ada lagi pekerjaan yang murni kode tanpa masukan luar.** Prioritas 8–11 sudah selesai;
+sisa daftar ini seluruhnya menunggu keputusan produk (6), kredensial eksternal (4), atau pihak
 ketiga/Vercel (domain).
 
 ---
@@ -442,6 +598,8 @@ ketiga/Vercel (domain).
 | 3. PDF hidden-text | `d5649e0`, `550998e` | Siap produksi (batas: tanpa OCR). `550998e` memperbaiki false positive `PDF_MICRO_IMAGE` (§3.5) |
 | 4. Integrasi eksternal | `7314d98`, `b4f2b2d` | Kode selesai; **belum pernah live** |
 | 5. Sanitasi PII | `eba88bc` | Siap produksi (batas: tanpa NER); recall terukur 100% pada 25 CV riil |
+| 6. Evidence Graph | `22d7292`, `f39af8a`, `50d2e5f` | **Aktif & terverifikasi live** — evidence per teknologi CV, anomali berbahasa manusia, kolom `matched_requirement`/`verified` (§6) |
+| 7. Pengerasan VPS | `211cc0f` | **Aktif** — password DB tidak lagi tercetak; `bind-address` 3306 ditutup, kedua password dirotasi (§7) |
 
 Commit sesi ini (21 Oktober 2026):
 
@@ -481,3 +639,26 @@ Catatan: commit `b4f2b2d` (konfirmasi erasure pada withdraw) dan `eba88bc` (sani
 juga menutup dua kekurangan yang sebelumnya tidak tercatat — template `erasure_confirmation`
 yang tidak pernah dipakai, dan jalur dropzone yang masih hanya mengaudit DOCX sehingga PDF
 tidak diperiksa teks tersembunyinya.
+
+Commit revisi keempat (branch `feat/ai-evidence-traceability`, `fix/ai-overlap-months-and-schema-resilience`,
+`fix/ai-null-company-and-tech-dedupe`, `fix/ai-enum-normalization`):
+
+| Commit | Isi |
+|---|---|
+| `22d7292` | Evidence per teknologi CV, `months_to_label`, `evaluate_risk` → 3-tuple, substring guard men-null-kan narasi |
+| `f39af8a` | Migrasi `003_evidence_verification.sql`, persist `matched_requirement`/`verified`/`anomaly_details`, hapus anomali lama sebelum re-triage |
+| `50d2e5f` | `EvidenceGraph` lane anomali terpisah, label verified/unverified, confidence dari severity |
+| `7d33e60` | Hitungan bulan overlap inklusif; `employment_type` asing tidak menjatuhkan ekstraksi |
+| `211cc0f` | `_mask_dsn()` — password DB tidak lagi tercetak |
+| `a3dd009` | Terima `company: null`; satu node per nama teknologi |
+| `8fa3778` | `_match_enum()` di ketiga field enum — akar masalah `Literal` ketat |
+| `fe339da`, `8bbc7e6`, `c2da6cd`, `2b04e75` | Merge `--no-ff` ke `main` |
+
+Triage ulang produksi (bukan commit, dijalankan lewat API):
+
+| Operasi | Hasil |
+|---|---|
+| Triage ulang seluruh kandidat (2 putaran) | 17 kandidat, 0 gagal |
+| Heuristic fallback tersisa | **0** (sebelumnya 5: ID 5, 8, 10, 13, 14) |
+| Node teknologi duplikat | 0 di seluruh kandidat |
+| Anomali `#TK-2FD8DC` | 24 bulan (sebelumnya 23), menyebut kedua peran + perusahaan |

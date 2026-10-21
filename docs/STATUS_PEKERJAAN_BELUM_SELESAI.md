@@ -639,14 +639,15 @@ pencarian `sintetis`/`synthetic` di `frontend/src`. Sekarang `DemoDataBanner.jsx
 
 ### 8.5 Yang masih terbuka dari revisi ini
 
-- **Dark mode** belum ada dan tidak dikerjakan. `tailwind.config.js` tidak punya `darkMode`, dan
-  `App.jsx:195` justru menghapus class `dark` serta `localStorage` theme setiap kali halaman
-  dimuat — ada kode yang sengaja mematikannya. PRD hari 6–8 masih menyebut dark mode; klaim itu
-  perlu dihapus dari PRD atau fiturnya dibangun. **Belum diputuskan.**
-- **PRD §2 menjual lebih rendah dari kenyataan:** baris 58 dan 60 masih menulis Calendar Adapter
-  dan Candidate Dispatcher sebagai `[MVP]` mock, padahal yang terpasang OAuth2 Google Calendar
-  dan Resend asli. Perlu dinaikkan ke `[TARGET]` agar proposal tidak merendahkan diri sendiri.
-  **Belum diperbaiki.**
+- **Dark mode — DIBATALKAN** atas keputusan pemilik. Klaim "Dashboard HR modern (Dark mode)"
+  di PRD hari 6–8 sudah dihapus dan diganti "light theme WebEkspor, kontras WCAG AA".
+  `App.jsx` sebelumnya memaksa `classList.remove('dark')` serta menghapus `localStorage`
+  `talentops-theme` setiap kali halaman dimuat — efek itu ikut dihapus karena tidak ada lagi
+  dark mode yang perlu ditolak. `tailwind.config.js` tetap tanpa `darkMode`.
+- **PRD §2 — SELESAI (`4de4683`).** Baris 58 dan 60 dulu menulis Calendar Adapter dan Candidate
+  Dispatcher sebagai `[MVP]` mock padahal yang terpasang OAuth2 Google Calendar dan Resend asli.
+  Keduanya sudah dinaikkan ke `[TARGET]` dengan catatan "belum diverifikasi live", dan
+  `MockCalendarAdapter` tetap disebut apa adanya karena masih menangani lock slot.
 - **Banner hanya di shell `/admin/*`.** Career Portal publik belum memasangnya karena ticker
   `fixed top-0` di sana akan bertabrakan; menempatkannya butuh penggeseran layout portal.
   **Belum dikerjakan.**
@@ -672,8 +673,8 @@ pencarian `sintetis`/`synthetic` di `frontend/src`. Sekarang `DemoDataBanner.jsx
 | 13 | Jalankan pembersih slot `tentative` secara periodik | Slot kedaluwarsa menggantung sampai ada request lain yang membuka daftar slot | **Selesai** — `bbe246f`, §8.2 |
 | 14 | Koreksi klaim append-only yang tidak ditegakkan DB | Sistem memberi tahu auditor ada kontrol yang tidak ada | **Selesai** — `bbe246f`, §8.3. Penegakan fisik ditunda |
 | 15 | Banner "Gunakan data sintetis" di UI demo | Kewajiban PRD §6.2; belum ada sama sekali | **Selesai** — `f82d002`, §8.4 |
-| 16 | Dark mode dashboard | Disebut PRD hari 6–8; `tailwind.config.js` tanpa `darkMode`, `App.jsx` sengaja mematikan | Belum — butuh keputusan: bangun atau hapus klaim |
-| 17 | Naikkan status Calendar & Dispatcher di PRD §2 ke `[TARGET]` | Yang terpasang OAuth2 Google Calendar + Resend asli, bukan mock | Belum — dokumen saja |
+| 16 | Dark mode dashboard | Disebut PRD hari 6–8; `tailwind.config.js` tanpa `darkMode`, `App.jsx` sengaja mematikan | **Dibatalkan** — keputusan pemilik; klaim dihapus dari PRD hari 6–8, efek paksa light-mode di `App.jsx` dihapus |
+| 17 | Naikkan status Calendar & Dispatcher di PRD §2 ke `[TARGET]` | Yang terpasang OAuth2 Google Calendar + Resend asli, bukan mock | **Selesai** — `4de4683`, dengan catatan belum diverifikasi live |
 
 Catatan: prioritas 4 dan 6 butuh masukan dari luar repositori. Prioritas 4 butuh akun Google
 Cloud + Resend (dan domain pengirim terverifikasi). Prioritas 6 butuh keputusan produk lebih

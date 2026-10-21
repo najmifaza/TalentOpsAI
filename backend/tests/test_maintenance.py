@@ -68,4 +68,6 @@ def test_app_logging_reaches_stderr():
 
     root = logging.getLogger()
     assert root.handlers, "root logger has no handler; app INFO logs will be discarded"
-    assert logging.getLogger("app.core.maintenance").isEnabledFor(logging.INFO)
+    assert root.level <= logging.INFO, "root level blocks INFO; app logs will be dropped"
+    # Production runs as `backend.app.*` (systemd ExecStart), tests as `app.*`.
+    assert logging.getLogger("backend.app.core.maintenance").isEnabledFor(logging.INFO)

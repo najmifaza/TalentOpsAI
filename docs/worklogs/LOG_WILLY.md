@@ -5,6 +5,27 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-21 - Willy - What-If Simulation Studio Berperute + Kartu Lowongan di Dashboard
+- **Komponen / File:**
+  - `frontend/src/components/WhatIfStudio.jsx` (komponen baru)
+  - `frontend/src/components/DashboardOverview.jsx`
+  - `frontend/src/App.jsx` (router + judul halaman)
+- **Catatan:** Melengkapi endpoint `POST /api/jobs/{id}/simulate-policy` (`backend/app/api/jobs.py:231`) yang sudah ada beserta test-nya, tetapi belum punya pemanggil di frontend. Route `/admin/what-if` sebelumnya hanya `Navigate` ke `/admin/jobs`.
+- **Yang Dikerjakan:**
+  - `WhatIfStudio.jsx`: 4 slider bobot dimensi (SKILL/EXPERIENCE/EDUCATION/PORTFOLIO) + slider passing grade 50–90, keduanya memicu ulang simulasi otomatis dengan debounce 350 ms. Endpoint-nya murni in-memory tanpa panggil LLM, jadi menyeret slider aman diulang sesering apa pun.
+  - Slider passing grade dimulai di 85 (nilai cut-off produksi), bukan default 75 milik endpoint. Alasannya: baseline `overall_score` tersimpan dihitung dengan ambang 85, sehingga memulai di 75 akan mencampur efek perubahan bobot dengan efek pelonggaran ambang pada simulasi pertama. Angka 85 dipakai sebagai `min_overall_score` pertama agar delta murni berasal dari bobot.
+  - Bobot dinormalisasi di klien sebelum dikirim (`normalise()`), karena skema Pydantic menolak total di luar 0.99–1.01. Slider dibiarkan bergerak bebas tanpa saling menyesuaikan; persentase yang ditampilkan adalah hasil normalisasi, sehingga recruiter melihat bobot efektif yang benar-benar dipakai.
+  - Hasil ditampilkan dua lapis: kartu pergeseran distribusi (baseline → simulasi → delta per kategori, plus jumlah kandidat yang berpindah kategori) dan tabel peringkat ulang berisi skor baseline, skor simulasi, delta, `rule_applied`, serta badge karantina untuk kandidat terinjeksi. Baris yang berubah kategori diberi latar berbeda.
+  - `DashboardOverview.jsx`: mapping kandidat sebelumnya membuang `job_id` padahal `GET /api/candidates` mengirimnya (`candidates.py:257`). Field itu ditambahkan, lalu pool dikelompokkan per lowongan lewat `jobGroups` (useMemo) yang juga menggabungkan metadata `GET /api/jobs` untuk bobot 4D tersimpan. Section baru "Simulasi Kebijakan per Lowongan" menampilkan kartu per lowongan: judul, departemen, empat bobot, jumlah kandidat, sebaran Strong/Review/Weak, jumlah belum di-scan, dan tombol menuju studio.
+  - Tombol simulasi pada kartu dinonaktifkan bila belum ada kandidat ter-triage di lowongan itu, karena endpoint memfilter `dimension_scores IS NOT NULL` sehingga simulasinya akan kosong.
+  - `limit=50` dinaikkan ke `limit=200` pada fetch kandidat dashboard: angka pada kartu dihitung dari jendela list, sedangkan server tetap mengevaluasi seluruh pool saat simulasi. Tanpa kenaikan ini, kartu bisa melaporkan kandidat lebih sedikit daripada yang benar-benar dihitung.
+  - `App.jsx`: route `what-if/:jobId` (lazy) menggantikan `Navigate`, judul header memakai pencocokan prefix `startsWith('/admin/what-if')` karena path memuat segmen dinamis, dan redirect legacy `/what-if` diarahkan ke `/admin/dashboard` (bukan `/admin/jobs`) karena studio kini butuh `jobId`.
+  - Tidak ada entri Sidebar untuk studio: route-nya butuh `jobId`, sehingga link statis akan rusak. Pintu masuknya adalah kartu lowongan di dashboard.
+- **Status & Verifikasi:** Selesai. `node node_modules/vite/bin/vite.js build` dari `frontend/` sukses (1781 modul, chunk `WhatIfStudio` 11.33 kB / gzip 3.43 kB). `pytest backend/tests/test_simulate_policy.py` 2 passed. Belum diuji visual di browser.
+- **Rencana Selanjutnya:** Uji manual: buka dashboard → kartu lowongan dengan kandidat ter-triage → geser bobot dan passing grade → pastikan delta skor konsisten dan kategori yang berpindah masuk akal. Perlu dicek juga pada lowongan berisi kandidat `#TK-2FD8DC` (overlap 24 bulan) bahwa kandidat itu tidak tiba-tiba naik ke STRONG_MATCH hanya karena bobot berubah.
+
+---
+
 ### 2026-10-21 - Willy - Evidence Graph Sinkron dengan CV & Anomali Berbahasa Manusia
 - **Komponen / File:**
   - `frontend/src/components/EvidenceGraph.jsx`

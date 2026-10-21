@@ -11,6 +11,7 @@ const CareerPortal = lazy(() => import('./components/CareerPortal'));
 const LoginPage = lazy(() => import('./components/LoginPage'));
 const CalendarPanel = lazy(() => import('./components/CalendarPanel'));
 const CandidateDetailPage = lazy(() => import('./components/CandidateDetailPage'));
+const WhatIfStudio = lazy(() => import('./components/WhatIfStudio'));
 
 import { WifiOff, Sparkles } from 'lucide-react';
 
@@ -105,6 +106,7 @@ function DashboardLayout() {
 
   const getTitle = () => {
     if (location.pathname.startsWith('/admin/candidates/')) return 'Dossier Kandidat';
+    if (location.pathname.startsWith('/admin/what-if')) return 'What-If Policy Simulation Studio';
     return titles[location.pathname] || 'Dashboard & Triage Antrean';
   };
 
@@ -150,7 +152,7 @@ function DashboardLayout() {
                 <Route path="jobs" element={<JobManagement />} />
                 <Route path="calendar" element={<CalendarPanel />} />
                 <Route path="candidates/:id" element={<CandidateDetailPage />} />
-                <Route path="what-if" element={<Navigate to="/admin/jobs" replace />} />
+                <Route path="what-if/:jobId" element={<WhatIfStudio />} />
                 <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
               </Routes>
             </Suspense>
@@ -222,7 +224,7 @@ export default function App() {
           {/* Legacy root-level dashboard redirects to /admin/... */}
           <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/jobs" element={<Navigate to="/admin/jobs" replace />} />
-          <Route path="/what-if" element={<Navigate to="/admin/jobs" replace />} />
+          <Route path="/what-if" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/evidence-graph" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/evidence-graph/:candidateId" element={<Navigate to="/admin/dashboard" replace />} />
 

@@ -5,6 +5,23 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-21 - Najmi - Skrip Seed Slot Wawancara (tabel tidak pernah terisi)
+- **Komponen / File:**
+  - `backend/scripts/seed_interview_slots.py` (berkas baru)
+  - `backend/tests/test_seed_interview_slots.py` (berkas baru, 4 test)
+- **Catatan:** Ditemukan setelah purge DB produksi: `SELECT COUNT(*) FROM interview_slots` → 0, dan bukan karena purge.
+- **Yang Dikerjakan:**
+  - **Akar masalah:** tidak ada satu pun jalur kode yang melakukan `INSERT INTO interview_slots`. `slots.py` hanya punya `GET /available` dan `POST /reserve` — tidak ada endpoint pembuat slot — dan kedua skrip seed yang ada (`seed_data.py`, `seed_demo_candidates.py`) tidak menyentuh tabel itu. Jadi alur HITL "setujui + pilih jadwal" tidak punya slot untuk dipilih sejak awal, dan panel kalender tampil kosong. Gejalanya tidak terlihat sampai kandidat benar-benar disetujui, karena tombol jadwal baru aktif di tahap itu.
+  - Skrip men-generate slot relatif terhadap `datetime.now()`, bukan tanggal hardcoded: tanggal tetap akan basi dan slot lampau tidak bisa dipesan. Mulai besok, lewati Sabtu/Minggu, jam kerja 09/11/14/16, durasi 60 menit.
+  - Idempoten lewat `ON DUPLICATE KEY UPDATE id = id` — `uq_interviewer_slot (interviewer_id, start_time)` sudah ada di skema, jadi menjalankan ulang tidak menggandakan baris dan tidak menyentuh slot yang sudah `booked`.
+  - `--days`, `--per-day`, `--interviewer` bisa diatur; default 10 hari kerja × 4 slot = 40 slot untuk user id 1.
+  - Skrip berhenti dengan pesan jelas bila interviewer id tidak ada, alih-alih gagal dengan FK error yang tidak informatif. Setelah selesai ia mencetak total/available/future dan memperingatkan bila tidak ada slot di masa depan.
+  - Test menjaga sifat yang mudah rusak tanpa terlihat: semua slot harus di masa depan, tidak ada akhir pekan, durasi konsisten, dan tidak ada `start_time` duplikat (yang akan ditolak unique key).
+- **Status & Verifikasi:** Selesai. `pytest tests/` → **229 passed** (225 + 4 test baru).
+- **Rencana Selanjutnya:** Jalankan di VPS setelah `seed_data.py`: `../.venv/bin/python scripts/seed_interview_slots.py`. Lalu `curl /api/slots/available` harus mengembalikan 40 slot, dan modal jadwal di dossier kandidat menampilkan pilihan. Skrip ini belum dijalankan ke DB produksi.
+
+---
+
 ### 2026-10-21 - Najmi - Log Aplikasi Tidak Sampai ke journald (root cause)
 - **Komponen / File:**
   - `backend/app/main.py` (`logging.basicConfig` + level paket `app`)

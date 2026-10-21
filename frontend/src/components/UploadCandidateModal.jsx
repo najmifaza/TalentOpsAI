@@ -11,7 +11,9 @@ import {
   Mail, 
   RefreshCw,
   Sparkles,
-  Info
+  Info,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess }) {
@@ -25,6 +27,9 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  // Sanitization report returned by POST /api/candidates/upload. Kept in state so
+  // the residual-risk signal is visible instead of being discarded on close.
+  const [uploadResult, setUploadResult] = useState(null);
   const fileInputRef = useRef(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
@@ -44,6 +49,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
       } catch (e) {}
     }
     if (isOpen) {
+      setUploadResult(null);
       loadJobs();
     }
   }, [isOpen, API_BASE_URL]);
@@ -153,6 +159,14 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
         onUploadSuccess(newCandidate);
       }
 
+      // Keep the modal open when the sanitizer flagged residual risk: closing
+      // straight away would hide the only signal that a name survived redaction.
+      if (serverUploaded.sanitization) {
+        setUploadResult(serverUploaded.sanitization);
+        setFile(null);
+        return;
+      }
+
       onClose();
     } catch (err) {
       setErrorMessage(err.message || 'Gagal mengunggah berkas kandidat.');
@@ -160,6 +174,96 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
       setIsSubmitting(false);
     }
   };
+
+  if (uploadResult) {
+    const risky = Boolean(uploadResult.residual_risk);
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+        <div className="bg-white rounded-2xl border border-[#e6e6ea] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="p-5 border-b border-[#e6e6ea] flex items-center justify-between bg-[#f4f4f6]">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-xs ${risky ? 'bg-amber-500' : 'bg-emerald-600'}`}>
+                {risky ? <ShieldAlert className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#000000] font-display">
+                  Berkas Masuk Antrean
+                </h3>
+                <p className="text-xs text-[#67677e]">
+                  Laporan sanitasi PII untuk berkas yang baru diunggah
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-[#67677e] hover:text-[#000000] hover:bg-[#e6e6ea] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4 overflow-y-auto">
+            <div className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs ${
+              risky
+                ? 'bg-amber-50 border-amber-200 text-amber-900'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+            }`}>
+              {risky ? <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" /> : <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />}
+              <div className="space-y-1">
+                <p className="font-bold">
+                  {risky ? 'PII_RESIDUAL_RISK — perlu tinjauan manual' : 'Sanitasi PII bersih'}
+                </p>
+                <p className="leading-relaxed">
+                  {risky
+                    ? 'Terdeteksi kemungkinan nama yang belum teredaksi di narasi bebas. Berkas tetap masuk antrean, namun wajib diperiksa manual sebelum dipakai.'
+                    : 'Seluruh entitas PII yang terdeteksi berhasil diredaksi dari teks resume.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] space-y-2 text-xs">
+              <div className="flex justify-between gap-3 py-1 border-b border-[#e6e6ea]">
+                <span className="text-[#67677e]">Nama terdeteksi</span>
+                <span className="font-mono font-bold text-[#000000] text-right break-all">
+                  {uploadResult.detected_name || '—'}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3 py-1">
+                <span className="text-[#67677e]">Sumber nama</span>
+                <span className="font-mono font-bold text-[#1b55f5]">{uploadResult.name_source || '—'}</span>
+              </div>
+            </div>
+
+            {Array.isArray(uploadResult.limitations) && uploadResult.limitations.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#67677e]">
+                  Batasan yang dilaporkan sanitizer
+                </span>
+                <ul className="space-y-1">
+                  {uploadResult.limitations.map((lim, idx) => (
+                    <li key={idx} className="p-2.5 rounded-lg bg-white border border-[#e6e6ea] text-[11px] text-[#454554] leading-snug flex items-start gap-2">
+                      <Info className="w-3.5 h-3.5 text-[#1b55f5] shrink-0 mt-0.5" />
+                      <span>{lim}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-bold transition-all shadow-xs"
+              >
+                Mengerti &amp; Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">

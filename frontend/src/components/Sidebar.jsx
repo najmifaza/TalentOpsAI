@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, ExternalLink, X, FileCheck2, User, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Briefcase, ExternalLink, X, FileCheck2, User, ChevronRight, CalendarDays } from 'lucide-react';
 
 export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {} }) {
   const menuItems = [
     { path: '/admin/dashboard', label: 'Dashboard & Triage', sublabel: 'Antrean & Evaluasi AI', icon: LayoutDashboard },
     { path: '/admin/jobs', label: 'Kelola Lowongan', sublabel: 'Bobot 4D & Kriteria', icon: Briefcase },
+    { path: '/admin/calendar', label: 'Kalender', sublabel: 'Google Calendar OAuth', icon: CalendarDays },
   ];
 
   const handleLinkClick = () => { if (onCloseMobile) onCloseMobile(); };

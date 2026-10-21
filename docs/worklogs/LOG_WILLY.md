@@ -445,6 +445,43 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-21 - Willy - Penyambungan UI untuk Sanitasi PII, Notifikasi Keputusan & Panel Google Calendar
+
+- **Branch:** `feat/ui-backend-feature-surfacing`
+- **Komponen / File:**
+  - `frontend/src/components/UploadCandidateModal.jsx`
+  - `frontend/src/components/CandidateModal.jsx`
+  - `frontend/src/components/CalendarPanel.jsx` (komponen baru)
+  - `frontend/src/components/Sidebar.jsx`
+  - `frontend/src/App.jsx`
+- **Yang Dikerjakan:**
+  - **1. Laporan Sanitasi PII pada Upload Dropzone (`UploadCandidateModal.jsx`):**
+    - Respons `POST /api/candidates/upload` sebelumnya hanya dibaca pada `sanitization_stats`; blok `sanitization` baru (`residual_risk`, `name_source`, `detected_name`, `limitations`) dibuang.
+    - Modal kini tidak langsung tertutup bila server mengirim blok `sanitization`. Panel laporan ditampilkan dengan badge `PII_RESIDUAL_RISK` (amber) atau "Sanitasi PII bersih" (hijau), nilai `detected_name`, `name_source`, dan daftar `limitations` yang dilaporkan sanitizer.
+    - `uploadResult` di-reset setiap kali modal dibuka agar laporan berkas sebelumnya tidak terbawa.
+  - **2. Status Notifikasi Keputusan HR (`CandidateModal.jsx`):**
+    - Respons `POST /api/candidates/{id}/review` kini dibaca penuh; field `notifications.calendar` dan `notifications.email` sebelumnya diabaikan.
+    - Komponen lokal `DeliveryReport` menampilkan status per kanal: calendar (`synced`, `event_id`, `already_existed`, atau `reason` kegagalan) dan email (`sent`, `provider`, atau `reason` kegagalan).
+    - Ditampilkan pada receipt `scheduled_done` (approve) dan `reject_done` (reject). Karena side-effect backend bersifat best-effort pasca-commit, kegagalan tidak boleh tampil seolah berhasil.
+    - `Event ID` pada receipt kini memakai `notifications.calendar.event_id` asli bila tersedia, dan hanya jatuh ke `generateMockEventId` bila server tidak mengembalikannya.
+  - **3. Panel Integrasi Google Calendar (`CalendarPanel.jsx`, rute `/admin/calendar`):**
+    - `GET /api/calendar/status` — badge connected/configured/not-configured, `calendar_id`, `token_expires_at`, daftar `scopes`, dan `tag` adapter.
+    - Tombol connect memanggil `GET /api/calendar/oauth/authorize` lalu `window.location.assign(authorization_url)`.
+    - Tombol disconnect memanggil `POST /api/calendar/disconnect` lalu memuat ulang status.
+    - Menangani pesan hasil callback OAuth (`?calendar=connected|denied|invalid_state|state_user_unresolved|not_configured|token_exchange_failed|missing_code_or_state|error`) dengan tombol tutup yang membersihkan query string.
+    - Tombol connect dinonaktifkan plus petunjuk `.env` saat `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` kosong (backend membalas 503).
+  - **4. Routing & Navigasi:**
+    - `App.jsx`: rute lazy `calendar`, judul header `/admin/calendar`, dan pengalihan `/admin/dashboard?calendar=…` ke `/admin/calendar` — target `OAUTH_SUCCESS_REDIRECT` backend mendarat di dashboard sehingga hasil OAuth sebelumnya hilang.
+    - `Sidebar.jsx`: item menu "Kalender" (Google Calendar OAuth).
+- **Status & Verifikasi:** Selesai 100%. `npm run build` (Vite 5.4.21) lulus tanpa error, 1780 modul ter-transform, chunk `CalendarPanel-DRT0mIZT.js` terpisah (7,23 kB). Perubahan frontend saja — tidak ada file backend yang disentuh.
+- **Keterbatasan yang belum tertutup:** Integrasi Calendar & Resend belum dapat diuji live karena `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` dan `RESEND_API_KEY` belum diisi di `backend/.env`. Panel akan menampilkan status "Server belum dikonfigurasi" sampai kredensial tersedia. Penjadwalan tetap tersimpan di database tanpa sinkronisasi kalender.
+- **Catatan untuk Rekan Tim (Najmi & Fardizza):**
+  - **Najmi:** blok `sanitization` pada respons upload dan field `notifications` pada respons review sekarang benar-benar dipakai UI — jangan ubah nama field tanpa memberi tahu frontend. `event_id` dari respons review dipakai sebagai Event ID yang ditampilkan.
+  - **Najmi:** `OAUTH_SUCCESS_REDIRECT` mengarah ke `/admin/dashboard`; frontend mengalihkannya ke `/admin/calendar`. Jika nilainya diubah, pastikan parameter `calendar` tetap dikirim.
+- **Rencana Selanjutnya:** Uji live panel kalender dan laporan sanitasi setelah kredensial Google Cloud + Resend tersedia di VPS.
+
+---
+
 
 
 

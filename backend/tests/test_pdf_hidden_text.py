@@ -189,6 +189,27 @@ def test_pdf_micro_image_flagged():
     assert "PDF_MICRO_IMAGE" in result.finding_types()
 
 
+def test_pdf_micro_image_flagged_once_per_object():
+    """A decorative marker drawn repeatedly is one finding, not one per draw.
+
+    Bullet glyphs and table rules are single tiny XObjects referenced by many `Do`
+    operators. Emitting a finding per occurrence pushed a clean CV into
+    HIGH_ATTENTION with hundreds of duplicate anomaly badges.
+    """
+    draws = " ".join(f"q 4 0 0 4 {72 + i} 400 cm /Im1 Do Q" for i in range(145))
+    stream = f"BT /F1 12 Tf 72 720 Td (visible) Tj ET {draws}"
+    pdf = build_pdf(
+        stream,
+        extra_resources="/XObject << /Im1 6 0 R >>",
+        extra_objects=[image_xobject(1, 1)],
+    )
+    result = audit_pdf_hidden_text(pdf)
+
+    micro = [f for f in result.findings if f["type"] == "PDF_MICRO_IMAGE"]
+    assert len(micro) == 1
+    assert micro[0]["occurrences"] == 145
+
+
 def test_pdf_malformed_does_not_raise():
     """Corrupt input must degrade gracefully instead of breaking ingestion."""
     result = audit_pdf_hidden_text(b"%PDF-1.4\nthis is not a real pdf body")

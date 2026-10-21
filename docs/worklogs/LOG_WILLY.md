@@ -482,6 +482,23 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-21 - Willy - Batasi Badge Anomali pada Tabel Kandidat
+
+> Dicatat dan di-commit atas nama Willy oleh sesi backend pada hari yang sama; folder `frontend/` adalah kepemilikan Willy sesuai matriks RACI.
+
+- **Branch:** `feat/backend-pdf-micro-image-dedup`
+- **Komponen / File:**
+  - `frontend/src/components/CandidateTable.jsx`
+- **Yang Dikerjakan:**
+  - Kolom Rekomendasi AI menampilkan seluruh isi `candidate.flags` sebagai badge, tanpa batas. Dengan anomali yang terduplikasi ratusan kali dari backend, satu baris tabel bisa berisi 130+ badge dan mendorong baris lain keluar layar.
+  - Badge anomali kini hanya dirender bila kandidat **sudah** di-scan (`!isUnscanned`). Alasannya: `flags` berasal dari audit berkas saat upload (`careers.py`), bukan dari triage — jadi menampilkannya di tab "Belum Di-scan" menyiratkan sistem sudah mengevaluasi berkas yang belum diproses.
+  - Daftar dibatasi 3 badge pertama, sisanya diringkas menjadi `+N lainnya`.
+- **Status & Verifikasi:** `npm run build` lulus. Perbaikan akar (dedup finding dan agregasi baris anomali) ada di commit backend pada branch yang sama; setelah itu jumlah flag per kandidat kembali wajar dan batas 3 ini hanya jaring pengaman tampilan.
+- **Catatan untuk Rekan Tim (Najmi):** Perbaikan frontend ini tidak menggantikan perbaikan backend. Kalau dedup backend dilepas, badge akan kembali membanjiri tabel meski dibatasi 3 — karena `+N lainnya` akan menunjukkan angka ratusan.
+- **Rencana Selanjutnya:** Tidak ada; perubahan ini murni pertahanan tampilan.
+
+---
+
 
 
 

@@ -31,7 +31,7 @@ tags_metadata = [
     },
     {
         "name": "Calendar & Scheduling",
-        "description": "Integrasi jadwal wawancara transaksional (Mock Calendar Adapter sandbox) dengan anti double-booking atomik dan penegakan interval non-overlap.",
+        "description": "Integrasi jadwal wawancara transaksional dengan anti double-booking atomik dan penegakan interval non-overlap, plus OAuth2 Google Calendar (aktif bila kredensial diisi).",
     },
     {
         "name": "Compliance & Audit Trail",

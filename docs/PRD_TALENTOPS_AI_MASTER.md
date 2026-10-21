@@ -55,9 +55,9 @@ Proses rekrutmen talenta teknologi (_engineering hiring_) pada industri digital 
 
 - **Arsitektur Penilaian Berbasis Bukti (_Evidence-Based Scoring_):** Menggunakan **Adaptive Model Adapter Layer** yang terhubung ke **9router LLM Gateway** (Provider: **Antigravity**, Target Model: **Gemini 3.8**, suhu 0.0 dengan deterministik cache `file_hash` yang dinonaktifkan secara eksplisit saat uji determinisme). LLM bertindak sebagai ekstraktor fakta terstruktur dan pengidentifikasi anomali. Kalkulasi skor 4D dihitung deterministik oleh backend Python berbasis ketercakupan kompetensi inti (_core competencies coverage_) dan taksonomi teknologi.
 - **Interkoneksi Ekosistem Web Nyata (_Interconnected Digital Ecosystem_):**
-  - Mock Calendar Adapter interaktif `[MVP]` berlabel `[MOCK / SANDBOX]` dengan Idempotency Event ID & compensating transaction untuk stabilitas demo live (Target Produksi: Google Calendar API OAuth2 Two-Way Sync `[TARGET]`).
+  - Integrasi Google Calendar OAuth2 `[TARGET]` — kode terpasang: alur otorisasi OAuth2, penyimpanan token terenkripsi, `create_event` saat approval, dan `list_upcoming_events`. Adapter lokal `MockCalendarAdapter` tetap dipakai untuk penguncian slot atomik di database (anti double-booking), sehingga demo tetap jalan tanpa kredensial. Status: belum diverifikasi live karena `GOOGLE_CLIENT_ID`/`SECRET` masih kosong.
   - GitHub REST API v3 `[MVP]` (verifikasi eksistensi repositori publik, kepemilikan/forks, bahasa utama, & topics).
-  - Mock Candidate Dispatcher `[MVP]` (Target Produksi: Resend API & Webhook Notification Slack/Discord `[TARGET]`).
+  - Notifikasi email transaksional via Resend `[TARGET]` — kode terpasang dua jalur (`resend_api` HTTPS dan `resend_smtp` relay), dengan mode `disabled` yang jujur saat kunci kosong. Status: belum diverifikasi live karena `RESEND_API_KEY` masih kosong.
   - SSE Trace Streaming `[MVP]` (siaran langkah otonom agen secara real-time ke UI).
 
 ### 1.3 Key Value Proposition & Target Kinerja Terukur
@@ -77,7 +77,7 @@ Untuk memastikan keberhasilan ganda—menghasilkan **Live Web Demo yang 100% sta
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | **Lingkup Database**      | 12 Tabel Relasional Inti (Single Default Tenant `tenant_id=1`, MariaDB/InnoDB ACID)                                                                | 15 Tabel Relasional Multi-Tenant Penuh dengan Metering Kuota & Tabel `tenants`                   |
 | **Manajemen Kunci (KMS)** | Master KEK tersimpan di `.env` aman; Envelope Encryption AES-256-GCM lokal via Python `cryptography`                                               | Dedicated HashiCorp Vault / AWS KMS Cluster dengan isolasi DEK transit engine                    |
-| **Integrasi Kalender**    | **Mock Calendar Adapter** interaktif berlabel `[MOCK / SANDBOX]` dengan simulasi atomic lock & kompensasi                                          | Google Calendar API OAuth2 Two-Way Sync langsung dengan Webhook Push Notification Watch Channel  |
+| **Integrasi Kalender**    | **Lock atomik di database + Google Calendar OAuth2** (kode terpasang, menunggu kredensial; `MockCalendarAdapter` menangani reservasi slot)                                    | Google Calendar API OAuth2 Two-Way Sync langsung dengan Webhook Push Notification Watch Channel  |
 | **Inbound ATS Ingestion** | **Dual-Ingestion UI:** Public Career Portal (`/careers/apply`) + Direct Multi-File Dropzone di HR Dashboard (PDF/DOCX) dengan status awal `queued` | Inbound Webhook Gateway berautentikasi HMAC-SHA256 untuk integrasi Greenhouse/Lever              |
 | **Orkestrator LLM**       | **9router Gateway (Provider: Antigravity, Model: Gemini 3.8)** + **Safe Pre-Cached Fallback Mode**                                                 | Multi-Provider Dynamic Fallback Router dengan failover lintas-region & SLA enterprise ber-DPA    |
 | **Antrean & Asinkronus**  | **100% In-Memory Python Core:** FastAPI `BackgroundTasks` + `asyncio.Queue` (Live SSE Stream) + `cachetools.LRUCache`                              | Redis Cluster HA terdistribusi dengan Celery/ARQ Worker nodes mandiri                            |
@@ -124,7 +124,7 @@ TalentOps AI menghubungkan simpul ekosistem digital rekrutmen enterprise secara 
   Model: Gemini 3.8)    - FastAPI Async Engine            - Master KEK Envelope Encryption
 - GitHub REST API v3      (BackgroundTasks + Semaphore 3)   (AES-256-GCM + Blind Index)
 - Calendar Adapter
-  (Interactive Mock `[MVP]` / Google Calendar Live `[TARGET]`)
+  (Google Calendar OAuth2 `[TARGET]` + lock atomik DB)
 ```
 
 ### 3.2 Dampak Nyata Terhadap Sustainable Development Goals (SDGs)
@@ -440,7 +440,7 @@ Target evaluasi end-to-end $\le 15.000\text{ ms}$ per berkas:
      ```
      Jika event di kalender sempat terbuat sebagian, kompensasi mengeksekusi `events.delete(eventId)` untuk menjaga konsistensi.
 4. **Tagging Lingkungan Demo / Sandbox:**
-   - Adaptor kalender pada antarmuka web menampilkan label tegas **[MOCK / SANDBOX]** demi transparansi pengujian juri. Pengujian konkurensi 50 transaksi reservasi simultan mencakup pengujian slot bergeser (_sliding interval overlap_) dan slot identik.
+   - Antarmuka demo menampilkan banner tegas _"Gunakan data sintetis untuk pengujian live demo"_ (PRD §6.2), dan label **[MOCK / SANDBOX]** tetap ditampilkan pada panel kalender **hanya bila** kredensial Google Calendar belum diisi — begitu `GOOGLE_CLIENT_ID`/`SECRET` terpasang, label itu hilang dengan sendirinya karena adapter melaporkan status live. Pengujian konkurensi 50 transaksi reservasi simultan mencakup pengujian slot bergeser (_sliding interval overlap_) dan slot identik.
 
 ---
 

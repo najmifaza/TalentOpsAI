@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CandidateTable from './CandidateTable';
-import CandidateModal from './CandidateModal';
 import AgentTraceModal from './AgentTraceModal';
 import UploadCandidateModal from './UploadCandidateModal';
 import { 
@@ -21,8 +21,8 @@ import {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
 export default function DashboardOverview() {
+  const navigate = useNavigate();
   const [candidates, setCandidates] = useState([]);
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [traceCandidate, setTraceCandidate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
@@ -438,7 +438,7 @@ export default function DashboardOverview() {
         ) : (
           <CandidateTable 
             candidates={candidates} 
-            onSelectCandidate={setSelectedCandidate} 
+            onSelectCandidate={(cand) => navigate(`/admin/candidates/${cand.id}`)} 
             onStreamCandidate={setTraceCandidate}
             onStartTriage={(cand) => setTraceCandidate(cand)}
             onBatchTriage={handleBatchTriage}
@@ -446,15 +446,6 @@ export default function DashboardOverview() {
           />
         )}
       </div>
-
-      {/* Candidate Dossier Detail Modal */}
-      {selectedCandidate && (
-        <CandidateModal 
-          candidate={selectedCandidate} 
-          onClose={() => setSelectedCandidate(null)} 
-          onRefresh={fetchCandidates}
-        />
-      )}
 
       {/* Live Agentic Trace SSE Modal */}
       <AgentTraceModal

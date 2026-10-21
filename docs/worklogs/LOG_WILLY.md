@@ -5,6 +5,26 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-21 - Willy - Konversi Modal Dossier Kandidat Menjadi Halaman Berute (`/admin/candidates/:id`)
+- **Komponen / File:**
+  - `frontend/src/components/CandidateDetailPage.jsx` (Komponen Baru, menggantikan `CandidateModal.jsx`)
+  - `frontend/src/components/CandidateModal.jsx` (**dihapus**)
+  - `frontend/src/components/DashboardOverview.jsx`
+  - `frontend/src/App.jsx` (router + judul halaman)
+- **Yang Dikerjakan:**
+  - Memindahkan dossier kandidat dari overlay modal (`fixed inset-0`, `max-h-[92vh]`, scroll di dalam scroll) menjadi halaman penuh di dalam shell dashboard yang sudah terautentikasi: route `candidates/:id` di dalam layout `/admin/*` → `/admin/candidates/:id`, dimuat lazy seperti modul lain.
+  - Menambahkan alias URL pendek `/candidates/:id` via komponen `CandidateAliasRedirect` (`useParams`) yang diarahkan ke `/admin/candidates/:id`; string `Navigate to` tidak bisa menginterpolasi `:id` sehingga butuh komponen kecil ini.
+  - Halaman kini mengambil datanya sendiri (tidak lagi menerima prop `candidate`): `Promise.all` antara `GET /api/candidates/{id}` (dossier: resume text, anomalies, evidence, assessments) dan `GET /api/candidates?limit=200` (field baris: `dimension_scores` → `scores_4d`, `key_technologies`, `flags`, `job_title`). Bila baris tidak ditemukan pada jendela list, `key_technologies` diturunkan dari `evidence[].target_competency` dan `flags` dari `anomalies[].anomaly_type`.
+  - Menambahkan state loading dan kegagalan yang sebelumnya tidak ada karena modal selalu membawa data dari parent: spinner "Memuat dossier kandidat..." dan panel "Dossier Tidak Dapat Dimuat" (404 → kandidat tidak ditemukan, selain itu kode status), lengkap dengan tombol kembali. `if (!candidate) return null` dihapus karena pada halaman berute itu berarti layar kosong tanpa jalan kembali.
+  - Chrome modal dibersihkan: backdrop + wrapper overlay dihapus, body tidak lagi `overflow-y-auto` (scroll diserahkan ke halaman), tombol `X` diganti panah `ArrowLeft`, dan seluruh `onClose` diganti `goBack()` (`navigate(-1)` bila ada history, fallback `/admin/dashboard`).
+  - `DashboardOverview.jsx`: state `selectedCandidate` dan blok `<CandidateModal />` dihapus; `onSelectCandidate` sekarang `navigate('/admin/candidates/' + cand.id)` sehingga tabel tetap jadi pintu masuknya.
+  - `App.jsx`: menambahkan `candidates/:id` pada `Routes` anak dashboard, alias root `/candidates/:id` di balik `RequireAuth`, dan pemetaan judul header `Dossier Kandidat` lewat pencocokan prefix (lookup judul berbasis path persis tidak menangkap segmen dinamis).
+  - Seluruh perbaikan perilaku pada sesi sebelumnya ikut terbawa ke halaman: kegagalan `POST /review` menampilkan `submitError` dan tetap di tab schedule (tidak lagi menampilkan receipt sukses dari blok `catch`), guard slot kosong + tombol konfirmasi disabled, unmask PII manual dengan alasan wajib (tidak lagi otomatis saat mount), polling status triage menggantikan `setTimeout(3200)`, dan `AbortController` pada kedua fetch.
+- **Status & Verifikasi:** Selesai. `npx vite build` sukses (1780 modul, chunk `CandidateDetailPage` 57.84 kB) pada branch `feat/ui-candidate-dossier-page`.
+- **Rencana Selanjutnya:** Uji manual alur klik tabel → halaman → approve/schedule di browser, lalu pertimbangkan migrasi tab Evidence Graph agar memakai lebar penuh halaman (bukan lebar kartu `max-w-5xl`).
+
+---
+
 ### 2026-10-19 - Willy - Fitur On-Demand AI Triage & Direct CV Upload HR
 - **Komponen / File:**
   - `frontend/src/components/UploadCandidateModal.jsx` (Komponen Baru)

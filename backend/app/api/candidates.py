@@ -299,7 +299,7 @@ async def get_candidate_dossier(
 
     # Fetch evidence items
     ev_res = await db.execute(
-        text("SELECT id, dimension, target_competency, claim_text, evidence_source, score_contribution, confidence FROM candidate_evidence WHERE candidate_id = :id"),
+        text("SELECT id, dimension, target_competency, matched_requirement, claim_text, evidence_source, score_contribution, confidence, verified FROM candidate_evidence WHERE candidate_id = :id ORDER BY verified DESC, score_contribution DESC, id"),
         {"id": candidate_id},
     )
     evidence = [dict(e) for e in ev_res.mappings()]
@@ -875,7 +875,7 @@ async def get_candidate_evidence_graph(
 
     # Fetch evidence
     ev_res = await db.execute(
-        text("SELECT id, dimension, target_competency, claim_text, evidence_source, score_contribution, confidence FROM candidate_evidence WHERE candidate_id = :id ORDER BY dimension, id"),
+        text("SELECT id, dimension, target_competency, matched_requirement, claim_text, evidence_source, score_contribution, confidence, verified FROM candidate_evidence WHERE candidate_id = :id ORDER BY dimension, id"),
         {"id": candidate_id},
     )
     evidence_rows = [dict(r) for r in ev_res.mappings()]

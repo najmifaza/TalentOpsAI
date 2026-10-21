@@ -266,9 +266,15 @@ async def simulate_policy(
     cand_ids = [c["id"] for c in cand_rows]
     quarantined_ids = set()
     if cand_ids:
-        # Check candidate_anomalies for HIGH severity prompt injection
+        # Check candidate_anomalies for HIGH severity prompt injection. Match both the
+        # legacy codes and the SECURITY_QUARANTINE_* codes the scoring engine actually emits.
         anom_res = await db.execute(
-            text("SELECT candidate_id FROM candidate_anomalies WHERE candidate_id IN :ids AND anomaly_type IN ('PROMPT_INJECTION', 'HIDDEN_TEXT')"),
+            text(
+                "SELECT candidate_id FROM candidate_anomalies "
+                "WHERE candidate_id IN :ids AND ("
+                "anomaly_type IN ('PROMPT_INJECTION', 'HIDDEN_TEXT') "
+                "OR anomaly_type LIKE 'SECURITY_QUARANTINE%')"
+            ),
             {"ids": tuple(cand_ids)},
         )
         for row in anom_res.fetchall():

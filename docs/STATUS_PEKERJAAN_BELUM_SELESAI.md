@@ -19,9 +19,12 @@ diverifikasi live; seed password diperbaiki; domain frontend dipindahkan ke `tal
 **Revisi kedua (sesi yang sama):** §4 selesai seluruhnya — tiga fitur backend yang sebelumnya
 tidak terlihat di UI kini tersambung (laporan sanitasi PII, status notifikasi keputusan, panel
 Google Calendar). Ditemukan dan diperbaiki bug produksi yang tidak tercatat di revisi pertama:
-satu CV bersih menampilkan 130+ badge `PDF_MICRO_IMAGE` dan masuk antrean `HIGH_ATTENTION`
-tanpa pernah di-scan (§3.5). **Sisa pekerjaan yang mendesak: pembersihan data lama di MariaDB
-produksi** (§5).
+satu CV bersih menampilkan 130+ badge `PDF_MICRO_IMAGE` (§3.5). Data lama di MariaDB produksi
+sudah dibersihkan — 398 baris, 0 tersisa (§5.1).
+
+**Revisi ketiga:** pembersihan produksi selesai dan diverifikasi. Satu klaim di revisi kedua
+dikoreksi: anomali palsu itu **tidak** menaikkan `triage_priority` kandidat mana pun (§3.5).
+Tidak ada lagi pekerjaan yang murni kode tanpa masukan luar.
 
 ---
 
@@ -221,13 +224,20 @@ Ini bertentangan dengan semangat item 5 (sanitasi PII): nama kini berhasil dired
 teks CV, tetapi identitas aslinya tidak pernah tersimpan, sehingga tidak ada yang bisa
 dibuka kembali secara sah.
 
-### 3.5 `PDF_MICRO_IMAGE` membanjiri antrean — KODE DIPERBAIKI, DATA LAMA BELUM
+### 3.5 `PDF_MICRO_IMAGE` membanjiri antrean — SELESAI (kode + data)
 
-**Status: perbaikan kode selesai dan teruji; baris lama di MariaDB produksi belum dibersihkan.**
+**Status: perbaikan kode selesai dan teruji, baris lama di MariaDB produksi sudah dibersihkan
+(21 Oktober 2026, lihat §5.1).**
 
 Gejala yang dilaporkan dari UI: satu kandidat (`#TK-5FF482`) menampilkan **130+ badge
 `PDF_MICRO_IMAGE`** di kolom Rekomendasi AI, padahal CV-nya hanya berisi foto profil dan teks
-biasa. Kandidat itu juga sudah berada di antrean `HIGH_ATTENTION` **sebelum pernah di-scan**.
+biasa.
+
+> **Koreksi klaim awal.** Dugaan pertama menyebut kandidat itu juga sudah masuk antrean
+> `HIGH_ATTENTION` sebelum di-scan. Pengecekan DB membantahnya: #16 dan #17 sama-sama
+> `STANDARD` sepanjang waktu. Anomali palsu ini mencemari tampilan dan isi tabel, **bukan**
+> urutan antrean. Poin 3 di bawah tetap bug nyata di kode, tetapi tidak pernah terpicu pada
+> data yang ada karena tidak ada CV yang menghasilkan finding `HIGH` palsu.
 
 Tiga akar masalah, semuanya dibuktikan lewat probe langsung ke detector:
 
@@ -261,8 +271,8 @@ eskalasi); teks `3 Tr` → `PDF_INVISIBLE_RENDER_MODE` `HIGH`, **tetap** eskalas
   padahal tidak pernah diimplementasikan; docstring sudah dikoreksi. Gambar dekoratif ≤2×2 px
   tetap dilaporkan, kini hanya sekali per objek dengan severity `MEDIUM`.
 - Ambang ≤2×2 px dipilih dari asumsi, belum divalidasi terhadap korpus PDF riil.
-- **Data lama tidak tersentuh.** Baris `PDF_MICRO_IMAGE` dan `triage_priority = 'HIGH_ATTENTION'`
-  yang sudah terlanjur masuk masih ada di produksi — lihat §5.
+- ~~Data lama tidak tersentuh.~~ **Sudah dibersihkan** — 398 baris dihapus, 0 tersisa (§5.1).
+  Ternyata `triage_priority` palsu tidak pernah terjadi: #16 dan #17 sudah `STANDARD`.
 
 ---
 
@@ -328,24 +338,7 @@ Frontend juga sudah ter-deploy lewat CI/CD Vercel: bundle live
 
 **Yang masih terbuka:**
 
-- **Pembersihan data lama `PDF_MICRO_IMAGE` — MENDESAK, belum dijalankan.** Perbaikan kode
-  (§3.5) tidak membersihkan baris yang sudah terlanjur masuk. Kandidat yang terdampak masih
-  membawa ratusan baris `candidate_anomalies` bertipe `PDF_MICRO_IMAGE` dan
-  `triage_priority = 'HIGH_ATTENTION'` palsu. Jalankan setelah memverifikasi nilai default enum
-  `triage_priority` di `backend/migrations/001_initial_schema.sql` (`STANDARD`):
-
-  ```sql
-  DELETE FROM candidate_anomalies WHERE anomaly_type = 'PDF_MICRO_IMAGE';
-  UPDATE candidates SET triage_priority = 'STANDARD'
-   WHERE triage_priority = 'HIGH_ATTENTION'
-     AND NOT EXISTS (
-       SELECT 1 FROM candidate_anomalies a
-       WHERE a.candidate_id = candidates.id
-         AND a.anomaly_type IN ('PROMPT_INJECTION', 'HIDDEN_TEXT')
-     );
-  ```
-
-  Cadangkan tabel lebih dulu. Kedua pernyataan tidak dapat dibatalkan setelah commit.
+- ~~Pembersihan data lama `PDF_MICRO_IMAGE`~~ — **SELESAI 21 Oktober 2026.** Lihat blok di bawah.
 
 - **Password produksi.** Seed default `AdminSecret2026!` (tertulis terbuka di repo) sudah
   diganti; verifikasi: password lama dan default sama-sama 401. Rotasi memakai
@@ -367,6 +360,52 @@ Frontend juga sudah ter-deploy lewat CI/CD Vercel: bundle live
   `REDIS_*`, `OAUTH_SUCCESS_REDIRECT`) belum diisi di `.env` mana pun. `REDIS_*` tidak akan
   diisi (lihat §2).
 
+### 5.1 Pembersihan `PDF_MICRO_IMAGE` di produksi — SELESAI
+
+Dijalankan 21 Oktober 2026 pada `talentops_db`. SQL awal yang sempat ditulis di dokumen ini
+**salah** dan tidak dipakai: filternya menghardcode `anomaly_type IN ('PROMPT_INJECTION',
+'HIDDEN_TEXT')`, sehingga tipe `HIGH` lain (`PDF_INVISIBLE_RENDER_MODE`, `PDF_WHITE_TEXT`,
+`PDF_ENCRYPTED`) tidak terlindungi dari reset. Versi yang dijalankan memakai filter severity:
+
+```sql
+CREATE TABLE candidate_anomalies_bak_20261021 AS
+  SELECT * FROM candidate_anomalies WHERE anomaly_type = 'PDF_MICRO_IMAGE';
+
+DELETE FROM candidate_anomalies WHERE anomaly_type = 'PDF_MICRO_IMAGE';
+
+UPDATE candidates c
+   SET c.triage_priority = 'STANDARD'
+ WHERE c.triage_priority = 'HIGH_ATTENTION'
+   AND c.recommendation IS NULL
+   AND NOT EXISTS (
+         SELECT 1 FROM candidate_anomalies a
+          WHERE a.candidate_id = c.id AND a.severity = 'HIGH'
+       );
+```
+
+Hasil:
+
+| Cek | Hasil |
+|---|---|
+| Baris diamankan ke `candidate_anomalies_bak_20261021` | 398 |
+| Baris `PDF_MICRO_IMAGE` terhapus | 398 (0 tersisa) |
+| `UPDATE` jaring pengaman | **0 baris** — no-op |
+| Kandidat #16 (`#TK-5FF482`) anomali tersisa | 0 (bersih total) |
+| Kandidat #17 (`#TK-2FD8DC`) anomali tersisa | `CONCURRENT_FULLTIME_OVERLAP_23_MONTHS` (HIGH) — sah |
+| Kandidat #4 (`#TK-D99A12`) | `HIGH_ATTENTION` + `PROMPT_INJECTION` tetap utuh |
+
+Temuan penting: **eskalasi `triage_priority` palsu ternyata tidak pernah terjadi.** #16 dan #17
+sudah `STANDARD` sebelum pembersihan, jadi `UPDATE` memang no-op — bukan karena filter bekerja,
+tapi karena tidak ada yang perlu diperbaiki. Yang benar-benar merusak hanya 398 baris sampah
+(199 per kandidat) yang membanjiri badge UI.
+
+`overall_score`, `recommendation`, dan `status` tidak tersentuh: #16 tetap `WEAK_FIT` / 36.00,
+#17 `WEAK_FIT` / 21.60. Skor itu berasal dari penilaian AI, bukan dari anomali `PDF_MICRO_IMAGE`.
+
+Rollback bila diperlukan: `INSERT INTO candidate_anomalies SELECT * FROM
+candidate_anomalies_bak_20261021;` — nilai `triage_priority` yang sudah di-reset tidak ikut
+kembali, karena `UPDATE` no-op maka tidak ada yang perlu dipulihkan.
+
 ---
 
 ## Urutan Pengerjaan yang Disarankan
@@ -380,7 +419,7 @@ Frontend juga sudah ter-deploy lewat CI/CD Vercel: bundle live
 | 5 | Pasang Redis di VPS, jalankan >1 worker | Membuktikan klaim multi-worker | **Dibatalkan** — pemilik sistem menolak Redis (beban server); tetap 1 worker |
 | 6 | Simpan identitas asli pada jalur dropzone | Melengkapi item 5 agar identitas bisa dibuka secara sah | Belum — butuh keputusan produk |
 | 7 | Sambungkan UI kalender, notifikasi, badge residual risk | Membuat fitur backend terlihat | **Selesai** — `0647247`, `dbc41ed`, `a2909ca` |
-| 8 | Bersihkan baris `PDF_MICRO_IMAGE` lama + reset `triage_priority` palsu | Perbaikan kode tidak menyentuh data yang sudah masuk | **Belum — jalan sekarang**, SQL di §5 |
+| 8 | Bersihkan baris `PDF_MICRO_IMAGE` lama + reset `triage_priority` palsu | Perbaikan kode tidak menyentuh data yang sudah masuk | **Selesai** 21 Okt 2026 — 398 baris dihapus, §5.1 |
 
 Catatan: prioritas 4 dan 6 butuh masukan dari luar repositori. Prioritas 4 butuh akun Google
 Cloud + Resend (dan domain pengirim terverifikasi). Prioritas 6 butuh keputusan produk lebih
@@ -388,8 +427,8 @@ dulu: dari mana identitas asli diperoleh pada jalur dropzone — kolom form tamb
 atau ekstraksi header dengan konfirmasi HR — karena sanitizer sengaja tidak menyimpan nilai yang
 ia redaksi. Prioritas 8 hanya butuh akses ke MariaDB produksi.
 
-**Tidak ada lagi pekerjaan yang murni kode tanpa masukan luar.** Setelah prioritas 8 selesai,
-sisa daftar ini seluruhnya menunggu keputusan produk (6), kredensial eksternal (4), atau pihak
+**Tidak ada lagi pekerjaan yang murni kode tanpa masukan luar.** Prioritas 8 sudah selesai; sisa
+daftar ini seluruhnya menunggu keputusan produk (6), kredensial eksternal (4), atau pihak
 ketiga/Vercel (domain).
 
 ---
@@ -429,6 +468,14 @@ Commit revisi kedua (sesi yang sama, branch `feat/ui-backend-feature-surfacing` 
 | `550998e` | Dedup `PDF_MICRO_IMAGE` per objek + agregasi anomali + eskalasi hanya untuk `HIGH` |
 | `bef5f7c` | Batasi badge anomali di tabel kandidat, sembunyikan sebelum scan |
 | `007a902`, `69c904a` | Merge `--no-ff` kedua branch ke `main` |
+
+Pembersihan data produksi (bukan commit, dijalankan langsung di MariaDB):
+
+| Operasi | Hasil |
+|---|---|
+| Backup ke `candidate_anomalies_bak_20261021` | 398 baris |
+| `DELETE ... WHERE anomaly_type = 'PDF_MICRO_IMAGE'` | 398 baris, 0 tersisa |
+| `UPDATE candidates SET triage_priority = 'STANDARD'` (jaring pengaman) | 0 baris — no-op |
 
 Catatan: commit `b4f2b2d` (konfirmasi erasure pada withdraw) dan `eba88bc` (sanitasi PII)
 juga menutup dua kekurangan yang sebelumnya tidak tercatat — template `erasure_confirmation`

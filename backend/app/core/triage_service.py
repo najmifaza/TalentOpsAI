@@ -118,7 +118,7 @@ class AgentTriageService:
             )
             existing_anoms = [dict(a) for a in existing_anom_res.mappings()]
             for ea in existing_anoms:
-                if ea["anomaly_type"] in ("PROMPT_INJECTION", "HIDDEN_TEXT"):
+                if ea["anomaly_type"] in ("PROMPT_INJECTION", "HIDDEN_TEXT") or ea["anomaly_type"].startswith("SECURITY_QUARANTINE"):
                     hidden_detected = True
                     hidden_snippets.append(ea["description"])
 
@@ -266,44 +266,72 @@ class AgentTriageService:
 
             # Persist Evidence
             await db.execute(text("DELETE FROM candidate_evidence WHERE candidate_id = :id"), {"id": candidate_id})
+            # Re-triage must replace, not append: without this every run duplicated
+            # the same anomaly rows and the graph showed the same finding N times.
+            await db.execute(text("DELETE FROM candidate_anomalies WHERE candidate_id = :id"), {"id": candidate_id})
             for ev in assessment["evidence_records"]:
                 await db.execute(
                     text("""
                         INSERT INTO candidate_evidence (
-                            candidate_id, dimension, target_competency, claim_text,
-                            evidence_source, score_contribution, confidence
+                            candidate_id, dimension, target_competency, matched_requirement,
+                            claim_text, evidence_source, score_contribution, confidence, verified
                         ) VALUES (
-                            :cid, :dim, :comp, :claim, :src, :score, :conf
+                            :cid, :dim, :comp, :req, :claim, :src, :score, :conf, :verified
                         )
                     """),
                     {
                         "cid": candidate_id,
                         "dim": ev["dimension"],
                         "comp": ev.get("target_competency"),
+                        "req": ev.get("matched_requirement"),
                         "claim": ev["claim_text"],
                         "src": ev["evidence_source"],
                         "score": ev["score_contribution"],
                         "conf": ev["confidence"],
+                        "verified": 1 if ev.get("verified") else 0,
                     },
                 )
 
-            # Persist Anomalies
-            for a_flag in assessment["anomaly_flags"]:
-                await db.execute(
-                    text("""
-                        INSERT INTO candidate_anomalies (
-                            candidate_id, anomaly_type, severity, description, suggested_verification
-                        ) VALUES (
-                            :cid, :atype, :sev, :desc, 'Review during HR interview.'
-                        )
-                    """),
-                    {
-                        "cid": candidate_id,
-                        "atype": a_flag,
-                        "sev": "HIGH" if "SECURITY" in a_flag or "OVERLAP" in a_flag else "MEDIUM",
-                        "desc": f"Automated risk detection flag: {a_flag}",
-                    },
-                )
+            # Persist Anomalies. Prefer the structured detail from the scoring engine:
+            # a bare flag code ("CONCURRENT_FULLTIME_OVERLAP_23_MONTHS") tells a recruiter
+            # nothing about which two jobs collided or what to ask the candidate.
+            anomaly_details = assessment.get("anomaly_details") or []
+            if anomaly_details:
+                for detail in anomaly_details:
+                    await db.execute(
+                        text("""
+                            INSERT INTO candidate_anomalies (
+                                candidate_id, anomaly_type, severity, description, suggested_verification
+                            ) VALUES (
+                                :cid, :atype, :sev, :desc, :verify
+                            )
+                        """),
+                        {
+                            "cid": candidate_id,
+                            "atype": detail.get("type", "ANOMALY"),
+                            "sev": detail.get("severity", "MEDIUM"),
+                            "desc": detail.get("description") or "Anomali terdeteksi pada berkas.",
+                            "verify": detail.get("suggested_verification")
+                            or "Konfirmasi temuan ini pada sesi wawancara HR.",
+                        },
+                    )
+            else:
+                for a_flag in assessment["anomaly_flags"]:
+                    await db.execute(
+                        text("""
+                            INSERT INTO candidate_anomalies (
+                                candidate_id, anomaly_type, severity, description, suggested_verification
+                            ) VALUES (
+                                :cid, :atype, :sev, :desc, 'Review during HR interview.'
+                            )
+                        """),
+                        {
+                            "cid": candidate_id,
+                            "atype": a_flag,
+                            "sev": "HIGH" if "SECURITY" in a_flag or "OVERLAP" in a_flag else "MEDIUM",
+                            "desc": f"Automated risk detection flag: {a_flag}",
+                        },
+                    )
 
             # Persist Adaptive Assessments
             await db.execute(text("DELETE FROM candidate_assessments WHERE candidate_id = :id"), {"id": candidate_id})

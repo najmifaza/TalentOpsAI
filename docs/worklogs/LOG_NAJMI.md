@@ -5,6 +5,24 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-21 - Najmi - Skema & API untuk Bukti yang Bisa Ditelusuri
+- **Komponen / File:**
+  - `backend/migrations/003_evidence_verification.sql` (baru)
+  - `backend/app/api/candidates.py`
+  - `backend/app/api/jobs.py`
+  - `backend/app/core/triage_service.py` (bagian persistensi)
+- **Catatan:** Dikerjakan & di-commit atas nama Najmi, hasil audit graf bukti kandidat `#TK-2FD8DC`. Logika skoring & guard dicatat di `LOG_FARDIZZA.md`, UI di `LOG_WILLY.md`.
+- **Yang Dikerjakan:**
+  - Migrasi baru `003_evidence_verification.sql`: menambah `candidate_evidence.matched_requirement` (VARCHAR NULL) dan `candidate_evidence.verified` (TINYINT default 0), plus index `idx_evidence_cand_verified`. Dijalankan lewat `backend/scripts/init_db.py` yang membaca seluruh `backend/migrations/*.sql` berurutan.
+  - `GET /api/candidates/{id}` dan `GET /api/candidates/{id}/evidence-graph` kini ikut memilih `matched_requirement` dan `verified`. Endpoint dossier juga mengurutkan evidence `verified DESC, score_contribution DESC, id` agar bukti yang benar-benar terverifikasi tampil lebih dulu.
+  - `triage_service.py`: INSERT `candidate_evidence` menulis dua kolom baru; blok anomali memakai `assessment["anomaly_details"]` bila ada (deskripsi + `suggested_verification` spesifik), dan hanya jatuh ke format flag lama bila `details` kosong. Menambahkan `DELETE FROM candidate_anomalies WHERE candidate_id = :id` sebelum insert — sebelumnya re-triage hanya menghapus evidence, sehingga baris anomali menumpuk tiap kali kandidat dianalisis ulang.
+  - `jobs.py` (What-If): deteksi karantina kini juga mencocokkan `anomaly_type LIKE 'SECURITY_QUARANTINE%'`. Sebelumnya hanya `PROMPT_INJECTION`/`HIDDEN_TEXT`, padahal engine mengeluarkan `SECURITY_QUARANTINE_PROMPT_INJECTION`, sehingga simulasi What-If tidak pernah menandai kandidat yang di-quarantine.
+  - Pencocokan `SECURITY_QUARANTINE%` yang sama dipakai saat membaca anomali hasil upload di `triage_service.py` agar audit teks tersembunyi tetap terdeteksi.
+- **Status & Verifikasi:** Selesai. `pytest backend/tests/` → **206 passed**. Migrasi belum dijalankan ke database mana pun (butuh akses VPS).
+- **Rencana Selanjutnya:** Jalankan `init_db.py` di VPS agar kolom baru ada sebelum backend versi ini di-deploy; tanpa migrasi, INSERT evidence akan gagal karena kolom belum tersedia.
+
+---
+
 ### 2026-10-17 - Najmi - Setup Awal & Walking Skeleton Backend
 - **Komponen / File:**
   - `backend/app/main.py`

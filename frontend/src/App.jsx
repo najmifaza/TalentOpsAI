@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import DemoDataBanner from './components/DemoDataBanner';
 import DashboardOverview from './components/DashboardOverview';
 import { isAuthenticated } from './lib/api';
 
@@ -138,6 +139,7 @@ function DashboardLayout() {
 
       {/* Main Content Canvas */}
       <div className={`flex-1 flex flex-col min-w-0 ${isOffline ? 'pt-8' : ''}`}>
+        <DemoDataBanner />
         <Header 
           currentTitle={currentTitle} 
           onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)} 

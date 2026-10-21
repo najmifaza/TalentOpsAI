@@ -2,7 +2,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -333,10 +333,45 @@ async def get_candidate_dossier(
     }
 
 
+def _parse_applicant_meta(raw: Optional[str], file_count: int) -> Optional[List[Dict[str, str]]]:
+    """Validates the dropzone's per-file identity payload.
+
+    Returns None when the caller sent nothing (legacy placeholder behaviour),
+    otherwise a list aligned with the uploaded files.
+    """
+    if raw is None or not raw.strip():
+        return None
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="APPLICANT_META_NOT_JSON")
+    if not isinstance(parsed, list):
+        raise HTTPException(status_code=400, detail="APPLICANT_META_NOT_ARRAY")
+    if len(parsed) != file_count:
+        raise HTTPException(
+            status_code=400,
+            detail=f"APPLICANT_META_COUNT_MISMATCH: {len(parsed)} entri untuk {file_count} berkas",
+        )
+
+    cleaned: List[Dict[str, str]] = []
+    for position, entry in enumerate(parsed, start=1):
+        if not isinstance(entry, dict):
+            raise HTTPException(status_code=400, detail=f"APPLICANT_META_ENTRY_{position}_NOT_OBJECT")
+        name = str(entry.get("name") or "").strip()
+        email = str(entry.get("email") or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail=f"APPLICANT_META_ENTRY_{position}_NAME_REQUIRED")
+        if "@" not in email or len(email) < 5:
+            raise HTTPException(status_code=400, detail=f"APPLICANT_META_ENTRY_{position}_EMAIL_INVALID")
+        cleaned.append({"name": name, "email": email})
+    return cleaned
+
+
 @router.post("/upload")
 async def hr_direct_upload(
     job_id: int = Form(...),
     files: List[UploadFile] = File(...),
+    applicant_meta: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_roles("admin", "recruiter")),
 ):
@@ -344,6 +379,12 @@ async def hr_direct_upload(
     HR direct multi-file dropzone for candidate resumes.
     Parses files in-memory, applies rule-based heuristic sanitization,
     encrypts data, and inserts into candidates table with initial status 'queued'.
+
+    `applicant_meta` is an optional JSON array aligned with `files` by index:
+    `[{"name": "...", "email": "..."}, ...]`. When supplied, the applicant's real
+    identity is encrypted and stored, so review emails reach the applicant and the
+    unmask endpoint shows a real name. Without it the legacy placeholders are kept
+    (`Applicant-<filename>` / an internal address) and the response says so.
     """
     job_check = await db.execute(
         text("SELECT id FROM job_descriptions WHERE id = :id AND status = 'active'"),
@@ -352,8 +393,10 @@ async def hr_direct_upload(
     if not job_check.first():
         raise HTTPException(status_code=404, detail="JOB_NOT_FOUND_OR_CLOSED")
 
+    meta_list = _parse_applicant_meta(applicant_meta, len(files))
+
     uploaded = []
-    for file in files:
+    for index, file in enumerate(files):
         file_bytes = await file.read()
         file_format = validate_file_magic_bytes(file_bytes, file.filename or "")
         file_hash = hashlib.sha256(file_bytes).hexdigest()
@@ -371,16 +414,30 @@ async def hr_direct_upload(
         elif pdf_audit is not None and pdf_audit.visible_text.strip():
             raw_text = cleaned_body
 
-        sanitize_result = sanitize_resume(raw_text)
+        meta = meta_list[index] if meta_list else None
+        # Form metadata turns the sanitizer into exact dictionary matching instead of
+        # header heuristics, so pass it through rather than redacting after the fact.
+        sanitize_result = sanitize_resume(
+            raw_text,
+            known_name=meta["name"] if meta else None,
+            known_email=meta["email"] if meta else None,
+        )
         sanitized_text = sanitize_result.text
         sanitize_stats = sanitize_result.stats
 
         candidate_dek = generate_dek()
         enc_dek = encrypt_dek(candidate_dek)
-        # Placeholder encrypted names for HR bulk upload
-        enc_name = encrypt_pii(f"Applicant-{file.filename}", candidate_dek)
-        enc_email = encrypt_pii("hr_dropzone_upload@talentops.internal", candidate_dek)
-        email_blind_idx = compute_blind_index(f"{file_hash}@talentops.internal")
+        if meta:
+            enc_name = encrypt_pii(meta["name"], candidate_dek)
+            enc_email = encrypt_pii(meta["email"], candidate_dek)
+            email_blind_idx = compute_blind_index(meta["email"])
+            identity_source = "form"
+        else:
+            # Legacy path: no metadata supplied, so keep the old placeholders.
+            enc_name = encrypt_pii(f"Applicant-{file.filename}", candidate_dek)
+            enc_email = encrypt_pii("hr_dropzone_upload@talentops.internal", candidate_dek)
+            email_blind_idx = compute_blind_index(f"{file_hash}@talentops.internal")
+            identity_source = "placeholder"
 
         masked_id = generate_masked_identifier()
         tracking_token = generate_tracking_token()
@@ -432,8 +489,8 @@ async def hr_direct_upload(
                 {"id": cand_id},
             )
 
-        # PRD Bab 6.4: the dropzone path has no form metadata, so any residual
-        # PII risk must be recorded as an anomaly rather than silently accepted.
+        # PRD Bab 6.4: when no form metadata was supplied the dropzone must record any
+        # residual PII risk as an anomaly rather than silently accepting it.
         if sanitize_result.has_residual_risk:
             await db.execute(
                 text("""
@@ -459,6 +516,7 @@ async def hr_direct_upload(
             "filename": file.filename,
             "masked_identifier": masked_id,
             "status": "queued",
+            "identity_source": identity_source,
             "sanitization_stats": sanitize_stats,
             "sanitization": {
                 "detected_name": sanitize_result.detected_name,

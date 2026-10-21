@@ -101,12 +101,26 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
       return;
     }
 
+    const trimmedName = candidateName.trim();
+    const trimmedEmail = candidateEmail.trim();
+    if (!trimmedName) {
+      setErrorMessage('Nama lengkap pelamar wajib diisi.');
+      return;
+    }
+    if (!trimmedEmail.includes('@') || trimmedEmail.length < 5) {
+      setErrorMessage('Email pelamar tidak valid.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const formData = new FormData();
       formData.append('job_id', String(selectedJobId || '1'));
       formData.append('files', file);
+      // Backend encrypts this and uses it for review emails + PII unmasking. Without
+      // it the dropzone stores placeholders and the applicant can never be contacted.
+      formData.append('applicant_meta', JSON.stringify([{ name: trimmedName, email: trimmedEmail }]));
 
       let serverUploaded = null;
       let uploadError = null;

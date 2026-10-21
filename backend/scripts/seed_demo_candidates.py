@@ -24,6 +24,7 @@ DEMO_PROFILES = [
         "phone": "+6281234567890",
         "masked_id": "#TK-A17C9B",
         "token": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "github_url": "https://github.com/candidate/payment-service",
         "claims": [
             {"dimension": "SKILL", "technology": "FastAPI", "has_implementation_detail": True, "context_narrative": "built async rest microservices using FastAPI handling 2500 rps", "metric_string": "2500 rps", "repo_url": "https://github.com/candidate/payment-service"},
             {"dimension": "SKILL", "technology": "PostgreSQL", "has_implementation_detail": True, "context_narrative": "reduced database query latency by 40% using composite indexing", "metric_string": "40% latency reduction"},
@@ -44,6 +45,7 @@ DEMO_PROFILES = [
         "phone": "+6281298765432",
         "masked_id": "#TK-B82F10",
         "token": "d41d8cd9-8f00-4b82-9a3b-231a48c6a012",
+        "github_url": "https://github.com/reza/order-service",
         "claims": [
             {"dimension": "SKILL", "technology": "FastAPI", "has_implementation_detail": True, "context_narrative": "distributed microservices serving 1000000 users", "metric_string": "1000000 users"},
             {"dimension": "SKILL", "technology": "PostgreSQL", "has_implementation_detail": True, "context_narrative": "relational database schemas in PostgreSQL"},
@@ -67,6 +69,7 @@ DEMO_PROFILES = [
         "phone": "+6281311223344",
         "masked_id": "#TK-C39D44",
         "token": "202cb962-ac59-4d96-9328-2d52402d08a0",
+        "github_url": None,
         "claims": [
             {"dimension": "SKILL", "technology": "Adobe Illustrator", "has_implementation_detail": True},
             {"dimension": "SKILL", "technology": "Photoshop", "has_implementation_detail": True},
@@ -84,6 +87,7 @@ DEMO_PROFILES = [
         "phone": "+6281788990011",
         "masked_id": "#TK-D99A12",
         "token": "c4ca4238-a0b9-4ae8-b221-0b3b22911234",
+        "github_url": None,
         "claims": [
             {"dimension": "SKILL", "technology": "Python", "has_implementation_detail": True, "context_narrative": "developed internal inventory dashboard"},
             {"dimension": "SKILL", "technology": "SQLite", "has_implementation_detail": True},
@@ -101,6 +105,7 @@ DEMO_PROFILES = [
         "phone": "+6281566778899",
         "masked_id": "#TK-E55F88",
         "token": "eccbc87e-4b5ce2fe-28308fd9f2a7baf3",
+        "github_url": "https://github.com/candidate/payment-service",
         "claims": [
             {"dimension": "SKILL", "technology": "Go", "has_implementation_detail": True, "context_narrative": "engineered data ingestion pipelines in Go processing 10k messages", "metric_string": "10k messages per minute"},
             {"dimension": "SKILL", "technology": "PostgreSQL", "has_implementation_detail": True, "context_narrative": "transactional database operations in PostgreSQL"},
@@ -170,13 +175,13 @@ def seed_candidates():
                     email_blind_index, masked_identifier, tracking_token, resume_file_path,
                     file_hash_sha256, sanitized_resume_text, dimension_scores, overall_score,
                     confidence_level, unresolved_risk, recommendation, triage_priority,
-                    status, is_deleted, version
+                    github_url, status, is_deleted, version
                 ) VALUES (
                     :id, :job_id, :enc_name, :enc_email, :enc_phone, :enc_dek,
                     :blind_idx, :masked_id, :token, :filename,
                     :file_hash, :raw_text, :dims, :overall,
                     :conf, :risk, :rec, :prio,
-                    'waiting_approval', FALSE, 1
+                    :github_url, 'waiting_approval', FALSE, 1
                 )
                 ON DUPLICATE KEY UPDATE
                     dimension_scores = VALUES(dimension_scores),
@@ -185,6 +190,7 @@ def seed_candidates():
                     unresolved_risk = VALUES(unresolved_risk),
                     recommendation = VALUES(recommendation),
                     triage_priority = VALUES(triage_priority),
+                    github_url = VALUES(github_url),
                     sanitized_resume_text = VALUES(sanitized_resume_text);
             """)
 
@@ -207,7 +213,37 @@ def seed_candidates():
                 "risk": assessment["unresolved_risk"],
                 "rec": assessment["recommendation"],
                 "prio": assessment["triage_priority"],
+                "github_url": p["github_url"],
             })
+
+            # Evidence graph. The engine already produces these rows; without them the
+            # dashboard's KEAHLIAN column is empty even though scores were computed.
+            conn.execute(
+                text("DELETE FROM candidate_evidence WHERE candidate_id = :cid"),
+                {"cid": p["id"]},
+            )
+            for ev in assessment["evidence_records"]:
+                conn.execute(text("""
+                    INSERT INTO candidate_evidence (
+                        candidate_id, dimension, target_competency, matched_requirement,
+                        claim_text, evidence_source, score_contribution, confidence, verified
+                    ) VALUES (
+                        :cid, :dim, :tech, :req,
+                        :claim, :src, :contrib, :conf, :verified
+                    );
+                """), {
+                    "cid": p["id"],
+                    "dim": ev["dimension"],
+                    "tech": ev["target_competency"],
+                    "req": ev["matched_requirement"],
+                    # claim_text is NOT NULL in the schema; an empty quote means the
+                    # substring guard found no verbatim passage, not "no claim".
+                    "claim": ev["claim_text"] or "",
+                    "src": ev["evidence_source"] or "CV Skills Section",
+                    "contrib": ev["score_contribution"],
+                    "conf": ev["confidence"],
+                    "verified": 1 if ev["verified"] else 0,
+                })
 
             # Anomalies
             if p["anomalies"].get("prompt_injection_detected"):

@@ -5,6 +5,20 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-21 - Najmi - Seed Data Demo: github_url & Evidence Graph Tidak Pernah Terisi
+- **Komponen / File:**
+  - `backend/scripts/seed_demo_candidates.py` (kolom `github_url` + insert `candidate_evidence`)
+  - `backend/tests/test_seed_scripts_importable.py` (+2 test)
+- **Catatan:** Ditemukan saat review dashboard produksi: semua kandidat menampilkan "AUDIT GITHUB: Anomali" dan kolom KEAHLIAN kosong, padahal skornya benar.
+- **Yang Dikerjakan:**
+  - **`github_url` tidak pernah di-seed.** Kolomnya ada di skema (`001_initial_schema.sql:58`) tetapi `INSERT INTO candidates` tidak menyertakannya, jadi semua baris NULL. Dashboard lalu memberi `github_status = 'UNVERIFIED'`, dan tabel memperlakukan semua yang bukan `VERIFIED`/`NOT_APPLICABLE` sebagai "Anomali". Tidak punya URL GitHub bukan anomali. Sekarang tiap profil punya `github_url` (Budi/Reza/Eko punya repo, Citra/Dewi `None`), dan kolomnya ikut di `ON DUPLICATE KEY UPDATE` supaya re-seed memperbarui baris lama.
+  - **`candidate_evidence` tidak pernah di-seed.** Engine sudah menghasilkan 2–5 `evidence_records` per kandidat, tapi hanya `dimension_scores`/`overall_score` yang disimpan. Kolom KEAHLIAN di dashboard membaca `target_competency` dari tabel itu (`candidates.py:236`), jadi hasilnya kosong. Sekarang skrip menghapus evidence lama per kandidat lalu menulis ulang seluruh record — idempoten, aman dijalankan berkali-kali.
+  - `claim_text` diisi `""` bila kosong karena kolomnya `NOT NULL`; string kosong berarti substring guard tidak menemukan kutipan verbatim, bukan "tidak ada klaim".
+- **Status & Verifikasi:** Selesai. `pytest tests/` → **235 passed**. Test baru: setiap profil mendeklarasikan `github_url` (minimal satu berisi URL), dan tiap profil menghasilkan `evidence_records` dengan `dimension` valid serta `evidence_source` tidak kosong.
+- **Rencana Selanjutnya:** Jalankan ulang `seed_demo_candidates.py` di VPS untuk mengisi kedua kolom pada 5 kandidat yang sudah ada.
+
+---
+
 ### 2026-10-21 - Najmi - Skrip Seed Tidak Bisa Dijalankan (namespace `app` vs `backend.app`)
 - **Komponen / File:**
   - `backend/scripts/seed_data.py` (sys.path + import)

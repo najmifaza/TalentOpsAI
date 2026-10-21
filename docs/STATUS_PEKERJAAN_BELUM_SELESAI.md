@@ -1,19 +1,20 @@
 # Status Pekerjaan Backend — Apa yang Belum Selesai
 
 **Terakhir diperbarui:** 21 Oktober 2026
-**Branch acuan:** `main` (di atas `eba88bc`, perubahan belum di-commit)
-**Status pengujian:** `uv run pytest backend/tests -q` → **193 passed, 0 failed**
+**Branch acuan:** `main` @ `cb8cde6`
+**Status pengujian:** `uv run pytest backend/tests -q` → **201 passed, 0 failed**
 
 Dokumen ini mendaftar pekerjaan yang **belum** selesai setelah lima item penguatan backend
 (auth/RBAC, Redis multi-worker, PDF hidden-text, integrasi eksternal, sanitasi PII).
 
 Ringkasan singkat: kelima item selesai di tingkat kode dan lulus seluruh test otomatis.
-Item 3 dan item 5 siap produksi. **Item 1 kini benar-benar aktif** (tiga lubang di §1 sudah
-ditutup). Item 2 belum pernah berjalan di Redis nyata, dan item 4 belum pernah menyentuh
-penyedia eksternal sama sekali.
+**Item 1 sudah aktif dan terverifikasi di produksi**, item 3 dan item 5 siap produksi.
+Item 2 **dibatalkan atas keputusan pemilik sistem** (tanpa Redis, 1 worker — lihat §2).
+Item 4 belum pernah menyentuh penyedia eksternal sama sekali.
 
-**Perubahan sesi ini:** §1.1, §1.2, §1.3, dan §3.3 sudah selesai — lihat penanda
-**SUDAH SELESAI** pada masing-masing bagian.
+**Perubahan sesi ini:** §1.1, §1.2, §1.3, dan §3.3 selesai; backend sudah di-deploy dan
+diverifikasi live; seed password diperbaiki; domain frontend dipindahkan ke `talentops.ai.id`
+(tertunda di sisi Vercel, lihat §5).
 
 ---
 
@@ -126,12 +127,23 @@ pernah berbicara dengan layanan sesungguhnya.
 |---|---|---|
 | Google Calendar OAuth2 | 16 test dengan `httpx` di-stub | `GOOGLE_CLIENT_ID`/`SECRET` tidak ada di `backend/.env`; nol panggilan nyata |
 | Resend (email) | 17 test dengan httpx/smtplib di-patch | `RESEND_API_KEY` tidak ada di `backend/.env`; nol email terkirim |
-| Redis multi-worker | 10 test dengan `fakeredis` | `REDIS_URL` kosong; `redis-server` dan `docker` tidak terpasang di host |
-| MariaDB | SQL divalidasi ke SQLite in-memory | Tidak ada instance MariaDB; dialek belum diuji ke server sungguhan |
+| ~~Redis multi-worker~~ | 10 test dengan `fakeredis` | **Dibatalkan** — lihat catatan di bawah |
+| MariaDB | SQL divalidasi ke SQLite in-memory | Produksi sudah tersambung (`database: connected`), tetapi test suite masih memakai SQLite in-memory |
 
-**Catatan Redis:** jalur multi-worker adalah alasan utama item 2 dikerjakan, tetapi belum
-pernah dieksekusi dengan lebih dari satu worker. Klaim "aman multi-worker" saat ini bersandar
-pada kesesuaian logika, bukan pada pengamatan.
+**Catatan Redis — dibatalkan atas keputusan pemilik sistem.** Redis tidak dipasang; alasan
+yang diberikan adalah beban resource di VPS. Konsekuensi yang harus diterima, bukan
+diperdebatkan:
+
+- `state_backend` tetap `in-memory`, `multi_worker_safe` tetap `false`.
+- Uvicorn **wajib 1 worker**. Dengan `--workers N > 1`, tiket SSE yang diterbitkan worker A
+  tidak dikenal worker B (stream menggantung tanpa error), dan budget konkurensi triase
+  menjadi `N × TRIAGE_CONCURRENCY_LIMIT`.
+- Verifikasi wajib setiap kali service diubah:
+  `systemctl cat talentops-backend | grep -i exec` — pastikan tidak ada `--workers 2`.
+
+Kode Redis di `app/core/state.py` dan `app/core/broadcaster.py` **dibiarkan** sebagai jalur
+fallback opsional: tanpa `REDIS_URL` ia tidak aktif dan tidak menambah beban. Menghapusnya
+akan membuang jalur scale-out yang sudah teruji tanpa memberi keuntungan operasional.
 
 ---
 
@@ -221,13 +233,46 @@ Fitur backend yang tidak terlihat di UI secara praktis tidak ada bagi pengguna.
 
 ## 5. Operasional & Deployment
 
-- `nginx/talentops.conf` dan `frontend/vercel.json` sudah ada (rewrite `/api/(.*)` →
-  `https://api-talentops.fawt.biz.id/api/$1`), tetapi **tidak ada bukti** kode baru sudah
-  ter-deploy ke VPS maupun Vercel.
-- VPS belum dikonfirmasi memiliki Redis; tanpa itu, `REDIS_URL` tetap kosong dan sistem
-  berjalan single-worker.
-- Variabel lingkungan baru pada `backend/.env.example` (`GOOGLE_*`, `RESEND_*`, `EMAIL_*`,
-  `REDIS_*`, `OAUTH_SUCCESS_REDIRECT`) belum diisi di `.env` mana pun.
+**Sudah terverifikasi live (21 Oktober 2026).** Backend di `main` sudah ter-deploy di VPS dan
+diuji dari luar:
+
+| Cek | Hasil |
+|---|---|
+| `GET /api/health` | `database: connected`, `demo_mode: false`, `state_backend: in-memory` |
+| `GET /api/candidates/stream/1` tanpa tiket | 401 dalam 0,26 s (tidak lagi menggantung) |
+| `GET /api/auth/me` tanpa token | 401 `NOT_AUTHENTICATED_MISSING_TOKEN` |
+| `POST /api/auth/login` kredensial salah | 401 `INVALID_CREDENTIALS` (query DB jalan) |
+| `POST /{id}/sse-ticket` + Bearer | tiket UUID terbit |
+| `GET /trace-stream?ticket=…` | 200 |
+| tiket sama dipakai ulang | 403 |
+| tiket dipakai untuk `candidate_id` lain | 403 |
+
+Frontend juga sudah ter-deploy lewat CI/CD Vercel: bundle live
+`assets/index-QB1QdiDM.js` identik dengan build lokal, memuat chunk `LoginPage`,
+`api/auth/login`, `sse-ticket`, `trace-stream`, dan **nol** referensi ke
+`candidates/stream` yang lama. CSP `connect-src` mengizinkan domain API.
+
+**Yang masih terbuka:**
+
+- **Password produksi.** Seed default `AdminSecret2026!` (tertulis terbuka di repo) sudah
+  diganti; verifikasi: password lama dan default sama-sama 401. Rotasi memakai
+  `SEED_ADMIN_PASSWORD` (lihat `backend/scripts/seed_data.py`). Jangan pernah menjalankan seed
+  produksi tanpa variabel itu.
+- **Domain `talentops.ai.id` tertunda di sisi Vercel.** Kode sudah dipindah (canonical,
+  `og:url`, `CORS_ORIGINS`, `EMAIL_FROM`, `OAUTH_SUCCESS_REDIRECT`, regex CORS), tetapi Vercel
+  menolak meng-attach domain: `This domain is linked to another Vercel account`, dan Vercel
+  meminta TXT di `_vercel.ai.id` — zona PANDI yang tidak bisa ditulis karena
+  `talentops.ai.id` adalah pendaftaran langsung di bawah `.ai.id`, bukan subdomain `ai.id`.
+  DNS sendiri sudah benar (`A @ → 76.76.21.21`, `CNAME www`/`career → …vercel-dns-017.com`,
+  3 TXT verify tersedia), namun ketiga host balas `DEPLOYMENT_NOT_FOUND`. Status: menunggu
+  Vercel support melepas stale claim. Situs produksi sementara tetap
+  `https://talentops.fawt.biz.id`.
+- `mail` dan `ftp` masih CNAME ke apex, jadi ikut menunjuk Vercel. `mail` harus diarahkan ke
+  host mail sebenarnya atau dihapus; `ftp` tidak dipakai.
+- Record email untuk `talentops.ai.id` (SPF/DKIM Resend, MX) belum ada sama sekali.
+- Variabel lingkungan pada `backend/.env.example` (`GOOGLE_*`, `RESEND_*`, `EMAIL_*`,
+  `REDIS_*`, `OAUTH_SUCCESS_REDIRECT`) belum diisi di `.env` mana pun. `REDIS_*` tidak akan
+  diisi (lihat §2).
 
 ---
 
@@ -235,19 +280,30 @@ Fitur backend yang tidak terlihat di UI secara praktis tidak ada bagi pengguna.
 
 | Prioritas | Pekerjaan | Alasan | Status |
 |---|---|---|---|
-| 1 | Tutup `GET /api/candidates/stream/{id}` dan pindahkan frontend ke alur tiket | Satu fungsi, dampak keamanan tertinggi | **Selesai** |
+| 1 | Tutup `GET /api/candidates/stream/{id}` dan pindahkan frontend ke alur tiket | Satu fungsi, dampak keamanan tertinggi | **Selesai** + verified live |
 | 2 | Ukur recall sanitizer pada 25 CV golden dataset | Bahan sudah ada; mengubah klaim menjadi bukti | **Selesai** — 100% (90/90) |
-| 3 | Login UI + `DEMO_MODE=False` | Membuka kunci RBAC item 1; keduanya harus bersamaan | **Selesai** |
-| 4 | Isi kredensial VPS, verifikasi live Calendar & Resend | Mengubah stub menjadi integrasi sungguhan | Belum |
-| 5 | Pasang Redis di VPS, jalankan >1 worker | Membuktikan klaim multi-worker | Belum |
-| 6 | Simpan identitas asli pada jalur dropzone | Melengkapi item 5 agar identitas bisa dibuka secara sah | Belum |
-| 7 | Sambungkan UI kalender, notifikasi, badge residual risk | Membuat fitur backend terlihat | Belum |
+| 3 | Login UI + `DEMO_MODE=False` | Membuka kunci RBAC item 1; keduanya harus bersamaan | **Selesai** + verified live |
+| 4 | Isi kredensial VPS, verifikasi live Calendar & Resend | Mengubah stub menjadi integrasi sungguhan | Belum — butuh akun Google Cloud + Resend |
+| 5 | Pasang Redis di VPS, jalankan >1 worker | Membuktikan klaim multi-worker | **Dibatalkan** — pemilik sistem menolak Redis (beban server); tetap 1 worker |
+| 6 | Simpan identitas asli pada jalur dropzone | Melengkapi item 5 agar identitas bisa dibuka secara sah | Belum — butuh keputusan produk |
+| 7 | Sambungkan UI kalender, notifikasi, badge residual risk | Membuat fitur backend terlihat | Belum — **satu-satunya yang murni kode, bisa dikerjakan sekarang** |
 
-Catatan untuk prioritas 4–7: keempatnya butuh akses di luar repositori (kredensial penyedia,
-VPS, atau keputusan produk soal identitas pelamar), jadi tidak bisa diselesaikan hanya dari
-kode. Prioritas 6 punya satu keputusan yang harus diambil lebih dulu: dari mana identitas asli
-diperoleh pada jalur dropzone — kolom form tambahan saat unggah, atau ekstraksi header dengan
-konfirmasi HR — karena sanitizer sengaja tidak menyimpan nilai yang ia redaksi.
+Catatan untuk prioritas 4, 6, dan 7: ketiganya butuh masukan dari luar repositori. Prioritas 4
+butuh akun Google Cloud + Resend (dan domain pengirim terverifikasi). Prioritas 6 butuh
+keputusan produk lebih dulu: dari mana identitas asli diperoleh pada jalur dropzone — kolom
+form tambahan saat unggah, atau ekstraksi header dengan konfirmasi HR — karena sanitizer
+sengaja tidak menyimpan nilai yang ia redaksi. Prioritas 7 tidak butuh apa pun selain kode.
+
+Rincian prioritas 7 (backend sudah mengirim datanya, UI membuangnya):
+
+1. `UploadCandidateModal` — tampilkan blok `sanitization` dari respons
+   `POST /api/candidates/upload` (`residual_risk`, `name_source`, `limitations`) sebagai badge
+   peringatan; saat ini `sanitization_stats` lama saja yang dibaca.
+2. `CandidateModal` — baca `notifications.calendar` dan `notifications.email` dari respons
+   `POST /{id}/review` dan tampilkan hasilnya, termasuk kegagalan.
+3. Panel status kalender — `GET /api/calendar/status`, tombol connect
+   (`GET /api/calendar/oauth/authorize`) dan disconnect (`POST /api/calendar/disconnect`),
+   di dalam `/admin/*` yang sudah ber-auth.
 
 ---
 
@@ -255,11 +311,24 @@ konfirmasi HR — karena sanitizer sengaja tidak menyimpan nilai yang ia redaksi
 
 | Item | Commit | Status |
 |---|---|---|
-| 1. Auth & RBAC | `7f62479` | **Aktif** — `DEMO_MODE=False`, login UI ada, endpoint SSE bertiket |
-| 2. Redis multi-worker | `0fc24d0` | Kode selesai; **belum diuji** di Redis nyata |
+| 1. Auth & RBAC | `7f62479` | **Aktif & terverifikasi live** — `DEMO_MODE=False`, login UI ada, endpoint SSE bertiket |
+| 2. Redis multi-worker | `0fc24d0` | **Dibatalkan** — tanpa Redis, 1 worker (kode fallback dipertahankan) |
 | 3. PDF hidden-text | `d5649e0` | Siap produksi (batas: tanpa OCR) |
 | 4. Integrasi eksternal | `7314d98`, `b4f2b2d` | Kode selesai; **belum pernah live** |
-| 5. Sanitasi PII | `eba88bc` | Siap produksi (batas: tanpa NER) |
+| 5. Sanitasi PII | `eba88bc` | Siap produksi (batas: tanpa NER); recall terukur 100% pada 25 CV riil |
+
+Commit sesi ini (21 Oktober 2026):
+
+| Commit | Isi |
+|---|---|
+| `b0557e0` | Guard tiket pada endpoint SSE lama + `stream_url` bertiket |
+| `adeef02` | `DEMO_MODE=False` + perbaikan `auth.py` (baris parsial menimpa klaim token) |
+| `9563d76` | Login gate frontend + alur tiket di `AgentTraceModal` |
+| `08da3e7` | Ukur recall sanitizer pada 25 CV + update dokumen ini |
+| `0964283` | Hapus dua laporan evaluasi sprint 4 yang basi |
+| `8ac6122` | Seed menulis ulang `password_hash`; dukungan `SEED_ADMIN_PASSWORD` |
+| `a8e7199` | Hapus origin `talentops.vercel.app` (aplikasi lain) dari CORS |
+| `cb8cde6` | Pindah domain frontend ke `talentops.ai.id` + perbaiki regex CORS |
 
 Catatan: commit `b4f2b2d` (konfirmasi erasure pada withdraw) dan `eba88bc` (sanitasi PII)
 juga menutup dua kekurangan yang sebelumnya tidak tercatat — template `erasure_confirmation`

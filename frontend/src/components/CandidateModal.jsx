@@ -31,6 +31,61 @@ import { CandidateEvidenceGraph } from './EvidenceGraph';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
+// Post-commit delivery report for a review decision. Each channel is best-effort
+// on the backend, so a `reason` here is the only place a silent failure surfaces.
+function DeliveryReport({ notifications }) {
+  if (!notifications) return null;
+
+  const rows = [];
+  const cal = notifications.calendar;
+  if (cal) {
+    rows.push({
+      key: 'calendar',
+      label: 'Google Calendar',
+      ok: Boolean(cal.synced),
+      detail: cal.synced
+        ? `Event ${cal.event_id || '(id tidak dilaporkan)'}${cal.already_existed ? ' — sudah ada sebelumnya' : ''}`
+        : `Tidak tersinkron: ${cal.reason || 'alasan tidak dilaporkan'}`,
+    });
+  }
+  const email = notifications.email;
+  if (email) {
+    rows.push({
+      key: 'email',
+      label: 'Email Pelamar',
+      ok: Boolean(email.sent),
+      detail: email.sent
+        ? `Terkirim via ${email.provider || 'penyedia tidak dilaporkan'}`
+        : `Tidak terkirim: ${email.reason || 'alasan tidak dilaporkan'}`,
+    });
+  }
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="p-3.5 rounded-2xl bg-[#f8f9fc] border border-[#e6e6ea] text-left space-y-2 text-xs">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-[#67677e] block">
+        Status Notifikasi Otomatis
+      </span>
+      {rows.map((row) => (
+        <div key={row.key} className="flex items-start gap-2 py-1 border-b border-[#e6e6ea] last:border-0">
+          {row.ok ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          ) : (
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-[#000000]">{row.label}</p>
+            <p className={`text-[11px] leading-snug break-words ${row.ok ? 'text-[#454554]' : 'text-amber-800'}`}>
+              {row.detail}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 export default function CandidateModal({ candidate, onClose, onRefresh }) {
   const [activeTab, setActiveTab] = useState('summary'); // 'summary' | 'graph' | 'cv' | 'schedule'
@@ -46,6 +101,9 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookedEvent, setBookedEvent] = useState(null);
+  // Post-commit side effects reported by POST /{id}/review. Best-effort on the
+  // backend, so the UI must show a failure instead of assuming delivery.
+  const [notifications, setNotifications] = useState(null);
   const [rejectReason, setRejectReason] = useState('Skor keahlian di bawah threshold kompetensi posisi');
 
   // Load candidate full detail from backend
@@ -225,7 +283,12 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
         throw new Error(`Review submit failed with status ${res.status}`);
       }
 
-      const eventId = generateMockEventId(selectedSlot.id, candidate.id);
+      const payload = await res.json().catch(() => ({}));
+      setNotifications(payload.notifications || null);
+
+      const eventId =
+        payload.notifications?.calendar?.event_id ||
+        generateMockEventId(selectedSlot.id, candidate.id);
       setBookedEvent({
         eventId,
         slot: selectedSlot,
@@ -235,6 +298,7 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
       if (onRefresh) onRefresh();
     } catch (err) {
       console.warn('Live review submit failed, falling back to local receipt:', err);
+      setNotifications(null);
       const eventId = generateMockEventId(selectedSlot.id, candidate.id);
       setBookedEvent({
         eventId,
@@ -256,14 +320,17 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
       formData.append('notes', rejectReason);
       formData.append('reviewer_id', '1');
 
-      await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidate.id}/review`, {
         method: 'POST',
         body: formData,
       });
+      const payload = res.ok ? await res.json().catch(() => ({})) : {};
+      setNotifications(payload.notifications || null);
 
       if (onRefresh) onRefresh();
     } catch (err) {
       console.warn('Live reject submit failed, falling back to local state:', err);
+      setNotifications(null);
       if (onRefresh) onRefresh();
     } finally {
       setIsSubmitting(false);
@@ -885,6 +952,10 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                 </div>
               </div>
 
+              <div className="max-w-md mx-auto">
+                <DeliveryReport notifications={notifications} />
+              </div>
+
               <div className="pt-2">
                 <button
                   type="button"
@@ -968,6 +1039,9 @@ export default function CandidateModal({ candidate, onClose, onRefresh }) {
                 <p className="text-xs text-[#67677e] max-w-sm mx-auto">
                   Status kandidat {resolvedIdentity.name} ({candidate.masked_identifier}) telah ditandai ditolak. Alasan dicatat dalam audit trail sistem.
                 </p>
+              </div>
+              <div className="max-w-md mx-auto">
+                <DeliveryReport notifications={notifications} />
               </div>
               <div className="pt-2">
                 <button

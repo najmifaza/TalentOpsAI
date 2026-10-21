@@ -255,7 +255,7 @@ def test_exact_duplicate_technologies_collapse():
 
 
 def test_distinct_but_related_technologies_are_kept():
-    """SQL and MySQL/PostgreSQL each cover a different requirement, so both stay."""
+    """SQL and MySQL/PostgreSQL are different names, so both stay as separate nodes."""
     claims = [
         {"dimension": "SKILL", "technology": "SQL", "has_implementation_detail": True,
          "context_narrative": "membimbing praktikum skema relasional", "metric_string": None,
@@ -273,3 +273,62 @@ def test_distinct_but_related_technologies_are_kept():
     assert by_tech["SQL"]["matched_requirement"] == "MariaDB"
     assert by_tech["MySQL/PostgreSQL"]["matched_requirement"] == "PostgreSQL"
     assert by_tech["MySQL/PostgreSQL"]["score_contribution"] == 60.0
+
+
+def test_one_technology_covering_two_requirements_is_one_node():
+    """A CV listing only PostgreSQL for two DB requirements must not render twice."""
+    claims = [
+        {"dimension": "SKILL", "technology": "PostgreSQL", "has_implementation_detail": True,
+         "context_narrative": "tuned postgresql queries", "metric_string": None,
+         "repo_url": None, "source_location": "Pengalaman"},
+    ]
+
+    _score, records = DeterministicScoringEngine.calculate_skill_score(
+        claims=claims, core_competencies=["PostgreSQL", "MariaDB"], verified_github_repos={}
+    )
+
+    postgres_rows = [r for r in records if r["target_competency"] == "PostgreSQL"]
+    assert len(postgres_rows) == 1, "same technology must collapse to one node"
+    assert postgres_rows[0]["score_contribution"] == 60.0
+    # Both requirements it covered survive in the badge.
+    assert "PostgreSQL" in postgres_rows[0]["matched_requirement"]
+    assert "MariaDB" in postgres_rows[0]["matched_requirement"]
+
+
+def test_null_company_in_career_gap_entry_does_not_break_extraction():
+    """A career-gap row carries company: null; that must not fail the whole schema."""
+    payload = {
+        "github_url": None,
+        "portfolio_url": None,
+        "claims": [],
+        "career_timeline": [
+            {"role": "Backend Engineer", "company": "PT A", "is_relevant_role": True,
+             "employment_type": "full_time", "start": "2020-01", "end": "2021-12"},
+            {"role": None, "company": None, "is_relevant_role": True,
+             "employment_type": "career_break", "start": "2022-01", "end": "2023-06"},
+        ],
+        "education": None,
+        "anomalies": {},
+    }
+
+    schema = CandidateExtractionSchema.model_validate(payload)
+
+    gap = schema.career_timeline[1]
+    assert gap.company == "-"
+    assert gap.role == "-"
+    assert gap.employment_type == "contract"
+    assert gap.start == "2022-01"
+
+
+def test_null_dates_do_not_create_false_overlap():
+    """A timeline row with no start date must be ignored, not anchored to today."""
+    timeline = [
+        {"role": "Engineer", "company": "PT A", "is_relevant_role": True,
+         "employment_type": "full_time", "start": "2022-01", "end": "2023-12"},
+        {"role": "-", "company": "-", "is_relevant_role": True,
+         "employment_type": "full_time", "start": "", "end": ""},
+    ]
+    risk, flags, details = DeterministicScoringEngine.evaluate_risk({}, timeline)
+    assert risk == "LOW"
+    assert flags == []
+    assert details == []

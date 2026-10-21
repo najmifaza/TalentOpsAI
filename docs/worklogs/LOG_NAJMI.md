@@ -5,6 +5,22 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-21 - Najmi - Log Aplikasi Tidak Sampai ke journald (root cause)
+- **Komponen / File:**
+  - `backend/app/main.py` (`logging.basicConfig` + level paket `app`)
+  - `backend/tests/test_maintenance.py` (`test_app_logging_reaches_stderr`)
+- **Catatan:** Ditemukan saat verifikasi deploy: `maintenance: started` tidak muncul di `journalctl` meski loop benar-benar berjalan.
+- **Yang Dikerjakan:**
+  - **Akar masalah bukan di `maintenance.py`.** Seluruh 16 modul memakai `logging.getLogger(__name__)` dengan 34 pemanggilan log, tetapi tidak ada konfigurasi logging di mana pun. Uvicorn hanya memasang handler pada logger `uvicorn.*`; logger aplikasi melakukan propagate ke root, dan root tidak punya handler — sehingga INFO dibuang (yang lolos hanya WARNING+ lewat `logging.lastResort`). Artinya bukan cuma log maintenance yang hilang: log fallback triage, erasure, dan email juga tidak pernah sampai ke journald.
+  - Perbaikan di akar: `logging.basicConfig(level=..., format=...)` di `main.py` memberi root handler, sehingga ke-16 modul langsung terlihat tanpa mengganti nama logger satu per satu.
+  - `basicConfig` adalah no-op bila root sudah punya handler (pytest, sebagian process manager), dan pada kasus itu level juga tidak terpasang. Karena itu level di-pin eksplisit pada logger paket `app` (`logging.getLogger("app").setLevel(...)`); pesan tetap propagate ke handler root yang ada. Tanpa baris ini, test menangkap `app.core.maintenance` berlevel WARNING dan assertion gagal — yang membuktikan masalahnya nyata, bukan teoretis.
+  - **Alternatif yang ditolak:** mengganti `getLogger(__name__)` menjadi `getLogger("uvicorn.error")` seperti yang sempat diterapkan langsung di VPS. Itu hanya memperbaiki satu modul dan membuat modul aplikasi bergantung pada detail internal uvicorn. Perubahan itu tidak masuk repo dan dibuang saat sinkronisasi.
+  - Test regresi `test_app_logging_reaches_stderr` menjaga agar konfigurasi root tidak hilang diam-diam; gejala aslinya (log hilang) tidak terlihat tanpa membaca journald.
+- **Status & Verifikasi:** Selesai. `pytest tests/` → **225 passed** (224 + 1 test baru). Probe manual `PYTHONPATH=. python -c` mengonfirmasi dua logger modul berbeda mencetak INFO ke stderr: `INFO: app.core.maintenance - ...` dan `INFO: app.core.triage_service - ...`.
+- **Rencana Selanjutnya:** Setelah deploy, `sudo journalctl -u talentops-backend -n 40 | grep -i maintenance` harus memuat `maintenance: started maintenance:slot-cleaner`, dan setiap tick yang benar-benar membebaskan slot akan mencatat `maintenance: released N expired tentative slot(s)`.
+
+---
+
 ### 2026-10-21 - Najmi - Identitas Asli Jalur Dropzone Disimpan (Keputusan A)
 - **Komponen / File:**
   - `backend/app/api/candidates.py` (`_parse_applicant_meta`, `hr_direct_upload`)

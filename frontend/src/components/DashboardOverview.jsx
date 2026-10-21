@@ -15,7 +15,9 @@ import {
   AlertTriangle,
   Play,
   Zap,
-  Check
+  Check,
+  Sliders,
+  ArrowRight
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
@@ -23,6 +25,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops
 export default function DashboardOverview() {
   const navigate = useNavigate();
   const [candidates, setCandidates] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [traceCandidate, setTraceCandidate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
@@ -33,7 +36,7 @@ export default function DashboardOverview() {
   const fetchCandidates = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/candidates?limit=50`);
+      const res = await fetch(`${API_BASE_URL}/api/candidates?limit=200`);
       if (res && res.ok) {
         const json = await res.json();
         if (json.data && json.data.length > 0) {
@@ -42,6 +45,7 @@ export default function DashboardOverview() {
             const isUnscanned = c.overall_score === null || c.recommendation === 'PENDING_SCAN' || c.status === 'queued';
             return {
               id: c.id,
+              job_id: c.job_id,
               masked_identifier: c.masked_identifier,
               tracking_token: c.tracking_token || `tk-${c.id}`,
               job_title: c.job_title || 'Unknown Role',
@@ -79,6 +83,19 @@ export default function DashboardOverview() {
     }
   }, []);
 
+  // Job metadata (weights per opening) — needed by the per-job What-If cards.
+  const fetchJobs = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/jobs`);
+      if (res && res.ok) {
+        const json = await res.json();
+        setJobs(json.data || []);
+      }
+    } catch (err) {
+      console.warn('Backend jobs fetch error:', err);
+    }
+  }, []);
+
   const handleUploadSuccess = (newCandidate) => {
     setCandidates(prev => [newCandidate, ...prev]);
     setTimeout(() => {
@@ -105,7 +122,8 @@ export default function DashboardOverview() {
 
   useEffect(() => {
     fetchCandidates();
-  }, [fetchCandidates]);
+    fetchJobs();
+  }, [fetchCandidates, fetchJobs]);
 
   // Derived live pipeline funnel metrics
   const unscannedCandidates = useMemo(() => {
@@ -138,6 +156,44 @@ export default function DashboardOverview() {
     const count = scannedCandidates.filter(c => c.confidence_level === 'HIGH').length;
     return Math.round((count / scannedCandidates.length) * 100);
   }, [scannedCandidates]);
+
+  // Group the pool per opening: What-If is job-scoped, so each card is its own simulation entry point.
+  const jobGroups = useMemo(() => {
+    const byId = new Map();
+    candidates.forEach(c => {
+      if (c.job_id === null || c.job_id === undefined) return;
+      const g = byId.get(c.job_id) || {
+        job_id: c.job_id,
+        title: c.job_title,
+        department: c.department,
+        candidates: [],
+      };
+      g.candidates.push(c);
+      byId.set(c.job_id, g);
+    });
+    return Array.from(byId.values()).map(g => {
+      const meta = jobs.find(j => j.id === g.job_id);
+      const scanned = g.candidates.filter(c => c.overall_score !== null && c.overall_score !== undefined);
+      const w = meta?.weight_config || {};
+      return {
+        ...g,
+        title: meta?.title || g.title,
+        department: meta?.department || g.department,
+        weights: {
+          SKILL: Math.round((w.SKILL ?? 0.4) * 100),
+          EXPERIENCE: Math.round((w.EXPERIENCE ?? 0.3) * 100),
+          EDUCATION: Math.round((w.EDUCATION ?? 0.1) * 100),
+          PORTFOLIO: Math.round((w.PORTFOLIO ?? 0.2) * 100),
+        },
+        total: g.candidates.length,
+        scannedCount: scanned.length,
+        unscannedCount: g.candidates.length - scanned.length,
+        strong: scanned.filter(c => c.recommendation === 'STRONG_MATCH').length,
+        review: scanned.filter(c => c.recommendation === 'REVIEW_REQUIRED').length,
+        weak: scanned.filter(c => c.recommendation === 'WEAK_FIT').length,
+      };
+    }).sort((a, b) => b.total - a.total);
+  }, [candidates, jobs]);
 
   // Handle batch triage action
   const handleBatchTriage = async () => {
@@ -414,7 +470,83 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* 4. Main Candidates Queue Section */}
+      {/* 4. Per-Job What-If Entry Cards */}
+      {jobGroups.length > 0 && (
+        <div className="space-y-4 pt-2">
+          <div>
+            <h3 className="text-lg font-extrabold text-primary-black tracking-tight">Simulasi Kebijakan per Lowongan</h3>
+            <p className="text-xs text-primary-slate-600">
+              Tiap lowongan punya bobot 4D sendiri. Buka kartu untuk menggeser bobot dan passing grade,
+              lalu lihat siapa yang naik atau turun kategori tanpa mengubah data tersimpan.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {jobGroups.map(g => (
+              <div
+                key={g.job_id}
+                className="bg-white rounded-2xl border border-primary-border-200 p-5 shadow-sm hover:border-primary-orange hover:shadow-card-hover transition-all flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-primary-black truncate" title={g.title}>{g.title}</p>
+                      <p className="text-[11px] text-primary-slate-500">{g.department || 'General'}</p>
+                    </div>
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-slate-100 text-primary-slate-700 text-[10px] font-bold tabular-nums">
+                      <Users className="w-2.5 h-2.5" />
+                      {g.total}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[['Skill', g.weights.SKILL], ['Exp', g.weights.EXPERIENCE], ['Edu', g.weights.EDUCATION], ['Port', g.weights.PORTFOLIO]].map(([label, val]) => (
+                      <div key={label} className="rounded-lg bg-primary-slate-50 border border-primary-border-100 px-1.5 py-1.5 text-center">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-primary-slate-500">{label}</p>
+                        <p className="text-xs font-extrabold text-primary-black tabular-nums">{val}%</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 tabular-nums">
+                      {g.strong} Strong
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-primary-blue/10 text-primary-black border border-primary-blue/30 tabular-nums">
+                      {g.review} Review
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 tabular-nums">
+                      {g.weak} Weak
+                    </span>
+                    {g.unscannedCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-primary-orange/10 text-primary-orange border border-primary-orange/30 tabular-nums">
+                        {g.unscannedCount} belum scan
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => navigate(`/admin/what-if/${g.job_id}`)}
+                  disabled={g.scannedCount === 0}
+                  title={g.scannedCount === 0 ? 'Belum ada kandidat ter-triage untuk disimulasikan' : 'Buka What-If Simulation Studio'}
+                  className={`mt-4 w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold transition-all ${
+                    g.scannedCount === 0
+                      ? 'bg-primary-slate-100 text-primary-slate-400 border border-primary-border-200 cursor-not-allowed'
+                      : 'bg-primary-orange hover:opacity-90 text-white shadow-lg shadow-primary-orange/25'
+                  }`}
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>Simulasi What-If</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 5. Main Candidates Queue Section */}
       <div className="space-y-4 pt-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>

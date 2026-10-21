@@ -976,6 +976,7 @@ export default function CandidateDetailPage() {
                 candidate={activeCandidateObj} 
                 onReloadCandidates={loadCandidateDetail}
                 embedded={true}
+                initialDetail={candidateDetail}
               />
             </div>
           )}

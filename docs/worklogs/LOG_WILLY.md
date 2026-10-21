@@ -5,6 +5,25 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-21 - Willy - Evidence Graph Sinkron dengan CV & Anomali Berbahasa Manusia
+- **Komponen / File:**
+  - `frontend/src/components/EvidenceGraph.jsx`
+  - `frontend/src/components/CandidateDetailPage.jsx`
+- **Catatan:** Dikerjakan & di-commit atas nama Willy, hasil audit graf bukti kandidat `#TK-2FD8DC`. Perubahan backend yang menjadi sumber datanya dicatat di `LOG_FARDIZZA.md` dan `LOG_NAJMI.md`.
+- **Yang Dikerjakan:**
+  - Node Layer 2 sekarang berlabel "Keahlian di CV" dan memakai `target_competency` dari CV (bukan label requirement lowongan), plus badge `Memenuhi syarat: <requirement>` atau `Tidak diminta lowongan` berdasarkan `matched_requirement`. Sebelumnya CV yang menulis Next.js tampil sebagai "React" atau tidak muncul sama sekali.
+  - Node Layer 3 membedakan dua keadaan: `verified` → "Kutipan Asli CV" dengan badge "Terverifikasi verbatim"; tidak `verified` → "Sebutan di CV" dengan badge "Belum terverifikasi" dan teks penjelas, bukan kutipan palsu dalam tanda petik. Ini menutup kasus parafrase LLM yang tampil seolah-olah kalimat asli pelamar.
+  - Anomali dipisah ke lane sendiri (diurutkan setelah blok keahlian) dengan judul berbahasa manusia — "Pekerjaan penuh waktu bertumpang tindih", "Manipulasi teks pada berkas", "Lonjakan jabatan tidak wajar", "Jeda karier lebih dari 12 bulan" — alih-alih `CONCURRENT_FULLTIME_OVERLAP_23_MONTHS` mentah.
+  - Node anomali kini menampilkan badge severity dari data (`HIGH` → "Risiko Tinggi", dst., sebelumnya selalu `100% Conf` hardcoded), deskripsi temuan, dan blok "Yang perlu dilakukan" berisi `suggested_verification` dari backend. Baris "Sumber: Review during HR interview." diganti "Tingkat: <severity>" karena teks lama itu bukan sumber.
+  - Edge ke node GitHub dipindah dari `evidence[0]`/`evidence[1]` ke root kandidat: audit repo adalah properti kandidat, bukan satu klaim keahlian, dan garis merah dari anomali ke repo membuat seolah temuan itu soal repositori.
+  - `CandidateEvidenceGraph` menerima prop `initialDetail` dan `EvidenceGraphInner` memakainya lewat `loadedForRef`, sehingga tab Evidence Graph tidak lagi memanggil ulang `GET /api/candidates/{id}` yang sudah di-fetch halaman induk. Tombol "Segarkan" tetap tersedia untuk reload manual.
+  - Legenda kanvas diperbarui: empat entri (keahlian, kutipan terverifikasi, anomali/risiko, audit GitHub).
+  - `CandidateDetailPage.jsx` meneruskan `initialDetail={candidateDetail}` ke graf.
+- **Status & Verifikasi:** Selesai. `npx vite build` sukses (1780 modul). Belum diuji visual di browser.
+- **Rencana Selanjutnya:** Setelah migrasi `003` dijalankan dan kandidat di-triage ulang, cek `#TK-2FD8DC` di tab Evidence Graph: Next.js harus muncul sebagai node keahlian, dan node anomali harus menyebut dua perusahaan beserta periodenya.
+
+---
+
 ### 2026-10-21 - Willy - Fix Crash Null `overall_score` pada Halaman Dossier
 - **Komponen / File:**
   - `frontend/src/components/CandidateDetailPage.jsx`

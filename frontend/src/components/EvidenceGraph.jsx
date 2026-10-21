@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
@@ -87,6 +87,7 @@ function CandidateNode({ data }) {
 // 2. Competency Claim Node (Layer 2)
 function CompetencyNode({ data }) {
   const isSecurity = data.isSecurity;
+  const isMatched = data.matchedRequirement !== null && data.matchedRequirement !== undefined;
 
   return (
     <div className={`p-3.5 rounded-xl bg-white border-2 shadow-md w-60 select-none transition-all ${
@@ -108,19 +109,28 @@ function CompetencyNode({ data }) {
         <span className={`text-[10px] font-bold uppercase tracking-wider ${
           isSecurity ? 'text-rose-600' : 'text-[#1b55f5]'
         }`}>
-          {isSecurity ? 'Anomali Terdeteksi' : 'Klaim Kompetensi'}
+          {isSecurity ? 'Anomali Terdeteksi' : 'Keahlian di CV'}
         </span>
         <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
           isSecurity 
             ? 'bg-rose-50 text-rose-700' 
             : 'bg-[#eaf0ff] text-[#1b55f5]'
         }`}>
-          {data.confidence}% Conf
+          {isSecurity ? `${data.severityLabel}` : `${data.confidence}% Conf`}
         </span>
       </div>
       <div className="mt-2">
         <h5 className="text-xs font-bold text-[#000000] truncate">{data.skill}</h5>
-        <p className="text-[10px] text-[#67677e] mt-0.5 leading-snug line-clamp-2">{data.description}</p>
+        <p className="text-[10px] text-[#67677e] mt-0.5 leading-snug line-clamp-3">{data.description}</p>
+        {!isSecurity && (
+          <span className={`inline-block mt-1.5 text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+            isMatched
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-[#f4f4f6] text-[#67677e] border-[#e6e6ea]'
+          }`}>
+            {isMatched ? `Memenuhi syarat: ${data.matchedRequirement}` : 'Tidak diminta lowongan'}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -129,12 +139,15 @@ function CompetencyNode({ data }) {
 // 3. Resume Quote Grounding Evidence Node (Layer 3)
 function EvidenceNode({ data }) {
   const isSecurity = data.isSecurity;
+  const isVerified = !isSecurity && Boolean(data.verified) && Boolean(data.quote);
 
   return (
     <div className={`p-3.5 rounded-xl bg-white border-2 shadow-md w-64 select-none transition-all ${
       isSecurity 
         ? 'border-rose-400 hover:border-rose-500' 
-        : 'border-[#8ec0ff] hover:border-[#1b55f5]'
+        : isVerified
+          ? 'border-[#8ec0ff] hover:border-[#1b55f5]'
+          : 'border-[#e6e6ea] hover:border-[#8ec0ff]'
     }`}>
       <Handle 
         type="target" 
@@ -153,25 +166,50 @@ function EvidenceNode({ data }) {
           ) : (
             <Quote className="w-3 h-3 text-[#1b55f5]" />
           )}
-          <span>{isSecurity ? 'Temuan Investigasi' : 'Kutipan Asli CV'}</span>
+          <span>
+            {isSecurity ? 'Penjelasan Temuan' : (isVerified ? 'Kutipan Asli CV' : 'Sebutan di CV')}
+          </span>
         </div>
         <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border ${
           isSecurity 
             ? 'bg-rose-50 text-rose-700 border-rose-200' 
-            : 'bg-[#eaf0ff] text-[#1b55f5] border-blue-200'
+            : isVerified
+              ? 'bg-[#eaf0ff] text-[#1b55f5] border-blue-200'
+              : 'bg-[#f4f4f6] text-[#67677e] border-[#e6e6ea]'
         }`}>
-          {isSecurity ? 'Security Flag' : 'Grounded Substring'}
+          {isSecurity ? `Severity ${data.severity || 'MEDIUM'}` : (isVerified ? 'Terverifikasi verbatim' : 'Belum terverifikasi')}
         </span>
       </div>
-      <p className={`mt-2 text-[11px] italic leading-snug line-clamp-3 ${
-        isSecurity ? 'text-rose-800 font-medium' : 'text-[#454554]'
-      }`}>
-        "{data.quote}"
-      </p>
-      <div className="mt-2 pt-1 border-t border-[#e6e6ea] flex items-center justify-between text-[9px] text-[#67677e]">
-        <span className="truncate max-w-[150px] font-medium">Sumber: {data.source}</span>
-        {data.score !== undefined && (
-          <span className="font-mono text-[#1b55f5] font-bold">+{data.score}pt</span>
+
+      {isSecurity ? (
+        <>
+          <p className="mt-2 text-[11px] leading-snug text-rose-900 font-medium">
+            {data.quote}
+          </p>
+          {data.verification && (
+            <div className="mt-2 pt-1.5 border-t border-rose-200">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-rose-700 block">Yang perlu dilakukan</span>
+              <p className="text-[10px] text-rose-800 leading-snug mt-0.5">{data.verification}</p>
+            </div>
+          )}
+        </>
+      ) : isVerified ? (
+        <p className="mt-2 text-[11px] italic leading-snug line-clamp-4 text-[#454554]">
+          "{data.quote}"
+        </p>
+      ) : (
+        <p className="mt-2 text-[11px] leading-snug text-[#67677e]">
+          Teknologi ini disebut di CV, tetapi tidak ada kalimat pendukung yang lolos verifikasi
+          teks asli. Anggap sebagai klaim yang belum terbukti.
+        </p>
+      )}
+
+      <div className="mt-2 pt-1 border-t border-[#e6e6ea] flex items-center justify-between gap-2 text-[9px] text-[#67677e]">
+        <span className="truncate max-w-[150px] font-medium">
+          {isSecurity ? `Tingkat: ${data.severity || 'MEDIUM'}` : `Sumber: ${data.source}`}
+        </span>
+        {data.score !== undefined && data.score !== null && Number(data.score) > 0 && (
+          <span className="font-mono text-[#1b55f5] font-bold shrink-0">+{data.score}pt</span>
         )}
       </div>
     </div>
@@ -287,35 +325,58 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
     }
   }
 
-  // Combine real evidence items and anomalies into rows for Layer 2 & Layer 3
+  // Combine real evidence items and anomalies into rows for Layer 2 & Layer 3.
+  // Anomalies get their own lane below the skills so a risk finding is never read as
+  // a "skill the candidate has".
   const items = [];
 
   evidenceList.forEach((ev) => {
+    const verified = ev.verified === 1 || ev.verified === true;
     items.push({
       type: 'evidence',
       id: `ev-item-${ev.id}`,
       skill: ev.target_competency || 'Kompetensi Teridentifikasi',
-      desc: ev.claim_text,
+      desc: verified
+        ? ev.claim_text
+        : 'Disebut di CV tanpa kalimat pendukung yang lolos verifikasi teks asli.',
       confidence: Math.round(Number(ev.confidence || 0.75) * 100),
-      quote: ev.claim_text,
+      quote: ev.claim_text || '',
+      verified,
+      matchedRequirement: ev.matched_requirement || null,
       source: ev.evidence_source || 'CV / Resume',
       score: ev.score_contribution,
       isSecurity: false,
     });
   });
 
+  const severityLabel = { HIGH: 'Risiko Tinggi', MEDIUM: 'Risiko Sedang', LOW: 'Catatan' };
   anomaliesList.forEach((anom) => {
+    const severity = (anom.severity || 'MEDIUM').toUpperCase();
     items.push({
       type: 'anomaly',
       id: `anom-item-${anom.id}`,
-      skill: (anom.anomaly_type || 'ANOMALI').replace(/_/g, ' '),
-      desc: anom.description,
-      confidence: 100,
-      quote: anom.description,
-      source: anom.suggested_verification || 'Audit Anomali Otomatis',
+      skill: anom.anomaly_type === 'CONCURRENT_FULLTIME_OVERLAP'
+        ? 'Pekerjaan penuh waktu bertumpang tindih'
+        : (anom.anomaly_type === 'SECURITY_QUARANTINE_PROMPT_INJECTION'
+            ? 'Manipulasi teks pada berkas'
+            : (anom.anomaly_type === 'TITLE_INFLATION_DETECTED'
+                ? 'Lonjakan jabatan tidak wajar'
+                : (anom.anomaly_type === 'CAREER_BREAK_FLAG'
+                    ? 'Jeda karier lebih dari 12 bulan'
+                    : (anom.anomaly_type || 'ANOMALI').replace(/_/g, ' ')))),
+      desc: anom.description || 'Anomali terdeteksi pada berkas.',
+      confidence: severity === 'HIGH' ? 100 : (severity === 'MEDIUM' ? 75 : 50),
+      severity,
+      severityLabel: severityLabel[severity] || severity,
+      quote: anom.description || 'Anomali terdeteksi pada berkas.',
+      verification: anom.suggested_verification || null,
+      source: 'Deteksi otomatis',
       isSecurity: true,
     });
   });
+
+  // Skills first, then risks, so the vertical order matches the lane reading order.
+  items.sort((a, b) => (a.isSecurity === b.isSecurity ? 0 : (a.isSecurity ? 1 : -1)));
 
   // If candidate has been evaluated but has 0 matching skills (Skill Mismatch / Weak Fit)
   if (items.length === 0) {
@@ -381,6 +442,8 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
         skill: item.skill,
         description: item.desc,
         confidence: item.confidence,
+        severityLabel: item.severityLabel,
+        matchedRequirement: item.matchedRequirement,
         isSecurity: item.isSecurity,
       },
     });
@@ -395,6 +458,9 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
         source: item.source,
         score: item.score,
         confidence: item.confidence,
+        verified: item.verified,
+        severity: item.severity,
+        verification: item.verification,
         isSecurity: item.isSecurity,
       },
     });
@@ -439,38 +505,30 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
     },
   });
 
-  // Connect first two evidence nodes to GitHub Layer (if items exist)
-  if (items.length > 0) {
-    edges.push({
-      id: `e-ev0-${gitNodeId}`,
-      source: `ev-${items[0].id}`,
-      target: gitNodeId,
-      animated: hasRepo,
-      style: { stroke: isSecurity ? '#E11D48' : (hasRepo ? '#1b55f5' : '#9CA3AF'), strokeWidth: 2 },
-    });
-    if (items.length > 1) {
-      edges.push({
-        id: `e-ev1-${gitNodeId}`,
-        source: `ev-${items[1].id}`,
-        target: gitNodeId,
-        animated: hasRepo,
-        style: { stroke: isSecurity ? '#E11D48' : (hasRepo ? '#1b55f5' : '#9CA3AF'), strokeWidth: 2 },
-      });
-    }
-  }
+  // The GitHub audit is a property of the candidate, not of a single skill claim, so it
+  // hangs off the root. Previously only evidence[0] and [1] were wired to it, which left
+  // every other claim dangling and made an anomaly look like it implicated the repo.
+  edges.push({
+    id: `e-root-${gitNodeId}`,
+    source: 'root-candidate',
+    target: gitNodeId,
+    animated: hasRepo,
+    style: { stroke: isSecurity ? '#E11D48' : (hasRepo ? '#1b55f5' : '#9CA3AF'), strokeWidth: 2 },
+  });
 
   return { nodes, edges };
 }
 
 // Inner Canvas Component utilizing useReactFlow hook
-function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false }) {
+function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false, initialDetail = null }) {
   const { fitView, setCenter } = useReactFlow();
   const [activeLayerIdx, setActiveLayerIdx] = useState(0);
-  const [candidateDetail, setCandidateDetail] = useState(null);
-  const [liveEvidence, setLiveEvidence] = useState([]);
-  const [liveAnomalies, setLiveAnomalies] = useState([]);
+  const [candidateDetail, setCandidateDetail] = useState(initialDetail?.candidate || null);
+  const [liveEvidence, setLiveEvidence] = useState(initialDetail?.evidence || []);
+  const [liveAnomalies, setLiveAnomalies] = useState(initialDetail?.anomalies || []);
   const [isLoading, setIsLoading] = useState(false);
   const [isTriageRunning, setIsTriageRunning] = useState(false);
+  const loadedForRef = useRef(null);
 
   // Fetch real candidate data, evidence, and anomalies from MariaDB
   const fetchRealCandidateData = useCallback(async () => {
@@ -492,8 +550,20 @@ function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false })
   }, [candidate?.id]);
 
   useEffect(() => {
+    if (!candidate?.id) return;
+    if (loadedForRef.current === candidate.id) return;
+    loadedForRef.current = candidate.id;
+
+    // The dossier page already fetched this exact payload; a second request on mount
+    // is pure duplication. Fall back to fetching only when the parent has nothing.
+    if (initialDetail && initialDetail.candidate) {
+      setCandidateDetail(initialDetail.candidate);
+      setLiveEvidence(initialDetail.evidence || []);
+      setLiveAnomalies(initialDetail.anomalies || []);
+      return;
+    }
     fetchRealCandidateData();
-  }, [fetchRealCandidateData]);
+  }, [candidate?.id, initialDetail, fetchRealCandidateData]);
 
   // Merge candidate info with real backend candidate record
   const activeCandidateObj = useMemo(() => {
@@ -733,11 +803,15 @@ function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false })
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-md bg-white border-2 border-[#e6e6ea]"></span>
-              <span className="text-[#454554] text-[11px]">Klaim Ekstraksi Kompetensi Asli</span>
+              <span className="text-[#454554] text-[11px]">Keahlian yang disebut di CV</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-md bg-white border-2 border-[#8ec0ff]"></span>
-              <span className="text-[#454554] text-[11px]">Kutipan Grounding Resume (Verbatim)</span>
+              <span className="text-[#454554] text-[11px]">Kutipan CV terverifikasi verbatim</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-md bg-white border-2 border-rose-400"></span>
+              <span className="text-[#454554] text-[11px]">Anomali / risiko yang perlu diklarifikasi</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-md bg-white border-2 border-[#1b55f5]"></span>
@@ -893,7 +967,7 @@ export default function EvidenceGraph() {
 }
 
 // Reusable standalone component for embedding inside candidate dossier / inspector modals
-export function CandidateEvidenceGraph({ candidate, onReloadCandidates, embedded = true }) {
+export function CandidateEvidenceGraph({ candidate, onReloadCandidates, embedded = true, initialDetail = null }) {
   if (!candidate) return null;
   return (
     <ReactFlowProvider>
@@ -901,6 +975,7 @@ export function CandidateEvidenceGraph({ candidate, onReloadCandidates, embedded
         candidate={candidate} 
         onReloadCandidates={onReloadCandidates} 
         embedded={embedded}
+        initialDetail={initialDetail}
       />
     </ReactFlowProvider>
   );

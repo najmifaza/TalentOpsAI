@@ -5,6 +5,22 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-21 - Najmi - Dokumen Status & PRD Disinkronkan dengan Kondisi Kode
+- **Komponen / File:**
+  - `docs/STATUS_PEKERJAAN_BELUM_SELESAI.md` (revisi kelima, §8 baru)
+  - `docs/PRD_TALENTOPS_AI_MASTER.md` (§1.2, tabel §2, diagram §3.1, §6.3 butir 4)
+  - `backend/app/main.py` (deskripsi tag OpenAPI `Calendar & Scheduling`)
+- **Yang Dikerjakan:**
+  - **Dokumen status basi tiga arah.** What-If Studio UI, pembersih slot periodik, dan banner data sintetis baru dikerjakan tetapi tidak ada di daftar mana pun. Kalimat "tidak ada lagi pekerjaan yang murni kode tanpa masukan luar" (revisi ketiga) juga sudah tidak benar. Header diperbarui ke `main` @ `54cf1e4` / 220 passed, ditambah paragraf revisi kelima, §8 baru berisi empat subbagian (8.1–8.4) plus 8.5 daftar yang masih terbuka, baris prioritas 12–17, dan empat entri di tabel "Yang Sudah Selesai".
+  - **PRD menjual lebih rendah dari kenyataan.** §1.2 baris 58 dan 60 masih menulis Mock Calendar Adapter dan Mock Candidate Dispatcher sebagai `[MVP]` mock. Setelah dicek ke kode: `backend/app/adapters/google_calendar.py` memang dipanggil untuk `create_event` (`candidates.py:66-97`) dan alur OAuth2 di `calendar_oauth.py` (authorize, callback, `list_upcoming_events`, disconnect) sudah nyata; `core/email.py` punya dua jalur Resend (`resend_api` HTTPS dan `resend_smtp` relay) dengan mode `disabled` saat kunci kosong. Keduanya dinaikkan ke `[TARGET]` **dengan catatan belum diverifikasi live** karena kredensial masih kosong — bukan diklaim aktif.
+  - Yang tetap mock dan tidak diklaim lebih: `MockCalendarAdapter` masih menangani penguncian slot atomik (`slots.py:10`), jadi reservasi tetap di database. Ini ditulis apa adanya, bukan disembunyikan.
+  - Tabel §2 baris "Integrasi Kalender" dan diagram §3.1 diperbarui sejalan. §6.3 butir 4 diubah: label `[MOCK / SANDBOX]` kini dinyatakan muncul **hanya bila** kredensial belum diisi, bukan sebagai label permanen.
+  - Deskripsi tag OpenAPI `Calendar & Scheduling` di `main.py` juga menyebut "Mock Calendar Adapter sandbox" — ikut dikoreksi karena halaman `/docs` ikut dibaca juri.
+- **Status & Verifikasi:** Selesai. `pytest tests/` → 220 passed (perubahan hanya teks deskripsi tag, tidak menyentuh logika). Sisa sebutan "Mock" yang sengaja dipertahankan: baris 743 tabel jadwal hari 4–5, karena itu catatan historis apa yang dikerjakan pada tanggal tersebut.
+- **Rencana Selanjutnya:** Prioritas 16 (dark mode) dan 17 di dokumen status sudah tercatat. Dark mode menunggu keputusan pemilik: bangun fiturnya, atau hapus klaimnya dari PRD hari 6–8. Jangan biarkan `App.jsx` tetap memaksa `classList.remove('dark')` sementara PRD menjanjikan dark mode.
+
+---
+
 ### 2026-10-21 - Najmi - Pembersih Slot Periodik & Klaim Append-Only Diluruskan
 - **Komponen / File:**
   - `backend/app/core/maintenance.py` (berkas baru)

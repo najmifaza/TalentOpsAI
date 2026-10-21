@@ -1,8 +1,8 @@
 # Status Pekerjaan Backend — Apa yang Belum Selesai
 
-**Terakhir diperbarui:** 21 Oktober 2026 (revisi keempat)
-**Branch acuan:** `main` @ `2b04e75`
-**Status pengujian:** `pytest backend/tests -q` → **217 passed, 0 failed**
+**Terakhir diperbarui:** 21 Oktober 2026 (revisi kelima)
+**Branch acuan:** `main` @ `54cf1e4`
+**Status pengujian:** `pytest backend/tests -q` → **220 passed, 0 failed**
 
 Dokumen ini mendaftar pekerjaan yang **belum** selesai setelah lima item penguatan backend
 (auth/RBAC, Redis multi-worker, PDF hidden-text, integrasi eksternal, sanitasi PII).
@@ -24,13 +24,18 @@ sudah dibersihkan — 398 baris, 0 tersisa (§5.1).
 
 **Revisi ketiga:** pembersihan produksi selesai dan diverifikasi. Satu klaim di revisi kedua
 dikoreksi: anomali palsu itu **tidak** menaikkan `triage_priority` kandidat mana pun (§3.5).
-Tidak ada lagi pekerjaan yang murni kode tanpa masukan luar.
 
 **Revisi keempat:** Evidence Graph diperbaiki agar sinkron dengan isi CV dan anomalinya
 berbahasa manusia (§6), lalu tiga cacat susulan ditemukan dari laporan operator VPS dan
 diperbaiki berurutan (§6.4). Pengerasan keamanan VPS juga dilakukan — port 3306 ditutup dari
 publik dan dua password database dirotasi (§7). Seluruh kandidat sudah di-triage ulang; tidak
 ada lagi yang jatuh ke heuristic fallback.
+
+**Revisi kelima:** tiga pekerjaan murni kode yang sebelumnya tidak ada di daftar ini selesai
+(§8) — What-If Simulation Studio UI, pembersih slot `tentative` periodik, dan banner data
+sintetis. Satu klaim kepatuhan dikoreksi: sifat append-only tabel audit ditegakkan oleh
+konvensi kode, **bukan** oleh `REVOKE` di level database (§8.3). Kalimat "tidak ada lagi
+pekerjaan murni kode" pada revisi ketiga karena itu tidak berlaku lagi.
 
 ---
 
@@ -561,6 +566,93 @@ sesi eksternal, sehingga tidak ada klien yang terputus.
 
 ---
 
+## 8. Revisi Kelima — Fitur yang Sebelumnya Tidak Ada di Daftar (21 Oktober 2026)
+
+Tiga pekerjaan berikut tidak pernah masuk daftar prioritas mana pun, padahal ketiganya murni
+kode dan tidak menunggu masukan luar. Semuanya selesai.
+
+### 8.1 What-If Simulation Studio — endpoint ada, UI tidak
+
+`POST /api/jobs/{id}/simulate-policy` (`jobs.py:231`) sudah lengkap sejak awal beserta test-nya,
+tetapi **tidak ada satu pun pemanggil di frontend**. Route `/admin/what-if` hanya
+`<Navigate to="/admin/jobs" />`, sehingga fitur yang menjadi baris pembeda di matriks PRD §4.2
+("Simulasi Kebijakan: Tidak tersedia" pada ketiga kompetitor) tidak bisa ditunjukkan saat demo.
+
+Yang dipasang:
+
+- `WhatIfStudio.jsx` — slider bobot 4D + slider passing grade, re-run otomatis debounce 350 ms,
+  kartu pergeseran distribusi, tabel baseline vs simulasi per kandidat (`delta_score`,
+  `rule_applied`, badge karantina).
+- `DashboardOverview.jsx` — kartu per lowongan sebagai pintu masuk studio. Mapping kandidat
+  sebelumnya membuang `job_id` yang sudah dikirim backend; field itu dipulihkan lalu pool
+  dikelompokkan per lowongan, digabung dengan bobot tersimpan dari `GET /api/jobs`.
+- `App.jsx` — route `what-if/:jobId` (lazy load).
+
+Dua keputusan yang perlu diketahui pembaca dokumen ini:
+
+- Slider passing grade mulai di **85**, bukan 75 (default endpoint). Baseline `overall_score`
+  tersimpan dihitung dengan ambang 85, jadi memulai di 75 akan mencampur efek perubahan bobot
+  dengan efek pelonggaran ambang pada simulasi pertama.
+- Fetch kandidat dashboard naik dari `limit=50` ke `limit=200`. Angka pada kartu dihitung dari
+  jendela list, sedangkan server tetap mengevaluasi seluruh pool saat simulasi.
+
+### 8.2 Pembersih slot `tentative` berjalan karena request, bukan karena waktu
+
+`release_expired_tentative_slots()` (`adapters/calendar.py:147`) logikanya benar, tetapi
+satu-satunya pemanggil ada di dalam handler `GET /api/slots/available` (`slots.py:36`). Akibat
+yang sebenarnya terjadi: slot yang TTL-nya sudah lewat tetap berstatus `tentative` dan tampak
+terpakai bagi kandidat lain, sampai ada orang yang kebetulan membuka daftar slot. Pemicunya lalu
+lintas request, bukan waktu.
+
+`app/core/maintenance.py` menambahkan loop periodik lewat `lifespan` di `main.py`: slot cleaner
+tiap 300 detik (PRD Bab 6.3 minta 5 menit). Runner membungkus tiap tick dengan `try/except`
+supaya satu kegagalan tidak mematikan loop, sementara `CancelledError` tetap diteruskan agar
+shutdown bersih.
+
+**Pembersih data demo 4 jam (PRD baris 388) tidak diaktifkan.** Tidak ada kolom yang membedakan
+unggahan demo dari dataset golden, sehingga `DELETE FROM candidates WHERE created_at < cutoff`
+akan menghapus **seluruh** kandidat termasuk data penjurian. Job-nya ada di balik
+`DEMO_PURGE_ENABLED` (default `False`), terpisah dari `DEMO_MODE` justru karena alasan itu.
+Jangan dinyalakan di DB yang memuat dataset lomba.
+
+### 8.3 Klaim append-only tidak pernah ditegakkan database
+
+`audit.py:132` mencetak `"Append-Only Immutable Audit Trail (REVOKE UPDATE, DELETE)"` ke setiap
+konsumen endpoint audit. Kenyataannya: tidak ada migrasi mana pun yang menjalankan `REVOKE`
+(migrasi berhenti di `003`), dan `willy@%` masih memegang `GRANT ALL ON *.* WITH GRANT OPTION`
+(§7.3), sehingga pagar hak akses bisa dibuka kembali.
+
+Yang benar-benar berlaku: tidak ada satu pun jalur kode aplikasi yang melakukan `UPDATE`/`DELETE`
+pada `agent_steps`, `pii_access_logs`, atau `human_reviews` — sudah diverifikasi pada seluruh
+`backend/app/`. Jadi sifat append-only ditegakkan oleh **konvensi kode**, bukan database engine.
+
+Teks klaim sudah dikoreksi menjadi pernyataan jujur, dan PRD §6.1 butir 6 diberi catatan status
+implementasi. **Penegakan fisik ditunda atas keputusan pemilik.** Bila nanti dikerjakan, trigger
+`BEFORE UPDATE`/`BEFORE DELETE` dengan `SIGNAL SQLSTATE '45000'` lebih kuat daripada `REVOKE`
+karena tetap berlaku bagi user dengan hak penuh.
+
+### 8.4 Banner data sintetis
+
+PRD §6.2 mewajibkan peringatan _"Gunakan data sintetis"_ di antarmuka demo; sebelumnya nol hasil
+pencarian `sintetis`/`synthetic` di `frontend/src`. Sekarang `DemoDataBanner.jsx` tampil di atas
+`Header` pada seluruh halaman `/admin/*`, dikendalikan `VITE_DEMO_BANNER` (default tampil).
+
+### 8.5 Yang masih terbuka dari revisi ini
+
+- **Dark mode** belum ada dan tidak dikerjakan. `tailwind.config.js` tidak punya `darkMode`, dan
+  `App.jsx:195` justru menghapus class `dark` serta `localStorage` theme setiap kali halaman
+  dimuat — ada kode yang sengaja mematikannya. PRD hari 6–8 masih menyebut dark mode; klaim itu
+  perlu dihapus dari PRD atau fiturnya dibangun. **Belum diputuskan.**
+- **PRD §2 menjual lebih rendah dari kenyataan:** baris 58 dan 60 masih menulis Calendar Adapter
+  dan Candidate Dispatcher sebagai `[MVP]` mock, padahal yang terpasang OAuth2 Google Calendar
+  dan Resend asli. Perlu dinaikkan ke `[TARGET]` agar proposal tidak merendahkan diri sendiri.
+  **Belum diperbaiki.**
+- **Banner hanya di shell `/admin/*`.** Career Portal publik belum memasangnya karena ticker
+  `fixed top-0` di sana akan bertabrakan; menempatkannya butuh penggeseran layout portal.
+  **Belum dikerjakan.**
+
+---
+
 ## Urutan Pengerjaan yang Disarankan
 
 | Prioritas | Pekerjaan | Alasan | Status |
@@ -576,6 +668,12 @@ sesi eksternal, sehingga tidak ada klien yang terputus.
 | 9 | Sinkronkan Evidence Graph dengan isi CV + anomali berbahasa manusia | Graf terbaca HR sebagai isi CV, bukan daftar requirement | **Selesai** — `22d7292`, `f39af8a`, `50d2e5f`, §6 |
 | 10 | Tutup `bind-address` 3306 + rotasi password DB | Port DB terbuka ke internet dengan UFW mati | **Selesai** — `127.0.0.1`, kedua password dirotasi, §7 |
 | 11 | Hilangkan `Literal` ketat pada output LLM | Satu label meleset = seluruh ekstraksi gagal; sudah terulang 3× | **Selesai** — `_match_enum()`, §6.5 |
+| 12 | Bangun UI What-If Simulation Studio | Endpoint sudah ada tanpa pemanggil; baris pembeda di matriks PRD §4.2 | **Selesai** — `c9940d7`, §8.1 |
+| 13 | Jalankan pembersih slot `tentative` secara periodik | Slot kedaluwarsa menggantung sampai ada request lain yang membuka daftar slot | **Selesai** — `bbe246f`, §8.2 |
+| 14 | Koreksi klaim append-only yang tidak ditegakkan DB | Sistem memberi tahu auditor ada kontrol yang tidak ada | **Selesai** — `bbe246f`, §8.3. Penegakan fisik ditunda |
+| 15 | Banner "Gunakan data sintetis" di UI demo | Kewajiban PRD §6.2; belum ada sama sekali | **Selesai** — `f82d002`, §8.4 |
+| 16 | Dark mode dashboard | Disebut PRD hari 6–8; `tailwind.config.js` tanpa `darkMode`, `App.jsx` sengaja mematikan | Belum — butuh keputusan: bangun atau hapus klaim |
+| 17 | Naikkan status Calendar & Dispatcher di PRD §2 ke `[TARGET]` | Yang terpasang OAuth2 Google Calendar + Resend asli, bukan mock | Belum — dokumen saja |
 
 Catatan: prioritas 4 dan 6 butuh masukan dari luar repositori. Prioritas 4 butuh akun Google
 Cloud + Resend (dan domain pengirim terverifikasi). Prioritas 6 butuh keputusan produk lebih
@@ -583,9 +681,12 @@ dulu: dari mana identitas asli diperoleh pada jalur dropzone — kolom form tamb
 atau ekstraksi header dengan konfirmasi HR — karena sanitizer sengaja tidak menyimpan nilai yang
 ia redaksi. Prioritas 8 hanya butuh akses ke MariaDB produksi.
 
-**Tidak ada lagi pekerjaan yang murni kode tanpa masukan luar.** Prioritas 8–11 sudah selesai;
-sisa daftar ini seluruhnya menunggu keputusan produk (6), kredensial eksternal (4), atau pihak
-ketiga/Vercel (domain).
+Sisa daftar ini tinggal empat butir, dan **tidak satu pun menunggu pekerjaan kode yang belum
+diputuskan**: prioritas 4 menunggu kredensial eksternal, prioritas 6 menunggu keputusan produk,
+prioritas 16 menunggu keputusan (bangun dark mode atau hapus klaimnya dari PRD), dan prioritas 17
+hanya butuh penyuntingan dokumen. Kalimat "tidak ada lagi pekerjaan murni kode" dari revisi
+ketiga sudah tidak berlaku — revisi kelima justru menemukan tiga pekerjaan murni kode yang belum
+tercatat (prioritas 12–15) dan menyelesaikannya.
 
 ---
 
@@ -600,6 +701,10 @@ ketiga/Vercel (domain).
 | 5. Sanitasi PII | `eba88bc` | Siap produksi (batas: tanpa NER); recall terukur 100% pada 25 CV riil |
 | 6. Evidence Graph | `22d7292`, `f39af8a`, `50d2e5f` | **Aktif & terverifikasi live** — evidence per teknologi CV, anomali berbahasa manusia, kolom `matched_requirement`/`verified` (§6) |
 | 7. Pengerasan VPS | `211cc0f` | **Aktif** — password DB tidak lagi tercetak; `bind-address` 3306 ditutup, kedua password dirotasi (§7) |
+| 8. What-If Studio UI | `c9940d7` | **Aktif** — kartu per lowongan di dashboard + studio berperute `what-if/:jobId` (§8.1) |
+| 9. Pembersih slot periodik | `bbe246f` | **Aktif setelah deploy** — `maintenance.py` lewat `lifespan`, interval 300 s (§8.2) |
+| 10. Klaim append-only dikoreksi | `bbe246f` | **Aktif** — teks API jujur; penegakan DB ditunda (§8.3) |
+| 11. Banner data sintetis | `f82d002` | **Aktif** — `DemoDataBanner.jsx` di shell `/admin/*` (§8.4) |
 
 Commit sesi ini (21 Oktober 2026):
 

@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://talentops.vercel.app",
         "https://talentops.fawt.biz.id",
     ]
 
@@ -64,7 +63,7 @@ class Settings(BaseSettings):
     GOOGLE_CALENDAR_API_BASE: str = "https://www.googleapis.com/calendar/v3"
     GOOGLE_HTTP_TIMEOUT: float = 15.0
     # Frontend page the OAuth callback redirects back to (no tokens in the URL).
-    OAUTH_SUCCESS_REDIRECT: str = "https://talentops.vercel.app/admin/dashboard"
+    OAUTH_SUCCESS_REDIRECT: str = "https://talentops.fawt.biz.id/admin/dashboard"
 
     # --- Transactional email (Resend) --------------------------------------
     # provider: "resend_api" (HTTPS) | "resend_smtp" (SMTP relay) | "" (disabled)

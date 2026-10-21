@@ -5,6 +5,19 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-21 - Willy - Label "AUDIT GITHUB" Tidak Lagi Menyebut Anomali untuk Repo yang Belum Diperiksa
+- **Komponen / File:**
+  - `frontend/src/components/CandidateTable.jsx` (kolom GitHub Audit)
+- **Catatan:** Seluruh kandidat menampilkan badge merah "Anomali" di kolom AUDIT GITHUB.
+- **Yang Dikerjakan:**
+  - Status `UNVERIFIED` (kandidat tidak mencantumkan URL GitHub) dirender sebagai "Anomali" merah — menyiratkan temuan audit padahal tidak ada audit yang pernah dijalankan. Sekarang jadi "Belum Terverifikasi" dengan warna netral (`primary-slate`), sejajar dengan "Pending" dan "Non-Teknis" yang sudah ada.
+  - Label `VERIFIED` yang berbunyi "Valid Repo" diganti "Repo Terdaftar". Yang tersimpan di database hanya URL dari CV/pelamar (`candidates.github_url`); tidak ada kolom status audit, dan `GITHUB_TOKEN` belum diisi sehingga verifikasi repo tidak pernah berjalan. "Valid" adalah klaim yang tidak bisa dipertahankan di depan juri.
+  - Badge merah kini hanya dipakai untuk anomali sungguhan dari `candidate.flags` (`PROMPT_INJECTION` dan sejenisnya), yang memang berasal dari audit berkas saat ingest.
+- **Status & Verifikasi:** Selesai. `node node_modules/vite/bin/vite.js build` sukses (1781 modul).
+- **Rencana Selanjutnya:** Bila audit GitHub asli diaktifkan (isi `GITHUB_TOKEN`), tambahkan kolom status verifikasi repo agar label bisa membedakan "terdaftar" dari "terverifikasi".
+
+---
+
 ### 2026-10-21 - Willy - Dark Mode Dibatalkan, Klaim Dihapus
 - **Komponen / File:**
   - `frontend/src/App.jsx`

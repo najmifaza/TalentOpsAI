@@ -345,7 +345,7 @@ export default function CandidateTable({
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-blue/10 text-primary-black border border-primary-blue/30 hover:border-primary-orange transition-colors"
                           >
                             <Github className="w-3.5 h-3.5 text-primary-blue" />
-                            <span className="font-mono text-[11px] font-semibold">Valid Repo</span>
+                            <span className="font-mono text-[11px] font-semibold">Repo Terdaftar</span>
                             <ExternalLink className="w-2.5 h-2.5 text-primary-slate-400" />
                           </a>
                         ) : candidate.github_status === 'NOT_APPLICABLE' ? (
@@ -353,8 +353,8 @@ export default function CandidateTable({
                             Non-Teknis
                           </span>
                         ) : (
-                          <span className="text-[11px] text-rose-700 font-mono bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 font-medium">
-                            Anomali
+                          <span className="text-[11px] text-primary-slate-500 font-mono bg-primary-slate-50 px-2 py-0.5 rounded-full border border-primary-border-200 font-medium">
+                            Belum Terverifikasi
                           </span>
                         )}
                       </td>

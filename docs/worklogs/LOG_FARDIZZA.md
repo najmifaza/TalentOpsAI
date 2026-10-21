@@ -5,6 +5,24 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 
 ---
 
+### 2026-10-21 - Fardizza - Evidence Graph Tidak Sinkron dengan CV & Anomali Tanpa Penjelasan
+- **Komponen / File:**
+  - `backend/app/core/scoring.py`
+  - `backend/app/schemas/extraction.py`
+  - `backend/tests/test_evidence_traceability.py` (baru)
+- **Catatan:** Dikerjakan & di-commit atas nama Fardizza berdasarkan audit graf bukti kandidat `#TK-2FD8DC`. Bagian API/migrasi dicatat di `LOG_NAJMI.md`, bagian UI di `LOG_WILLY.md`.
+- **Yang Dikerjakan:**
+  - `calculate_skill_score` sebelumnya hanya membuat satu baris `candidate_evidence` per `core_competencies` lowongan, dan `target_competency` diisi label requirement (bukan nama teknologi di CV). Akibatnya CV yang menulis "Next.js" tampil sebagai node "React" atau hilang sama sekali bila lowongan tidak memintanya. Sekarang: node memakai `technology` dari CV, ditambah field `matched_requirement` (requirement yang dipenuhi, `NULL` bila tidak ada) dan `verified` (lolos substring guard).
+  - Semua teknologi yang disebut CV kini tetap menghasilkan baris evidence walau skornya 0, sehingga tidak ada lagi keahlian yang "hilang" dari dossier hanya karena di luar daftar requirement.
+  - `apply_substring_guard` kini mengosongkan `context_narrative` dan `metric_string` saat narasi tidak ditemukan di teks CV. Sebelumnya hanya `has_implementation_detail` yang di-downgrade, sehingga parafrase hasil halusinasi tetap tersimpan dan ditampilkan UI sebagai "Kutipan Asli CV".
+  - `evaluate_risk` kini mengembalikan tiga nilai `(risk, flags, details)`. `flags` tetap `list[str]` demi kompatibilitas skrip benchmark; `details` membawa temuan terstruktur berbahasa manusia (mis. dua peran + perusahaan + periode yang bertumpang tindih), bukan sekadar kode `CONCURRENT_FULLTIME_OVERLAP_23_MONTHS`.
+  - Menambahkan helper `months_to_label()` sebagai invers `parse_date_to_months()` untuk menampilkan periode overlap sebagai `YYYY-MM`.
+  - Menambahkan `backend/tests/test_evidence_traceability.py` (4 tes) sebagai penjaga regresi: teknologi di luar requirement tetap muncul, narasi tak terverifikasi dibuang, anomali overlap menyebut kedua perusahaan, dan timeline bersih tidak menghasilkan detail anomali.
+- **Status & Verifikasi:** Selesai. `pytest backend/tests/` → **206 passed**.
+- **Rencana Selanjutnya:** Data evidence & anomali lama masih tersimpan dalam format lama, sehingga kandidat yang sudah pernah di-triage perlu dijalankan ulang triage agar grafnya berubah.
+
+---
+
 ### 2026-10-17 - Fardizza - Fondasi AI Engine & Ekstraksi Terstruktur (Sprint 1)
 - **Komponen / File:**
   - `backend/app/core/config.py`

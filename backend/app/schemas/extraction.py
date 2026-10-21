@@ -81,7 +81,9 @@ class CandidateExtractionSchema(BaseModel):
         """
         PRD Bab 5.1 Substring Guard:
         Validates claim narrative & metric against sanitized CV text using whitespace
-        collapsing and lowercase. If not found, downgrade has_implementation_detail to False.
+        collapsing and lowercase. If not found, downgrade has_implementation_detail to False
+        AND drop the unverified text, so a paraphrase can never be rendered later as a
+        verbatim resume quotation.
         """
         normalized_cv = " ".join(sanitized_cv_text.lower().split())
 
@@ -94,6 +96,8 @@ class CandidateExtractionSchema(BaseModel):
 
             if norm_narrative and norm_narrative not in normalized_cv:
                 claim.has_implementation_detail = False
+                claim.context_narrative = None
+                claim.metric_string = None
                 if self.anomalies:
                     self.anomalies.notes.append(
                         f"Substring guard downgraded claim for '{claim.technology}': narrative not verified in CV text."

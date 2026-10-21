@@ -87,6 +87,16 @@ def parse_date_to_months(date_str: str) -> int:
         return now.year * 12 + 1
 
 
+def months_to_label(months: int) -> str:
+    """Inverse of parse_date_to_months: absolute month count back to YYYY-MM."""
+    year = months // 12
+    month = months - year * 12
+    if month == 0:
+        year -= 1
+        month = 12
+    return f"{year:04d}-{month:02d}"
+
+
 def merge_employment_intervals(timeline: List[Dict[str, Any]]) -> float:
     """
     PRD Bab 5.2 Interval Merging:
@@ -167,6 +177,7 @@ class DeterministicScoringEngine:
         verified_repos = verified_github_repos or {}
         evidence_records: List[Dict[str, Any]] = []
         match_scores: List[float] = []
+        matched_technologies: set = set()
 
         for req_comp in core_competencies:
             best_match_score = 0.0
@@ -208,14 +219,42 @@ class DeterministicScoringEngine:
             match_scores.append(best_match_score)
             if best_claim:
                 conf = 1.00 if best_tier == 100.0 else (0.75 if best_tier == 60.0 else 0.50)
+                claim_tech = (best_claim.get("technology") or req_comp).strip()
+                matched_technologies.add(claim_tech.lower())
                 evidence_records.append({
                     "dimension": "SKILL",
-                    "target_competency": req_comp,
-                    "claim_text": best_claim.get("context_narrative") or best_claim.get("technology", ""),
+                    # The CV's own wording, not the posting's requirement label: a CV
+                    # saying "Next.js" must not be displayed as "React".
+                    "target_competency": claim_tech,
+                    "matched_requirement": req_comp,
+                    # Empty means "no verbatim quote survived the guard"; the UI must
+                    # not present a technology name as a resume quotation.
+                    "claim_text": best_claim.get("context_narrative") or "",
                     "evidence_source": best_claim.get("source_location") or "CV Skills Section",
                     "score_contribution": round(best_match_score * 100, 2),
                     "confidence": conf,
+                    "verified": bool(best_claim.get("has_implementation_detail")),
                 })
+
+        # Technologies the CV mentions that no requirement asked for still belong in
+        # the dossier (score 0, unverified unless a narrative passed the guard).
+        # Without this the graph silently drops everything outside the posting's list.
+        for claim in claims:
+            tech = (claim.get("technology") or "").strip()
+            if not tech or tech.lower() in matched_technologies:
+                continue
+            matched_technologies.add(tech.lower())
+            has_impl = claim.get("has_implementation_detail", False)
+            evidence_records.append({
+                "dimension": "SKILL",
+                "target_competency": tech,
+                "matched_requirement": None,
+                "claim_text": claim.get("context_narrative") or "",
+                "evidence_source": claim.get("source_location") or "CV Skills Section",
+                "score_contribution": 0.0,
+                "confidence": 0.75 if has_impl else 0.50,
+                "verified": bool(has_impl),
+            })
 
         skill_score = (sum(match_scores) / len(core_competencies)) * 100.0
         return round(skill_score, 2), evidence_records
@@ -322,21 +361,39 @@ class DeterministicScoringEngine:
         cls,
         anomalies: Dict[str, Any],
         timeline: List[Dict[str, Any]],
-    ) -> Tuple[str, List[str]]:
+    ) -> Tuple[str, List[str], List[Dict[str, Any]]]:
         """
         Evaluates Unresolved Risk (HIGH, MEDIUM, LOW) & builds anomaly notes.
         - HIGH: Prompt Injection / Hidden text OR full-time concurrent overlap > 3 months.
         - MEDIUM: Title inflation.
         - LOW: Clean.
         - Special: Career break > 12 months generates informative flag, does not force Risk to MEDIUM.
+
+        Returns (risk, flag_codes, details). `flag_codes` stays a plain list of strings
+        for backward compatibility; `details` carries the human-readable finding so the
+        UI never has to render a raw machine code as its only explanation.
         """
         flags: List[str] = []
+        details: List[Dict[str, Any]] = []
         is_high = False
         is_medium = False
 
         if anomalies.get("prompt_injection_detected") or anomalies.get("hidden_text_detected"):
             is_high = True
             flags.append("SECURITY_QUARANTINE_PROMPT_INJECTION")
+            trigger = "teks tersembunyi" if anomalies.get("hidden_text_detected") else "perintah tersembunyi"
+            details.append({
+                "type": "SECURITY_QUARANTINE_PROMPT_INJECTION",
+                "severity": "HIGH",
+                "description": (
+                    f"Berkas mengandung {trigger} yang mencoba mengarahkan model penilai "
+                    "(indikasi prompt injection). Isi CV tidak dapat dipercaya sebelum diaudit manual."
+                ),
+                "suggested_verification": (
+                    "Buka berkas asli dan periksa teks berwarna putih atau berukuran font 0pt. "
+                    "Bila terkonfirmasi, eskalasi ke Compliance Officer sebelum berkas dinilai."
+                ),
+            })
 
         # Check full-time overlap > 3 months
         full_time_roles = [t for t in timeline if t.get("employment_type", "full_time") == "full_time"]
@@ -351,20 +408,79 @@ class DeterministicScoringEngine:
                 overlap_end = min(r1_end, r2_end)
                 if overlap_end - overlap_start >= 3:
                     is_high = True
-                    flags.append(f"CONCURRENT_FULLTIME_OVERLAP_{overlap_end - overlap_start}_MONTHS")
+                    overlap_months = overlap_end - overlap_start
+                    flags.append(f"CONCURRENT_FULLTIME_OVERLAP_{overlap_months}_MONTHS")
+
+                    first, second = full_time_roles[i], full_time_roles[j]
+                    details.append({
+                        "type": "CONCURRENT_FULLTIME_OVERLAP",
+                        "severity": "HIGH",
+                        "overlap_months": overlap_months,
+                        "period": f"{months_to_label(overlap_start)} s/d {months_to_label(overlap_end)}",
+                        "roles": [
+                            {
+                                "role": first.get("role", "-"),
+                                "company": first.get("company", "-"),
+                                "start": first.get("start", "-"),
+                                "end": first.get("end", "-"),
+                            },
+                            {
+                                "role": second.get("role", "-"),
+                                "company": second.get("company", "-"),
+                                "start": second.get("start", "-"),
+                                "end": second.get("end", "-"),
+                            },
+                        ],
+                        "description": (
+                            f"Dua pekerjaan penuh waktu berjalan bersamaan selama {overlap_months} bulan "
+                            f"({months_to_label(overlap_start)} s/d {months_to_label(overlap_end)}): "
+                            f"\"{first.get('role', '-')}\" di {first.get('company', '-')} "
+                            f"({first.get('start', '-')} s/d {first.get('end', '-')}) "
+                            f"tumpang tindih dengan \"{second.get('role', '-')}\" di {second.get('company', '-')} "
+                            f"({second.get('start', '-')} s/d {second.get('end', '-')})."
+                        ),
+                        "suggested_verification": (
+                            "Konfirmasi ke kandidat apakah salah satu peran sebenarnya paruh waktu, kontrak, "
+                            "atau proyek lepas, dan minta penjelasan pembagian jam kerja pada periode tersebut."
+                        ),
+                    })
 
         if anomalies.get("title_inflation_detected"):
             is_medium = True
             flags.append("TITLE_INFLATION_DETECTED")
+            details.append({
+                "type": "TITLE_INFLATION_DETECTED",
+                "severity": "MEDIUM",
+                "description": (
+                    "Kenaikan jabatan terjadi sangat cepat (kurang dari 6 bulan) tanpa jeda yang wajar, "
+                    "sehingga perlu dipastikan apakah jabatannya benar-benar berbeda atau hanya perubahan titel."
+                ),
+                "suggested_verification": (
+                    "Minta rincian tanggung jawab pada kedua jabatan dan bandingkan dengan lingkup kerja "
+                    "yang wajar untuk level tersebut."
+                ),
+            })
 
         if anomalies.get("career_break_detected"):
             flags.append("CAREER_BREAK_FLAG")
+            details.append({
+                "type": "CAREER_BREAK_FLAG",
+                "severity": "LOW",
+                "description": (
+                    "Terdapat jeda lebih dari 12 bulan dalam riwayat kerja. Ini bukan pelanggaran, "
+                    "hanya perlu konteks agar penilaian pengalaman tidak salah tafsir."
+                ),
+                "suggested_verification": (
+                    "Tanyakan aktivitas selama jeda (studi, cuti keluarga, proyek mandiri) agar durasi "
+                    "pengalaman relevan dihitung dengan tepat."
+                ),
+            })
 
         if is_high:
-            return "HIGH", flags
+            return "HIGH", flags, details
         if is_medium:
-            return "MEDIUM", flags
-        return "LOW", flags
+            return "MEDIUM", flags, details
+        return "LOW", flags, details
 
     @classmethod
     def evaluate_decision_points(
@@ -431,7 +547,7 @@ class DeterministicScoringEngine:
 
         # 3. Confidence & Risk
         confidence = cls.evaluate_confidence(claims)
-        risk, anomaly_flags = cls.evaluate_risk(anomalies, career_timeline)
+        risk, anomaly_flags, anomaly_details = cls.evaluate_risk(anomalies, career_timeline)
 
         has_injection = (
             anomalies.get("prompt_injection_detected", False)
@@ -476,6 +592,7 @@ class DeterministicScoringEngine:
             "rule_applied": rule,
             "merged_experience_years": merged_years,
             "anomaly_flags": anomaly_flags,
+            "anomaly_details": anomaly_details,
             "evidence_records": skill_evidence,
             "adaptive_challenges": adaptive_challenges,
         }

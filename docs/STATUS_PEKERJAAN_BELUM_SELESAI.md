@@ -1,8 +1,8 @@
 # Status Pekerjaan Backend — Apa yang Belum Selesai
 
-**Terakhir diperbarui:** 21 Oktober 2026 (revisi kelima)
-**Branch acuan:** `main` @ `54cf1e4`
-**Status pengujian:** `pytest backend/tests -q` → **220 passed, 0 failed**
+**Terakhir diperbarui:** 21 Oktober 2026 (revisi keenam)
+**Branch acuan:** `main` @ `3159d23`
+**Status pengujian:** `pytest backend/tests -q` → **224 passed, 0 failed**
 
 Dokumen ini mendaftar pekerjaan yang **belum** selesai setelah lima item penguatan backend
 (auth/RBAC, Redis multi-worker, PDF hidden-text, integrasi eksternal, sanitasi PII).
@@ -36,6 +36,10 @@ ada lagi yang jatuh ke heuristic fallback.
 sintetis. Satu klaim kepatuhan dikoreksi: sifat append-only tabel audit ditegakkan oleh
 konvensi kode, **bukan** oleh `REVOKE` di level database (§8.3). Kalimat "tidak ada lagi
 pekerjaan murni kode" pada revisi ketiga karena itu tidak berlaku lagi.
+
+**Revisi keenam:** identitas asli jalur dropzone disimpan (§3.4) dengan keputusan produk opsi
+A — kolom nama/email di modal upload HR yang ternyata sudah ada tetapi tidak pernah dikirim ke
+server. Dark mode dibatalkan atas keputusan pemilik dan klaimnya dihapus dari PRD.
 
 ---
 
@@ -215,9 +219,11 @@ lengkap tetap ditangani `test_benchmark_sprint4.py` dengan entitas sintetis.
 Sisa batas yang tetap berlaku ada di §3.2 (tanpa NER): nama yang hanya muncul di narasi bebas
 tanpa jejak di header tetap dilaporkan sebagai `PII_RESIDUAL_RISK`, bukan ditebak.
 
-### 3.4 Kandidat dari jalur dropzone tidak dapat dihubungi
+### 3.4 Kandidat dari jalur dropzone tidak dapat dihubungi — SELESAI (keputusan A)
 
-**Berkas:** `backend/app/api/candidates.py:381-382`
+**Berkas:** `backend/app/api/candidates.py`, `frontend/src/components/UploadCandidateModal.jsx`
+
+Dulu:
 
 ```python
 enc_name = encrypt_pii(f"Applicant-{file.filename}", candidate_dek)
@@ -225,15 +231,35 @@ enc_email = encrypt_pii("hr_dropzone_upload@talentops.internal", candidate_dek)
 ```
 
 Nama dan email adalah placeholder. Akibatnya, untuk kandidat yang masuk lewat unggahan
-batch HR:
+batch HR: email keputusan review dikirim ke alamat internal fiktif, unmask PII tidak
+menampilkan identitas sebenarnya, dan nama di UI hanya berupa nama berkas. Identitas asli
+tidak pernah tersimpan, sehingga tidak ada yang bisa dibuka kembali secara sah.
 
-- Email keputusan review akan dikirim ke alamat internal fiktif, bukan ke pelamar
-- Unmask PII tidak menampilkan identitas sebenarnya
-- Nama di UI hanya berupa nama berkas
+**Keputusan produk: opsi A — kolom form wajib di modal upload HR.** Ternyata modal
+`UploadCandidateModal.jsx` sudah punya input "Nama Lengkap Pelamar *" dan "Email Pelamar *"
+(bertanda `required`), tetapi `handleSubmit` hanya mengirim `job_id` + `files` — kedua nilai
+itu dibuang sebelum sampai ke server. Perbaikannya:
 
-Ini bertentangan dengan semangat item 5 (sanitasi PII): nama kini berhasil diredaksi dari
-teks CV, tetapi identitas aslinya tidak pernah tersimpan, sehingga tidak ada yang bisa
-dibuka kembali secara sah.
+- Frontend mengirim `applicant_meta` = JSON `[{name, email}]` selaras indeks dengan `files`,
+  plus validasi klien (nama tidak kosong, email mengandung `@`).
+- Backend menerima `applicant_meta: Optional[str] = Form(None)` dan memvalidasinya lewat
+  `_parse_applicant_meta()`: harus JSON array, jumlah entri harus sama dengan jumlah berkas,
+  nama wajib, email wajib. Pelanggaran → HTTP 400 dengan kode spesifik
+  (`APPLICANT_META_NOT_JSON`, `APPLICANT_META_COUNT_MISMATCH`, `..._NAME_REQUIRED`,
+  `..._EMAIL_INVALID`).
+- Bila ada, nama/email asli dienkripsi dan `email_blind_index` dihitung dari email asli
+  (sebelumnya dari `file_hash@talentops.internal`), sehingga pencarian blind index dan
+  pengiriman email keputusan bekerja.
+- Metadata juga diteruskan ke `sanitize_resume(known_name=..., known_email=...)`, sehingga
+  jalur dropzone memakai pencocokan kamus eksak seperti jalur `/careers/apply`, bukan lagi
+  heuristik header saja. Redaksi nama jadi lebih akurat, bukan sekadar identitas tersimpan.
+- Respons menyertakan `identity_source`: `"form"` atau `"placeholder"`. Tanpa metadata,
+  perilaku lama dipertahankan (kompatibilitas klien lama) tetapi statusnya dinyatakan
+  terbuka, tidak disembunyikan.
+
+Verifikasi: `tests/test_dropzone_sanitization_wiring.py` bertambah 4 test (identitas asli
+tersimpan, placeholder dinyatakan saat meta kosong, jumlah entri tidak cocok ditolak, email
+tidak valid ditolak). Suite penuh 224 passed.
 
 ### 3.5 `PDF_MICRO_IMAGE` membanjiri antrean — SELESAI (kode + data)
 
@@ -663,7 +689,7 @@ pencarian `sintetis`/`synthetic` di `frontend/src`. Sekarang `DemoDataBanner.jsx
 | 3 | Login UI + `DEMO_MODE=False` | Membuka kunci RBAC item 1; keduanya harus bersamaan | **Selesai** + verified live |
 | 4 | Isi kredensial VPS, verifikasi live Calendar & Resend | Mengubah stub menjadi integrasi sungguhan | Belum — butuh akun Google Cloud + Resend |
 | 5 | Pasang Redis di VPS, jalankan >1 worker | Membuktikan klaim multi-worker | **Dibatalkan** — pemilik sistem menolak Redis (beban server); tetap 1 worker |
-| 6 | Simpan identitas asli pada jalur dropzone | Melengkapi item 5 agar identitas bisa dibuka secara sah | Belum — butuh keputusan produk |
+| 6 | Simpan identitas asli pada jalur dropzone | Melengkapi item 5 agar identitas bisa dibuka secara sah | **Selesai** — opsi A: `applicant_meta` wajib dari modal upload, §3.4 |
 | 7 | Sambungkan UI kalender, notifikasi, badge residual risk | Membuat fitur backend terlihat | **Selesai** — `0647247`, `dbc41ed`, `a2909ca` |
 | 8 | Bersihkan baris `PDF_MICRO_IMAGE` lama + reset `triage_priority` palsu | Perbaikan kode tidak menyentuh data yang sudah masuk | **Selesai** 21 Okt 2026 — 398 baris dihapus, §5.1 |
 | 9 | Sinkronkan Evidence Graph dengan isi CV + anomali berbahasa manusia | Graf terbaca HR sebagai isi CV, bukan daftar requirement | **Selesai** — `22d7292`, `f39af8a`, `50d2e5f`, §6 |
@@ -676,18 +702,16 @@ pencarian `sintetis`/`synthetic` di `frontend/src`. Sekarang `DemoDataBanner.jsx
 | 16 | Dark mode dashboard | Disebut PRD hari 6–8; `tailwind.config.js` tanpa `darkMode`, `App.jsx` sengaja mematikan | **Dibatalkan** — keputusan pemilik; klaim dihapus dari PRD hari 6–8, efek paksa light-mode di `App.jsx` dihapus |
 | 17 | Naikkan status Calendar & Dispatcher di PRD §2 ke `[TARGET]` | Yang terpasang OAuth2 Google Calendar + Resend asli, bukan mock | **Selesai** — `4de4683`, dengan catatan belum diverifikasi live |
 
-Catatan: prioritas 4 dan 6 butuh masukan dari luar repositori. Prioritas 4 butuh akun Google
-Cloud + Resend (dan domain pengirim terverifikasi). Prioritas 6 butuh keputusan produk lebih
-dulu: dari mana identitas asli diperoleh pada jalur dropzone — kolom form tambahan saat unggah,
-atau ekstraksi header dengan konfirmasi HR — karena sanitizer sengaja tidak menyimpan nilai yang
-ia redaksi. Prioritas 8 hanya butuh akses ke MariaDB produksi.
+Catatan: prioritas 4 butuh akun Google Cloud + Resend (dan domain pengirim terverifikasi) —
+tidak bisa dikerjakan dari dalam repositori. Prioritas 6 sudah selesai dengan keputusan produk
+opsi A (kolom form wajib di modal upload HR, §3.4). Prioritas 8 hanya butuh akses ke MariaDB
+produksi.
 
-Sisa daftar ini tinggal empat butir, dan **tidak satu pun menunggu pekerjaan kode yang belum
-diputuskan**: prioritas 4 menunggu kredensial eksternal, prioritas 6 menunggu keputusan produk,
-prioritas 16 menunggu keputusan (bangun dark mode atau hapus klaimnya dari PRD), dan prioritas 17
-hanya butuh penyuntingan dokumen. Kalimat "tidak ada lagi pekerjaan murni kode" dari revisi
-ketiga sudah tidak berlaku — revisi kelima justru menemukan tiga pekerjaan murni kode yang belum
-tercatat (prioritas 12–15) dan menyelesaikannya.
+Sisa daftar ini tinggal dua butir: prioritas 4 menunggu kredensial eksternal. Selain itu tidak
+ada pekerjaan kode yang tertunda — prioritas 5 dan 16 dibatalkan atas keputusan pemilik,
+prioritas 6, 12–15, dan 17 selesai. Kalimat "tidak ada lagi pekerjaan murni kode" dari revisi
+ketiga sempat tidak berlaku karena revisi kelima menemukan tiga pekerjaan yang belum tercatat
+(prioritas 12–15); setelah itu semuanya dikerjakan.
 
 ---
 

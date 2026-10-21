@@ -9,11 +9,13 @@ PRD Bab 6.4 requires the dropzone path to record potential false negatives
 honestly; an endpoint that silently discards the report would violate that even
 though the sanitizer itself behaved correctly.
 """
+import json
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(backend_dir.parent))
@@ -50,7 +52,7 @@ def build_db():
     return db
 
 
-async def run_upload(text, db):
+async def run_upload(text, db, applicant_meta=None):
     """Drives the endpoint with file parsing stubbed out."""
     upload = FakeUpload("cv.pdf", b"%PDF-1.4 fake")
 
@@ -61,6 +63,7 @@ async def run_upload(text, db):
         return await hr_direct_upload(
             job_id=1,
             files=[upload],
+            applicant_meta=applicant_meta,
             db=db,
             current_user={"id": 1, "role": "recruiter"},
         )
@@ -125,3 +128,62 @@ async def test_clean_document_records_no_anomaly():
         if "PII_RESIDUAL_RISK" in sql
     ]
     assert residual_anomalies == []
+
+
+@pytest.mark.asyncio
+async def test_form_metadata_stores_real_identity():
+    """
+    With `applicant_meta`, the encrypted name/email must be the applicant's real
+    ones so review emails reach them and unmasking shows a real name.
+    """
+    db = build_db()
+    cv = "CURRICULUM VITAE\n\nBudi Santoso\nEmail: budi@example.com\nPython\n"
+    meta = json.dumps([{"name": "Budi Santoso", "email": "budi@example.com"}])
+
+    result = await run_upload(cv, db, applicant_meta=meta)
+
+    entry = result["candidates"][0]
+    assert entry["identity_source"] == "form"
+    assert entry["sanitization"]["name_source"] == "form"
+
+    stored = next(p for sql, p in db.statements if "INSERT INTO CANDIDATES" in sql)
+    assert "hr_dropzone_upload@talentops.internal" not in json.dumps(stored, default=str)
+    assert "Budi Santoso" not in stored["sanitized_text"]
+
+
+@pytest.mark.asyncio
+async def test_missing_meta_keeps_placeholder_and_says_so():
+    """No metadata => legacy placeholders, but the response must declare it."""
+    db = build_db()
+    cv = "CURRICULUM VITAE\n\nBudi Santoso\nEmail: budi@example.com\nPython\n"
+
+    result = await run_upload(cv, db)
+
+    assert result["candidates"][0]["identity_source"] == "placeholder"
+
+
+@pytest.mark.asyncio
+async def test_meta_count_must_match_file_count():
+    db = build_db()
+    meta = json.dumps([
+        {"name": "Budi Santoso", "email": "budi@example.com"},
+        {"name": "Citra Dewi", "email": "citra@example.com"},
+    ])
+
+    with pytest.raises(HTTPException) as exc:
+        await run_upload("CURRICULUM VITAE\n", db, applicant_meta=meta)
+
+    assert exc.value.status_code == 400
+    assert "COUNT_MISMATCH" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_meta_rejects_invalid_email():
+    db = build_db()
+    meta = json.dumps([{"name": "Budi Santoso", "email": "bukan-email"}])
+
+    with pytest.raises(HTTPException) as exc:
+        await run_upload("CURRICULUM VITAE\n", db, applicant_meta=meta)
+
+    assert exc.value.status_code == 400
+    assert "EMAIL_INVALID" in exc.value.detail

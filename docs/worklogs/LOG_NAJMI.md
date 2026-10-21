@@ -5,6 +5,25 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-21 - Najmi - Identitas Asli Jalur Dropzone Disimpan (Keputusan A)
+- **Komponen / File:**
+  - `backend/app/api/candidates.py` (`_parse_applicant_meta`, `hr_direct_upload`)
+  - `frontend/src/components/UploadCandidateModal.jsx`
+  - `backend/tests/test_dropzone_sanitization_wiring.py` (4 test baru)
+  - `docs/STATUS_PEKERJAAN_BELUM_SELESAI.md` (§3.4, prioritas 6, revisi keenam)
+- **Yang Dikerjakan:**
+  - **Akar masalah:** `hr_direct_upload` menulis `encrypt_pii(f"Applicant-{file.filename}")` dan `encrypt_pii("hr_dropzone_upload@talentops.internal")` sebagai identitas. Kandidat jalur dropzone karena itu tidak bisa dihubungi: email keputusan pergi ke alamat internal fiktif, unmask PII menampilkan nama berkas, dan `email_blind_index` dihitung dari `file_hash@talentops.internal` sehingga pencarian berdasarkan email tidak akan pernah cocok.
+  - **Temuan yang mengubah bentuk perbaikan:** modal `UploadCandidateModal.jsx` ternyata **sudah** punya input "Nama Lengkap Pelamar *" dan "Email Pelamar *" bertanda `required`, lengkap dengan state `candidateName`/`candidateEmail`. Keduanya tidak pernah masuk `FormData` — hanya `job_id` dan `files` yang dikirim. Jadi bukan fitur yang belum ada, melainkan nilai yang dibuang di klien.
+  - Backend menerima `applicant_meta` sebagai JSON array selaras indeks dengan `files`, divalidasi `_parse_applicant_meta()`: wajib array, jumlah entri = jumlah berkas, nama tidak kosong, email mengandung `@`. Kode error spesifik agar klien bisa membedakan penyebab.
+  - Parameter dibuat opsional (`Form(None)`) supaya klien lama dan test lama tidak pecah; tanpa metadata, perilaku placeholder dipertahankan tetapi respons menyatakan `identity_source: "placeholder"` alih-alih diam.
+  - Metadata juga diteruskan ke `sanitize_resume(known_name=..., known_email=...)`. Ini efek samping yang lebih berharga daripada penyimpanan identitasnya sendiri: jalur dropzone kini memakai pencocokan kamus eksak seperti jalur `/careers/apply`, bukan hanya inferensi header, sehingga redaksi nama di narasi bebas lebih akurat.
+  - `email_blind_index` dihitung dari email asli saat metadata ada, sehingga blind-index lookup dan pengiriman email keputusan berfungsi.
+  - Frontend menambah validasi klien sebelum submit (nama tidak kosong, email mengandung `@`) karena tombol submit sebelumnya hanya dijaga oleh `!file`.
+- **Status & Verifikasi:** Selesai. `pytest tests/test_dropzone_sanitization_wiring.py` → 7 passed (3 lama + 4 baru: identitas asli tersimpan dan `name_source == "form"`, placeholder dinyatakan saat meta kosong, jumlah entri tidak cocok → 400 `COUNT_MISMATCH`, email tidak valid → 400 `EMAIL_INVALID`). Suite penuh `pytest tests/` → **224 passed**. `vite build` lolos.
+- **Rencana Selanjutnya:** Setelah deploy, unggah satu CV lewat modal dan pastikan `identity_source` bernilai `"form"` di respons, lalu buka dossier kandidat dan cek tombol unmask menampilkan nama asli (bukan `Applicant-*.pdf`). Kandidat lama yang sudah terlanjur masuk lewat jalur ini tetap memakai placeholder — datanya tidak bisa dipulihkan karena memang tidak pernah disimpan.
+
+---
+
 ### 2026-10-21 - Najmi - Dokumen Status & PRD Disinkronkan dengan Kondisi Kode
 - **Komponen / File:**
   - `docs/STATUS_PEKERJAAN_BELUM_SELESAI.md` (revisi kelima, §8 baru)

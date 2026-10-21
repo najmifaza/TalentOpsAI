@@ -1,8 +1,8 @@
 # Status Pekerjaan Backend — Apa yang Belum Selesai
 
-**Terakhir diperbarui:** 21 Oktober 2026
-**Branch acuan:** `main` @ `cb8cde6`
-**Status pengujian:** `uv run pytest backend/tests -q` → **201 passed, 0 failed**
+**Terakhir diperbarui:** 21 Oktober 2026 (revisi kedua)
+**Branch acuan:** `main` @ `69c904a`
+**Status pengujian:** `uv run pytest backend/tests -q` → **202 passed, 0 failed**
 
 Dokumen ini mendaftar pekerjaan yang **belum** selesai setelah lima item penguatan backend
 (auth/RBAC, Redis multi-worker, PDF hidden-text, integrasi eksternal, sanitasi PII).
@@ -15,6 +15,13 @@ Item 4 belum pernah menyentuh penyedia eksternal sama sekali.
 **Perubahan sesi ini:** §1.1, §1.2, §1.3, dan §3.3 selesai; backend sudah di-deploy dan
 diverifikasi live; seed password diperbaiki; domain frontend dipindahkan ke `talentops.ai.id`
 (tertunda di sisi Vercel, lihat §5).
+
+**Revisi kedua (sesi yang sama):** §4 selesai seluruhnya — tiga fitur backend yang sebelumnya
+tidak terlihat di UI kini tersambung (laporan sanitasi PII, status notifikasi keputusan, panel
+Google Calendar). Ditemukan dan diperbaiki bug produksi yang tidak tercatat di revisi pertama:
+satu CV bersih menampilkan 130+ badge `PDF_MICRO_IMAGE` dan masuk antrean `HIGH_ATTENTION`
+tanpa pernah di-scan (§3.5). **Sisa pekerjaan yang mendesak: pembersihan data lama di MariaDB
+produksi** (§5).
 
 ---
 
@@ -214,20 +221,87 @@ Ini bertentangan dengan semangat item 5 (sanitasi PII): nama kini berhasil dired
 teks CV, tetapi identitas aslinya tidak pernah tersimpan, sehingga tidak ada yang bisa
 dibuka kembali secara sah.
 
+### 3.5 `PDF_MICRO_IMAGE` membanjiri antrean — KODE DIPERBAIKI, DATA LAMA BELUM
+
+**Status: perbaikan kode selesai dan teruji; baris lama di MariaDB produksi belum dibersihkan.**
+
+Gejala yang dilaporkan dari UI: satu kandidat (`#TK-5FF482`) menampilkan **130+ badge
+`PDF_MICRO_IMAGE`** di kolom Rekomendasi AI, padahal CV-nya hanya berisi foto profil dan teks
+biasa. Kandidat itu juga sudah berada di antrean `HIGH_ATTENTION` **sebelum pernah di-scan**.
+
+Tiga akar masalah, semuanya dibuktikan lewat probe langsung ke detector:
+
+1. `_flag_suspicious_image` (`backend/app/core/hidden_text_detector.py`) menandai **setiap
+   pemakaian** objek gambar, bukan setiap objek. Satu glyph 1×1 yang dirujuk 145 kali oleh
+   operator `Do` menghasilkan 145 finding. Probe: foto 200×200 digambar sekali → 0 finding;
+   satu gambar 1×1 digambar 145 kali → **145 finding**.
+2. `careers.py` meng-insert satu baris `candidate_anomalies` per finding tanpa agregasi.
+   145 finding → 145 baris DB → 145 badge.
+3. Eskalasi `triage_priority = 'HIGH_ATTENTION'` dipicu oleh **adanya finding apa pun**,
+   termasuk `PDF_MICRO_IMAGE` yang severity-nya hanya `MEDIUM`.
+
+Perbaikan yang diterapkan (commit `550998e`, frontend `bef5f7c`):
+
+- `PdfAuditResult.flagged_images` — finding dikunci per `(page, indirect_reference.idnum)`.
+  Kunci memakai `idnum` karena pypdf membuat wrapper baru tiap lookup sehingga `id()` tidak
+  stabil. Pemakaian berulang menaikkan `occurrences`, bukan menambah finding.
+- `careers.py` mengagregasi satu baris per `anomaly_type`; `description` memuat jumlah kejadian
+  dan daftar halaman.
+- Eskalasi `HIGH_ATTENTION` hanya untuk finding `severity == "HIGH"`.
+- `CandidateTable.jsx` — badge anomali disembunyikan selama kandidat belum di-scan, dibatasi
+  3 + `+N lainnya`.
+- Test regresi `test_pdf_micro_image_flagged_once_per_object`.
+
+Verifikasi setelah perbaikan: 145 draw → **1 finding** (`occurrences: 145`, `MEDIUM`, tidak
+eskalasi); teks `3 Tr` → `PDF_INVISIBLE_RENDER_MODE` `HIGH`, **tetap** eskalasi.
+
+**Batas yang masih berlaku:**
+
+- `/SMask` (transparansi gambar) **belum diperiksa**. Docstring lama menjanjikan pemeriksaan itu
+  padahal tidak pernah diimplementasikan; docstring sudah dikoreksi. Gambar dekoratif ≤2×2 px
+  tetap dilaporkan, kini hanya sekali per objek dengan severity `MEDIUM`.
+- Ambang ≤2×2 px dipilih dari asumsi, belum divalidasi terhadap korpus PDF riil.
+- **Data lama tidak tersentuh.** Baris `PDF_MICRO_IMAGE` dan `triage_priority = 'HIGH_ATTENTION'`
+  yang sudah terlanjur masuk masih ada di produksi — lihat §5.
+
 ---
 
-## 4. Frontend Belum Menyambut Fitur Baru
+## 4. Frontend — SUDAH TERSAMBUNG (21 Oktober 2026)
 
-Pencarian di `frontend/src`:
+> **Status bagian ini: SELESAI.** Ketiga fitur yang sebelumnya hanya ada di backend kini dipakai
+> UI, dan build lulus. Uraian awal dipertahankan sebagai catatan temuan.
 
-| Fitur backend | Hasil pencarian | Dampak |
+Pencarian awal di `frontend/src` menunjukkan fitur backend yang tidak terlihat pengguna:
+
+| Fitur backend | Hasil pencarian awal | Dampak |
 |---|---|---|
 | `calendar` | 0 hasil | Endpoint `status`/`oauth/authorize`/`disconnect` ada, UI-nya tidak ada |
 | `notifications` | 0 hasil | Field baru pada respons review tidak dibaca |
 | `residual_risk` | 0 hasil | Badge peringatan PII belum dibuat |
 | `sanitization` | 2 hasil | Hanya `sanitization_stats` lama; blok `sanitization`/`pii_sanitization` baru belum dipakai |
 
-Fitur backend yang tidak terlihat di UI secara praktis tidak ada bagi pengguna.
+**Perbaikan yang diterapkan:**
+
+- `frontend/src/components/UploadCandidateModal.jsx` — membaca blok `sanitization` dari respons
+  `POST /api/candidates/upload`. Modal tidak langsung tertutup; ditampilkan badge
+  `PII_RESIDUAL_RISK` (amber) atau "Sanitasi PII bersih" (hijau) beserta `detected_name`,
+  `name_source`, dan daftar `limitations`.
+- `frontend/src/components/CandidateModal.jsx` — membaca `notifications.calendar` dan
+  `notifications.email` dari respons `POST /{id}/review` lewat komponen `DeliveryReport`,
+  ditampilkan pada receipt approve maupun reject. `Event ID` kini memakai `event_id` asli dari
+  server bila tersedia, bukan lagi ID hasil generate lokal.
+- `frontend/src/components/CalendarPanel.jsx` (baru) + rute `/admin/calendar` —
+  `GET /api/calendar/status`, connect via `GET /oauth/authorize`, disconnect via
+  `POST /disconnect`, plus penanganan pesan hasil callback OAuth.
+- `frontend/src/App.jsx` — `/admin/dashboard?calendar=…` (target `OAUTH_SUCCESS_REDIRECT`)
+  dialihkan ke `/admin/calendar` agar hasil OAuth tidak hilang.
+- `frontend/src/components/Sidebar.jsx` — item menu "Kalender".
+
+Verifikasi: `npm run build` lulus, chunk `CalendarPanel` terpisah (7,23 kB).
+
+**Sisa keterbatasan:** panel akan menampilkan "Server belum dikonfigurasi" sampai
+`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` diisi — lihat §2 dan §5. Alur connect/disconnect dan
+tampilan laporan belum pernah diuji terhadap Google sungguhan.
 
 ---
 
@@ -253,6 +327,25 @@ Frontend juga sudah ter-deploy lewat CI/CD Vercel: bundle live
 `candidates/stream` yang lama. CSP `connect-src` mengizinkan domain API.
 
 **Yang masih terbuka:**
+
+- **Pembersihan data lama `PDF_MICRO_IMAGE` — MENDESAK, belum dijalankan.** Perbaikan kode
+  (§3.5) tidak membersihkan baris yang sudah terlanjur masuk. Kandidat yang terdampak masih
+  membawa ratusan baris `candidate_anomalies` bertipe `PDF_MICRO_IMAGE` dan
+  `triage_priority = 'HIGH_ATTENTION'` palsu. Jalankan setelah memverifikasi nilai default enum
+  `triage_priority` di `backend/migrations/001_initial_schema.sql` (`STANDARD`):
+
+  ```sql
+  DELETE FROM candidate_anomalies WHERE anomaly_type = 'PDF_MICRO_IMAGE';
+  UPDATE candidates SET triage_priority = 'STANDARD'
+   WHERE triage_priority = 'HIGH_ATTENTION'
+     AND NOT EXISTS (
+       SELECT 1 FROM candidate_anomalies a
+       WHERE a.candidate_id = candidates.id
+         AND a.anomaly_type IN ('PROMPT_INJECTION', 'HIDDEN_TEXT')
+     );
+  ```
+
+  Cadangkan tabel lebih dulu. Kedua pernyataan tidak dapat dibatalkan setelah commit.
 
 - **Password produksi.** Seed default `AdminSecret2026!` (tertulis terbuka di repo) sudah
   diganti; verifikasi: password lama dan default sama-sama 401. Rotasi memakai
@@ -286,24 +379,18 @@ Frontend juga sudah ter-deploy lewat CI/CD Vercel: bundle live
 | 4 | Isi kredensial VPS, verifikasi live Calendar & Resend | Mengubah stub menjadi integrasi sungguhan | Belum — butuh akun Google Cloud + Resend |
 | 5 | Pasang Redis di VPS, jalankan >1 worker | Membuktikan klaim multi-worker | **Dibatalkan** — pemilik sistem menolak Redis (beban server); tetap 1 worker |
 | 6 | Simpan identitas asli pada jalur dropzone | Melengkapi item 5 agar identitas bisa dibuka secara sah | Belum — butuh keputusan produk |
-| 7 | Sambungkan UI kalender, notifikasi, badge residual risk | Membuat fitur backend terlihat | Belum — **satu-satunya yang murni kode, bisa dikerjakan sekarang** |
+| 7 | Sambungkan UI kalender, notifikasi, badge residual risk | Membuat fitur backend terlihat | **Selesai** — `0647247`, `dbc41ed`, `a2909ca` |
+| 8 | Bersihkan baris `PDF_MICRO_IMAGE` lama + reset `triage_priority` palsu | Perbaikan kode tidak menyentuh data yang sudah masuk | **Belum — jalan sekarang**, SQL di §5 |
 
-Catatan untuk prioritas 4, 6, dan 7: ketiganya butuh masukan dari luar repositori. Prioritas 4
-butuh akun Google Cloud + Resend (dan domain pengirim terverifikasi). Prioritas 6 butuh
-keputusan produk lebih dulu: dari mana identitas asli diperoleh pada jalur dropzone — kolom
-form tambahan saat unggah, atau ekstraksi header dengan konfirmasi HR — karena sanitizer
-sengaja tidak menyimpan nilai yang ia redaksi. Prioritas 7 tidak butuh apa pun selain kode.
+Catatan: prioritas 4 dan 6 butuh masukan dari luar repositori. Prioritas 4 butuh akun Google
+Cloud + Resend (dan domain pengirim terverifikasi). Prioritas 6 butuh keputusan produk lebih
+dulu: dari mana identitas asli diperoleh pada jalur dropzone — kolom form tambahan saat unggah,
+atau ekstraksi header dengan konfirmasi HR — karena sanitizer sengaja tidak menyimpan nilai yang
+ia redaksi. Prioritas 8 hanya butuh akses ke MariaDB produksi.
 
-Rincian prioritas 7 (backend sudah mengirim datanya, UI membuangnya):
-
-1. `UploadCandidateModal` — tampilkan blok `sanitization` dari respons
-   `POST /api/candidates/upload` (`residual_risk`, `name_source`, `limitations`) sebagai badge
-   peringatan; saat ini `sanitization_stats` lama saja yang dibaca.
-2. `CandidateModal` — baca `notifications.calendar` dan `notifications.email` dari respons
-   `POST /{id}/review` dan tampilkan hasilnya, termasuk kegagalan.
-3. Panel status kalender — `GET /api/calendar/status`, tombol connect
-   (`GET /api/calendar/oauth/authorize`) dan disconnect (`POST /api/calendar/disconnect`),
-   di dalam `/admin/*` yang sudah ber-auth.
+**Tidak ada lagi pekerjaan yang murni kode tanpa masukan luar.** Setelah prioritas 8 selesai,
+sisa daftar ini seluruhnya menunggu keputusan produk (6), kredensial eksternal (4), atau pihak
+ketiga/Vercel (domain).
 
 ---
 
@@ -313,7 +400,7 @@ Rincian prioritas 7 (backend sudah mengirim datanya, UI membuangnya):
 |---|---|---|
 | 1. Auth & RBAC | `7f62479` | **Aktif & terverifikasi live** — `DEMO_MODE=False`, login UI ada, endpoint SSE bertiket |
 | 2. Redis multi-worker | `0fc24d0` | **Dibatalkan** — tanpa Redis, 1 worker (kode fallback dipertahankan) |
-| 3. PDF hidden-text | `d5649e0` | Siap produksi (batas: tanpa OCR) |
+| 3. PDF hidden-text | `d5649e0`, `550998e` | Siap produksi (batas: tanpa OCR). `550998e` memperbaiki false positive `PDF_MICRO_IMAGE` (§3.5) |
 | 4. Integrasi eksternal | `7314d98`, `b4f2b2d` | Kode selesai; **belum pernah live** |
 | 5. Sanitasi PII | `eba88bc` | Siap produksi (batas: tanpa NER); recall terukur 100% pada 25 CV riil |
 
@@ -329,6 +416,19 @@ Commit sesi ini (21 Oktober 2026):
 | `8ac6122` | Seed menulis ulang `password_hash`; dukungan `SEED_ADMIN_PASSWORD` |
 | `a8e7199` | Hapus origin `talentops.vercel.app` (aplikasi lain) dari CORS |
 | `cb8cde6` | Pindah domain frontend ke `talentops.ai.id` + perbaiki regex CORS |
+
+Commit revisi kedua (sesi yang sama, branch `feat/ui-backend-feature-surfacing` dan
+`feat/backend-pdf-micro-image-dedup`):
+
+| Commit | Isi |
+|---|---|
+| `a2909ca` | Tampilkan laporan sanitasi PII pada upload dropzone |
+| `dbc41ed` | Tampilkan status Calendar & Email setelah keputusan review |
+| `0647247` | Panel Google Calendar `/admin/calendar` + rute + menu sidebar |
+| `f6b983a` | Worklog Willy 2026-10-21 |
+| `550998e` | Dedup `PDF_MICRO_IMAGE` per objek + agregasi anomali + eskalasi hanya untuk `HIGH` |
+| `bef5f7c` | Batasi badge anomali di tabel kandidat, sembunyikan sebelum scan |
+| `007a902`, `69c904a` | Merge `--no-ff` kedua branch ke `main` |
 
 Catatan: commit `b4f2b2d` (konfirmasi erasure pada withdraw) dan `eba88bc` (sanitasi PII)
 juga menutup dua kekurangan yang sebelumnya tidak tercatat — template `erasure_confirmation`

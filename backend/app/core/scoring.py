@@ -87,6 +87,11 @@ def parse_date_to_months(date_str: str) -> int:
         return now.year * 12 + 1
 
 
+def normalize_technology_key(name: str) -> str:
+    """Identity of a technology name for dedupe: "Next.js" and "nextjs" are one skill."""
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
+
+
 def months_to_label(months: int) -> str:
     """Inverse of parse_date_to_months: absolute month count back to YYYY-MM."""
     year = months // 12
@@ -220,7 +225,7 @@ class DeterministicScoringEngine:
             if best_claim:
                 conf = 1.00 if best_tier == 100.0 else (0.75 if best_tier == 60.0 else 0.50)
                 claim_tech = (best_claim.get("technology") or req_comp).strip()
-                matched_technologies.add(claim_tech.lower())
+                matched_technologies.add(normalize_technology_key(claim_tech))
                 evidence_records.append({
                     "dimension": "SKILL",
                     # The CV's own wording, not the posting's requirement label: a CV
@@ -241,9 +246,9 @@ class DeterministicScoringEngine:
         # Without this the graph silently drops everything outside the posting's list.
         for claim in claims:
             tech = (claim.get("technology") or "").strip()
-            if not tech or tech.lower() in matched_technologies:
+            if not tech or normalize_technology_key(tech) in matched_technologies:
                 continue
-            matched_technologies.add(tech.lower())
+            matched_technologies.add(normalize_technology_key(tech))
             has_impl = claim.get("has_implementation_detail", False)
             evidence_records.append({
                 "dimension": "SKILL",
@@ -257,7 +262,27 @@ class DeterministicScoringEngine:
             })
 
         skill_score = (sum(match_scores) / len(core_competencies)) * 100.0
-        return round(skill_score, 2), evidence_records
+        # match_scores is untouched: collapsing only affects what the dossier displays.
+        return round(skill_score, 2), cls._collapse_exact_duplicates(evidence_records)
+
+    @staticmethod
+    def _collapse_exact_duplicates(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Merges rows that name the same technology with different casing/punctuation
+        ("Next.js" vs "nextjs") and cover the same requirement. Rows naming the same
+        technology for *different* requirements are kept: each one is the only record
+        that requirement is covered by.
+        """
+        kept: Dict[tuple, Dict[str, Any]] = {}
+        for rec in records:
+            key = normalize_technology_key(rec.get("target_competency") or "")
+            if not key:
+                continue
+            bucket = (key, rec.get("matched_requirement"))
+            existing = kept.get(bucket)
+            if existing is None or (rec.get("score_contribution") or 0) > (existing.get("score_contribution") or 0):
+                kept[bucket] = rec
+        return list(kept.values())
 
     @classmethod
     def calculate_experience_score(cls, timeline: List[Dict[str, Any]]) -> Tuple[float, float]:
@@ -406,9 +431,12 @@ class DeterministicScoringEngine:
 
                 overlap_start = max(r1_start, r2_start)
                 overlap_end = min(r1_end, r2_end)
-                if overlap_end - overlap_start >= 3:
+                # Inclusive month count, matching merge_employment_intervals(): a role
+                # spanning 2024-01..2025-12 is 24 months, not 23. Threshold stays
+                # "more than 3 months" per PRD.
+                overlap_months = overlap_end - overlap_start + 1
+                if overlap_months > 3:
                     is_high = True
-                    overlap_months = overlap_end - overlap_start
                     flags.append(f"CONCURRENT_FULLTIME_OVERLAP_{overlap_months}_MONTHS")
 
                     first, second = full_time_roles[i], full_time_roles[j]

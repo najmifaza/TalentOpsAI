@@ -1,6 +1,27 @@
 import re
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+VALID_EMPLOYMENT_TYPES = {"full_time", "part_time", "contract", "internship", "freelance"}
+
+# The model occasionally emits labels like "career_break" or "full-time". A single
+# unexpected token used to fail the whole CandidateExtractionSchema and silently drop
+# the candidate to heuristic fallback, so unknown values are normalized instead.
+EMPLOYMENT_TYPE_ALIASES = {
+    "full-time": "full_time",
+    "fulltime": "full_time",
+    "full time": "full_time",
+    "permanent": "full_time",
+    "tetap": "full_time",
+    "part-time": "part_time",
+    "parttime": "part_time",
+    "part time": "part_time",
+    "magang": "internship",
+    "intern": "internship",
+    "kontrak": "contract",
+    "lepas": "freelance",
+    "freelancer": "freelance",
+}
 
 
 # ponytail: Basic string-match substring guard. Upgrade to fuzzy token alignment if OCR typos occur.
@@ -45,6 +66,22 @@ class CareerTimelineItem(BaseModel):
     ] = "full_time"
     start: str = Field(description="Start date formatted YYYY-MM or YYYY")
     end: str = Field(description="End date formatted YYYY-MM, YYYY, or 'present'")
+
+    @field_validator("employment_type", mode="before")
+    @classmethod
+    def normalize_employment_type(cls, value):
+        """Map unexpected labels to a valid enum instead of failing the whole extraction."""
+        if not isinstance(value, str):
+            return "full_time"
+        key = value.strip().lower()
+        if key in VALID_EMPLOYMENT_TYPES:
+            return key
+        if key in EMPLOYMENT_TYPE_ALIASES:
+            return EMPLOYMENT_TYPE_ALIASES[key]
+        # Unknown labels ("career_break", "sabbatical") must not become full-time roles:
+        # that would invent a concurrent-employment overlap alarm. Park them in the
+        # non-full-time bucket so the overlap check ignores them.
+        return "contract"
 
 
 class EducationItem(BaseModel):

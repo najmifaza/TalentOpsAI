@@ -5,6 +5,19 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-21 - Willy - Fix Crash Null `overall_score` pada Halaman Dossier
+- **Komponen / File:**
+  - `frontend/src/components/CandidateDetailPage.jsx`
+- **Yang Dikerjakan:**
+  - Memperbaiki runtime crash `Cannot read properties of null (reading 'overall_score')` yang ditangkap Error Boundary saat membuka `/admin/candidates/:id`.
+  - Akar masalah: `activeCandidateObj` (useMemo) membaca `candidate.overall_score`, `candidate.recommendation`, `candidate.confidence_level`, `candidate.status`, dan `candidate.verified_github` — padahal `candidate` diinisialisasi `null` dan baru diisi oleh `loadCandidateDetail` di dalam `useEffect`. Saat modal masih menerima `candidate` sebagai prop, jalur ini tidak pernah null; setelah menjadi halaman berute yang fetch sendiri, render pertama selalu null. `resolvedIdentity` punya masalah sama pada `candidate.candidate_name_masked`.
+  - Perbaikan: seluruh akses baris diubah ke objek lokal `row = candidate || {}` di dalam `activeCandidateObj`, dan `candidate?.candidate_name_masked` di `resolvedIdentity`. Spread `{...candidate}` sebenarnya aman terhadap null; hanya pembacaan propertinya yang melempar.
+  - Diverifikasi tidak ada lagi pembacaan `candidate.` sebelum early return loading/error (di luar render body yang sudah dijaga guard).
+- **Status & Verifikasi:** Selesai. `npx vite build` sukses (1780 modul).
+- **Rencana Selanjutnya:** Uji ulang alur buka dossier via klik tabel untuk memastikan layar loading tampil sebelum data masuk.
+
+---
+
 ### 2026-10-21 - Willy - Konversi Modal Dossier Kandidat Menjadi Halaman Berute (`/admin/candidates/:id`)
 - **Komponen / File:**
   - `frontend/src/components/CandidateDetailPage.jsx` (Komponen Baru, menggantikan `CandidateModal.jsx`)

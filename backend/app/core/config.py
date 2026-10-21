@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://talentops.ai.id",
+        "https://www.talentops.ai.id",
+        # Legacy domain kept during DNS cutover; remove once talentops.ai.id is live.
         "https://talentops.fawt.biz.id",
     ]
 
@@ -63,7 +66,7 @@ class Settings(BaseSettings):
     GOOGLE_CALENDAR_API_BASE: str = "https://www.googleapis.com/calendar/v3"
     GOOGLE_HTTP_TIMEOUT: float = 15.0
     # Frontend page the OAuth callback redirects back to (no tokens in the URL).
-    OAUTH_SUCCESS_REDIRECT: str = "https://talentops.fawt.biz.id/admin/dashboard"
+    OAUTH_SUCCESS_REDIRECT: str = "https://talentops.ai.id/admin/dashboard"
 
     # --- Transactional email (Resend) --------------------------------------
     # provider: "resend_api" (HTTPS) | "resend_smtp" (SMTP relay) | "" (disabled)
@@ -72,7 +75,7 @@ class Settings(BaseSettings):
     RESEND_SMTP_HOST: str = "smtp.resend.com"
     RESEND_SMTP_PORT: int = 465
     RESEND_SMTP_USER: str = "resend"
-    EMAIL_FROM: str = "TalentOps AI <noreply@talentops.fawt.biz.id>"
+    EMAIL_FROM: str = "TalentOps AI <noreply@talentops.ai.id>"
     EMAIL_REPLY_TO: str = ""
     EMAIL_TIMEOUT: float = 15.0
     EMAIL_MAX_RETRIES: int = 2

@@ -875,7 +875,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                 <div className="space-y-2 text-xs text-primary-slate-400 font-jkt">
                   <p className="font-semibold text-white">Tim Rekrutmen TalentOps AI</p>
                   <p>Informatika Universitas Jenderal Soedirman</p>
-                  <p className="font-mono text-primary-orange">cs@talentops.fawt.biz.id</p>
+                  <p className="font-mono text-primary-orange">cs@talentops.ai.id</p>
                 </div>
               </div>
             </div>

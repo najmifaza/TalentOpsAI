@@ -73,7 +73,7 @@ Backend Core Engine berbasis **FastAPI & MariaDB ACID** yang menghubungkan siklu
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=r"^https://.*(vercel\.app|fawt\.biz\.id)$",
+    allow_origin_regex=r"^https://(?:[a-z0-9-]+\.)*(?:vercel\.app|fawt\.biz\.id|ai\.id)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

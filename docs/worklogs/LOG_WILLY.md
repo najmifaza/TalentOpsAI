@@ -5,6 +5,20 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-21 - Willy - Dark Mode Dibatalkan, Klaim Dihapus
+- **Komponen / File:**
+  - `frontend/src/App.jsx`
+  - `docs/PRD_TALENTOPS_AI_MASTER.md` (tabel jadwal hari 6–8)
+  - `docs/STATUS_PEKERJAAN_BELUM_SELESAI.md` (prioritas 16, §8.5)
+- **Yang Dikerjakan:**
+  - Dark mode dibatalkan atas keputusan pemilik. `tailwind.config.js` memang tidak pernah punya `darkMode`, dan `App.jsx` justru memaksa `document.documentElement.classList.remove('dark')` + `localStorage.removeItem('talentops-theme')` setiap kali halaman dimuat — jadi ada kode yang sengaja menolak dark mode sementara PRD hari 6–8 menjanjikannya.
+  - Efek paksa light-mode dihapus dari `App.jsx`. Tanpa dark mode yang perlu ditolak, efek itu hanya menyentuh DOM dan `localStorage` tanpa manfaat; `useEffect` tetap dipakai di `DashboardLayout` sehingga import-nya tidak berubah.
+  - Klaim "Dashboard HR modern (Dark mode)" di PRD hari 6–8 diganti "light theme WebEkspor, kontras WCAG AA" — sesuai kenyataan yang dipasang dan tetap bisa dipertahankan di depan juri.
+- **Status & Verifikasi:** Selesai. `node node_modules/vite/bin/vite.js build` sukses. Tidak ada perubahan visual: light mode tetap satu-satunya tema, hanya jalur paksa yang dihapus.
+- **Rencana Selanjutnya:** Tidak ada. Bila nanti dark mode diinginkan, tambahkan `darkMode: 'class'` di `tailwind.config.js` lalu bangun ulang dari token warna — jangan menghidupkan kembali efek paksa yang baru dihapus.
+
+---
+
 ### 2026-10-21 - Willy - Banner "Gunakan Data Sintetis" di UI Demo
 - **Komponen / File:**
   - `frontend/src/components/DemoDataBanner.jsx` (komponen baru)

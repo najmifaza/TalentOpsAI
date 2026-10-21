@@ -192,12 +192,6 @@ function RequireAuth({ children }) {
 }
 
 export default function App() {
-  // Enforce pristine Light Mode
-  useEffect(() => {
-    document.documentElement.classList.remove('dark');
-    localStorage.removeItem('talentops-theme');
-  }, []);
-
   return (
     <BrowserRouter>
       <Suspense fallback={<ComponentLoader label="Memuat ekosistem TalentOps AI..." />}>

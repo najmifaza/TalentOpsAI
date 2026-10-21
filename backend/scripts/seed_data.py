@@ -1,5 +1,6 @@
 """Seed initial admin/recruiter user and default Job Description for TalentOps AI."""
 import json
+import os
 import sys
 from pathlib import Path
 from sqlalchemy import create_engine, text
@@ -10,6 +11,31 @@ sys.path.insert(0, str(backend_dir.parent))
 
 from backend.app.core.config import settings
 
+# Dev-only fallback. Production must supply SEED_ADMIN_PASSWORD.
+DEFAULT_SEED_PASSWORD = "AdminSecret2026!"
+
+# password_hash is rewritten on conflict on purpose: a stale legacy hash (e.g.
+# argon2id) makes verify_password fail forever, leaving the account unloggable.
+USER_SEED_SQL = """
+    INSERT INTO users (id, username, email, password_hash, role)
+    VALUES (1, 'recruiter_talentops', 'recruiter@talentops.ai', :pwd_hash, 'recruiter')
+    ON DUPLICATE KEY UPDATE
+        email = VALUES(email),
+        password_hash = VALUES(password_hash);
+"""
+
+
+def resolve_seed_password() -> str:
+    """Password to seed with: SEED_ADMIN_PASSWORD wins, repo default is the dev fallback."""
+    override = os.getenv("SEED_ADMIN_PASSWORD")
+    if override:
+        return override
+    print(
+        "WARNING: SEED_ADMIN_PASSWORD is not set; using the public default "
+        "password from the repository. Set it before seeding a production DB."
+    )
+    return DEFAULT_SEED_PASSWORD
+
 
 def seed_initial_data():
     engine = create_engine(settings.SYNC_DATABASE_URL, isolation_level="AUTOCOMMIT")
@@ -18,17 +44,12 @@ def seed_initial_data():
         print("Checking existing seed data...")
 
         # 1. Seed Default User (Recruiter / Admin)
-        # Password demo: 'AdminSecret2026!' — PBKDF2-HMAC-SHA256 (stdlib, no native argon2 dep)
+        # PBKDF2-HMAC-SHA256 (stdlib, no native argon2 dep).
         from backend.app.core.auth import hash_password
 
-        pwd_hash = hash_password("AdminSecret2026!")
+        pwd_hash = hash_password(resolve_seed_password())
 
-        user_query = text("""
-            INSERT INTO users (id, username, email, password_hash, role)
-            VALUES (1, 'recruiter_talentops', 'recruiter@talentops.ai', :pwd_hash, 'recruiter')
-            ON DUPLICATE KEY UPDATE email = VALUES(email);
-        """)
-        conn.execute(user_query, {"pwd_hash": pwd_hash})
+        conn.execute(text(USER_SEED_SQL), {"pwd_hash": pwd_hash})
         print("User seed: recruiter_talentops (ID: 1) created/verified.")
 
         # 2. Seed Default Job Description (Target benchmark role)

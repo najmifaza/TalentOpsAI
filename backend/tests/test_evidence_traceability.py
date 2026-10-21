@@ -6,7 +6,7 @@ import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.core.scoring import DeterministicScoringEngine
-from app.schemas.extraction import CandidateExtractionSchema
+from app.schemas.extraction import CandidateExtractionSchema, EducationItem
 
 
 def test_every_cv_technology_reaches_evidence_graph():
@@ -318,6 +318,55 @@ def test_null_company_in_career_gap_entry_does_not_break_extraction():
     assert gap.role == "-"
     assert gap.employment_type == "contract"
     assert gap.start == "2022-01"
+
+
+def test_unknown_enum_labels_never_sink_the_extraction():
+    """
+    Guard for the whole class of bug: every Literal field on the schema accepts
+    model-emitted variants. One stray label used to drop the candidate to heuristic
+    fallback with zero evidence.
+    """
+    payload = {
+        "github_url": None,
+        "portfolio_url": None,
+        "claims": [
+            {"dimension": "keahlian", "technology": "Next.js",
+             "has_implementation_detail": False},
+        ],
+        "career_timeline": [
+            {"role": "Engineer", "company": "PT A", "employment_type": "Career Break",
+             "start": "2024-01", "end": "2024-06"},
+        ],
+        "education": {
+            "degree": "S1",
+            "field_of_study": "Informatika",
+            "graduation_status": "Sedang Menempuh Pendidikan",
+        },
+        "anomalies": {},
+    }
+
+    schema = CandidateExtractionSchema.model_validate(payload)
+
+    assert schema.claims[0].dimension == "SKILL"
+    assert schema.career_timeline[0].employment_type == "contract"
+    assert schema.education.graduation_status == "Sedang Menempuh"
+
+
+def test_graduation_status_variants_map_correctly():
+    cases = {
+        "Lulus": "Lulus",
+        "lulus": "Lulus",
+        "Graduated": "Lulus",
+        "Belum Lulus": "Belum Lulus",
+        "belum selesai": "Belum Lulus",
+        "Sedang Menempuh Pendidikan": "Sedang Menempuh",
+        "masih menempuh": "Sedang Menempuh",
+        "ongoing": "Sedang Menempuh",
+        "tidak diketahui": "Lulus",  # fallback, never a validation error
+    }
+    for raw, expected in cases.items():
+        item = EducationItem.model_validate({"graduation_status": raw})
+        assert item.graduation_status == expected, raw
 
 
 def test_null_dates_do_not_create_false_overlap():

@@ -5,6 +5,22 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 
 ---
 
+### 2026-10-21 - Fardizza - Normalisasi Semua Field Enum pada Skema Ekstraksi
+- **Komponen / File:**
+  - `backend/app/schemas/extraction.py`
+  - `backend/tests/test_evidence_traceability.py`
+- **Catatan:** Dikerjakan & di-commit atas nama Fardizza. Dua commit sebelumnya (`7d33e60`, `a3dd009`) menambal satu field per kejadian; ini menutup penyebabnya.
+- **Akar Masalah:** Skema memakai `Literal` ketat pada output LLM. Setiap kali model memilih label yang sedikit berbeda, satu field menggagalkan seluruh `CandidateExtractionSchema`, dan kandidat turun ke heuristic fallback. Gejalanya bergeser tiap kali diperbaiki: `employment_type` → `company: null` → `graduation_status`. Terbukti tiga kali berturut-turut pada kandidat berbeda.
+- **Yang Dikerjakan:**
+  - Menambahkan `_match_enum()`: cocokkan persis, lalu tabel alias, lalu pencocokan substring (terpanjang lebih dulu, agar "belum lulus" menang atas "lulus"), terakhir nilai fallback. Tidak pernah melempar error validasi.
+  - Dipasang di tiga field enum: `ClaimItem.dimension` (alias Indonesia + fallback `SKILL`), `CareerTimelineItem.employment_type` (fallback `contract`, bukan `full_time` — lihat catatan sebelumnya), dan `EducationItem.graduation_status` (fallback `Lulus`). "Sedang Menempuh Pendidikan" kini terpetakan ke "Sedang Menempuh".
+  - Field teks yang bisa `null` diberi nilai default dan validator: `ClaimItem.technology`, `EducationItem.degree`, `EducationItem.field_of_study`.
+  - Tes: ditambah 2 — payload dengan ketiga field enum berisi label asing tetap lolos validasi, dan 9 varian `graduation_status` terpetakan sesuai harapan. Tes ini mengunci kelas bug-nya, bukan satu kejadian.
+- **Status & Verifikasi:** Selesai. `pytest backend/tests/` → **217 passed**.
+- **Rencana Selanjutnya:** Triage ulang kandidat 8. Kandidat 10, 13, 14 sudah tidak fallback — skor 8.0 dengan seluruh `matched_requirement` kosong karena CV mereka di bidang desain sementara lowongan meminta backend; itu hasil yang benar, bukan cacat.
+
+---
+
 ### 2026-10-21 - Fardizza - Career Gap `company: null` & Satu Node per Teknologi
 - **Komponen / File:**
   - `backend/app/schemas/extraction.py`

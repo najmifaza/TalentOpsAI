@@ -23,13 +23,63 @@ EMPLOYMENT_TYPE_ALIASES = {
     "freelancer": "freelance",
 }
 
+VALID_DIMENSIONS = {"SKILL", "EXPERIENCE", "EDUCATION", "PORTFOLIO"}
+DIMENSION_ALIASES = {
+    "KEAHLIAN": "SKILL",
+    "PENGALAMAN": "EXPERIENCE",
+    "PENDIDIKAN": "EDUCATION",
+    "PORTOFOLIO": "PORTFOLIO",
+}
+
+VALID_GRADUATION_STATUSES = {"Lulus", "Belum Lulus", "Sedang Menempuh"}
+# Every one of these is a real label the model has produced for a CV that states
+# "Sedang Menempuh Pendidikan". Substring matching below catches the rest.
+GRADUATION_STATUS_ALIASES = {
+    "lulus": "Lulus",
+    "graduated": "Lulus",
+    "selesai": "Lulus",
+    "belum lulus": "Belum Lulus",
+    "belum selesai": "Belum Lulus",
+    "not graduated": "Belum Lulus",
+    "sedang menempuh": "Sedang Menempuh",
+    "sedang menempuh pendidikan": "Sedang Menempuh",
+    "masih menempuh": "Sedang Menempuh",
+    "on going": "Sedang Menempuh",
+    "ongoing": "Sedang Menempuh",
+    "in progress": "Sedang Menempuh",
+}
+
+
+def _match_enum(value: object, valid: set, aliases: dict, fallback: str) -> str:
+    """
+    Resolve a model-emitted label against a strict enum without failing validation.
+    Exact match first, then alias table, then a containment pass ("Sedang Menempuh
+    Pendidikan" contains "sedang menempuh"). Unknown labels take the fallback rather
+    than discarding the candidate's whole extraction.
+    """
+    if not isinstance(value, str):
+        return fallback
+    key = " ".join(value.strip().lower().split())
+    if not key:
+        return fallback
+    for candidate in valid:
+        if key == candidate.lower():
+            return candidate
+    if key in aliases:
+        return aliases[key]
+    # Longest alias first so "belum lulus" wins over "lulus".
+    for alias in sorted(aliases, key=len, reverse=True):
+        if alias in key:
+            return aliases[alias]
+    return fallback
+
 
 # ponytail: Basic string-match substring guard. Upgrade to fuzzy token alignment if OCR typos occur.
 class ClaimItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     dimension: Literal["SKILL", "EXPERIENCE", "EDUCATION", "PORTFOLIO"] = "SKILL"
-    technology: str = Field(description="Normalized name of technology or competency")
+    technology: str = Field(default="-", description="Normalized name of technology or competency")
     has_implementation_detail: bool = Field(
         default=False,
         description="True if narrative contains real implementation action and context",
@@ -50,6 +100,21 @@ class ClaimItem(BaseModel):
         default=None,
         description="Page or section where claim is cited in CV",
     )
+
+    @field_validator("dimension", mode="before")
+    @classmethod
+    def normalize_dimension(cls, value):
+        return _match_enum(value, VALID_DIMENSIONS, DIMENSION_ALIASES, "SKILL")
+
+    @field_validator("technology", mode="before")
+    @classmethod
+    def coerce_technology(cls, value):
+        """A claim with no technology name is useless but must not sink the extraction."""
+        if value is None:
+            return "-"
+        if not isinstance(value, str):
+            return str(value)
+        return value.strip() or "-"
 
 
 class CareerTimelineItem(BaseModel):
@@ -91,26 +156,40 @@ class CareerTimelineItem(BaseModel):
     @classmethod
     def normalize_employment_type(cls, value):
         """Map unexpected labels to a valid enum instead of failing the whole extraction."""
-        if not isinstance(value, str):
-            return "full_time"
-        key = value.strip().lower()
-        if key in VALID_EMPLOYMENT_TYPES:
-            return key
-        if key in EMPLOYMENT_TYPE_ALIASES:
-            return EMPLOYMENT_TYPE_ALIASES[key]
         # Unknown labels ("career_break", "sabbatical") must not become full-time roles:
-        # that would invent a concurrent-employment overlap alarm. Park them in the
-        # non-full-time bucket so the overlap check ignores them.
-        return "contract"
+        # that would invent a concurrent-employment overlap alarm. "contract" is the
+        # non-full-time bucket, so the overlap check ignores them.
+        return _match_enum(value, VALID_EMPLOYMENT_TYPES, EMPLOYMENT_TYPE_ALIASES, "contract")
 
 
 class EducationItem(BaseModel):
     # Strict anti-bias: institution & accreditation strictly forbidden by schema
     model_config = ConfigDict(extra="forbid")
 
-    degree: str = Field(description="Degree level: D3, S1, S2, S3, SMK, etc.")
-    field_of_study: str = Field(description="Major/Domain (e.g. Informatika, Sistem Informasi)")
+    degree: str = Field(default="-", description="Degree level: D3, S1, S2, S3, SMK, etc.")
+    field_of_study: str = Field(default="-", description="Major/Domain (e.g. Informatika, Sistem Informasi)")
     graduation_status: Literal["Lulus", "Belum Lulus", "Sedang Menempuh"] = "Lulus"
+
+    @field_validator("degree", "field_of_study", mode="before")
+    @classmethod
+    def coerce_missing_text(cls, value):
+        if value is None:
+            return "-"
+        if not isinstance(value, str):
+            return str(value)
+        return value.strip() or "-"
+
+    @field_validator("graduation_status", mode="before")
+    @classmethod
+    def normalize_graduation_status(cls, value):
+        """
+        The model answers "Sedang Menempuh Pendidikan" for an in-progress degree.
+        That literal used to fail the whole CandidateExtractionSchema, dropping the
+        candidate to heuristic fallback with zero evidence.
+        """
+        return _match_enum(
+            value, VALID_GRADUATION_STATUSES, GRADUATION_STATUS_ALIASES, "Lulus"
+        )
 
 
 class AnomalyFlags(BaseModel):

@@ -248,8 +248,24 @@ async def submit_application(
         )
 
     # 8b. PDF-specific findings (invisible render mode, white text, micro images)
+    # One row per anomaly type, not per finding: a marker reused across pages would
+    # otherwise insert one row per occurrence and flood the dashboard badges.
     if pdf_audit is not None and pdf_audit.findings:
+        grouped: dict[str, dict] = {}
         for finding in pdf_audit.findings:
+            ftype = finding["type"]
+            entry = grouped.setdefault(
+                ftype,
+                {"count": 0, "pages": set(), "severity": finding.get("severity", "MEDIUM"), "excerpt": finding.get("excerpt", "")},
+            )
+            entry["count"] += finding.get("occurrences", 1)
+            if finding.get("page") is not None:
+                entry["pages"].add(finding["page"])
+            if entry["severity"] != "HIGH":
+                entry["severity"] = finding.get("severity", entry["severity"])
+
+        for ftype, entry in grouped.items():
+            pages = sorted(entry["pages"])
             await db.execute(
                 text("""
                     INSERT INTO candidate_anomalies (
@@ -260,13 +276,21 @@ async def submit_application(
                 """),
                 {
                     "cand_id": candidate_id,
-                    "atype": finding["type"],
-                    "sev": finding.get("severity", "MEDIUM"),
-                    "desc": f"PDF page {finding.get('page')}: {finding.get('excerpt', '')}",
+                    "atype": ftype,
+                    "sev": entry["severity"],
+                    "desc": (
+                        f"{entry['count']} occurrence(s) on page(s) "
+                        f"{pages if pages else 'n/a'}: {entry['excerpt']}"
+                    ),
                     "verify": "Inspect PDF content stream for invisible text or covert image objects.",
                 },
             )
-        if not hidden_text_detected:
+        # Escalate only on a HIGH-severity finding. A MEDIUM micro-image is a
+        # hint for review, not evidence of manipulation; promoting every PDF
+        # finding buried clean CVs under HIGH_ATTENTION.
+        if not hidden_text_detected and any(
+            entry["severity"] == "HIGH" for entry in grouped.values()
+        ):
             await db.execute(
                 text("UPDATE candidates SET triage_priority = 'HIGH_ATTENTION' WHERE id = :id"),
                 {"id": candidate_id},

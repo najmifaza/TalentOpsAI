@@ -111,6 +111,10 @@ class PdfAuditResult:
     findings: List[Dict[str, Any]] = field(default_factory=list)
     image_only_pages: List[int] = field(default_factory=list)
     parsed_with: str = "content-stream"
+    # Image findings keyed by (page, indirect object id). A single 1x1 spacer drawn
+    # 145 times is one signal, not 145 — without this a clean CV lands in
+    # HIGH_ATTENTION because of a decorative bullet.
+    flagged_images: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     @property
     def hidden_text_detected(self) -> bool:
@@ -362,20 +366,40 @@ def _audit_pdf_page_operations(operations, reader, page_index: int, result: PdfA
 
 
 def _flag_suspicious_image(xobject, gs: Dict[str, Any], page_index: int, result: PdfAuditResult) -> None:
-    """Flags near-invisible embedded images (1x1 pixels, fully transparent SMask)."""
+    """Flags near-invisible embedded images (<=2x2 px), once per distinct object.
+
+    Occurrences are counted on the finding instead of emitted as separate ones: a
+    reused bullet glyph or table rule shows up as `Do` many times per page.
+    """
     try:
         width = int(xobject.get("/Width") or 0)
         height = int(xobject.get("/Height") or 0)
     except Exception:
         return
 
-    if 0 < width <= 2 and 0 < height <= 2:
-        result.findings.append({
-            "type": "PDF_MICRO_IMAGE",
-            "page": page_index + 1,
-            "severity": "MEDIUM",
-            "excerpt": f"Embedded image {width}x{height}px (possible covert marker)",
-        })
+    if not (0 < width <= 2 and 0 < height <= 2):
+        return
+
+    # indirect_reference.idnum identifies the PDF object itself; id() would not,
+    # since pypdf hands out fresh wrappers per lookup.
+    ref = getattr(xobject, "indirect_reference", None)
+    object_key = getattr(ref, "idnum", None) or id(xobject)
+    key = f"{page_index}:{object_key}"
+
+    existing = result.flagged_images.get(key)
+    if existing is not None:
+        existing["occurrences"] += 1
+        return
+
+    finding = {
+        "type": "PDF_MICRO_IMAGE",
+        "page": page_index + 1,
+        "severity": "MEDIUM",
+        "excerpt": f"Embedded image {width}x{height}px (possible covert marker)",
+        "occurrences": 1,
+    }
+    result.flagged_images[key] = finding
+    result.findings.append(finding)
 
 
 def audit_pdf_hidden_text(content: bytes, min_visible_font_pt: float = MIN_VISIBLE_FONT_PT) -> PdfAuditResult:

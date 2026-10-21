@@ -460,5 +460,37 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
   - **Semua:** `sanitize_pii(text, ...)` masih tersedia dengan tanda tangan lama (mengembalikan 2-tuple) untuk kompatibilitas, tapi kode baru sebaiknya memakai `sanitize_resume()` agar laporan residual ikut terbawa.
 - **Rencana Selanjutnya:** Tidak ada item tersisa dari lima rencana awal. Pekerjaan berikutnya yang disarankan: menyusun golden dataset 20–30 resume sintetis untuk mengukur recall sanitizer secara riil, dan verifikasi end-to-end integrasi eksternal setelah kredensial VPS terpasang.
 
+---
+
+### 2026-10-21 - Najmi - Dedup Temuan PDF_MICRO_IMAGE & Eskalasi Prioritas Berbasis Severity
+
+- **Branch:** `feat/backend-pdf-micro-image-dedup`
+- **Komponen / File:**
+  - `backend/app/core/hidden_text_detector.py`
+  - `backend/app/api/careers.py`
+  - `backend/tests/test_pdf_hidden_text.py`
+- **Temuan (dari laporan UI):** Satu kandidat menampilkan lebih dari 130 badge `PDF_MICRO_IMAGE` di kolom Rekomendasi AI pada tabel HR, padahal CV-nya hanya berisi foto profil dan teks biasa. Kandidat itu juga berada di antrean `HIGH_ATTENTION` tanpa pernah di-scan.
+- **Akar masalah (tiga lapis, semuanya diverifikasi lewat probe):**
+  1. `_flag_suspicious_image` menandai **setiap pemakaian** objek gambar, bukan setiap objek. Satu glyph 1x1 yang dirujuk 145 kali oleh operator `Do` menghasilkan 145 finding. Probe: foto 200x200 digambar sekali → 0 finding; satu gambar 1x1 digambar 145 kali → 145 finding.
+  2. `careers.py` meng-insert satu baris `candidate_anomalies` per finding, tanpa agregasi. 145 finding → 145 baris DB.
+  3. Eskalasi `triage_priority = 'HIGH_ATTENTION'` dipicu oleh **adanya finding apa pun**, termasuk `PDF_MICRO_IMAGE` yang severity-nya hanya `MEDIUM`.
+- **Yang Dikerjakan:**
+  - `PdfAuditResult.flagged_images` — kamus kunci `(page, indirect_reference.idnum)`. Kunci memakai `idnum` karena pypdf membuat wrapper baru tiap lookup, sehingga `id()` tidak stabil. Pemakaian berulang menaikkan `occurrences` pada finding yang sudah ada, bukan membuat finding baru.
+  - `_flag_suspicious_image` kini idempoten dan menyertakan field `occurrences`.
+  - `careers.py` mengagregasi finding per `anomaly_type` sebelum insert: satu baris per tipe, `description` memuat jumlah kejadian dan daftar halaman. Severity tertinggi per tipe yang dipakai.
+  - Eskalasi `HIGH_ATTENTION` kini hanya bila ada finding `severity == "HIGH"`. `PDF_MICRO_IMAGE` (MEDIUM) tetap dicatat sebagai anomali untuk review, tapi tidak lagi menaikkan prioritas.
+- **Status & Verifikasi:** `uv run pytest backend/tests -q` → **202 passed**. Probe langsung setelah perbaikan:
+  - 145 draw satu objek 1x1 → **1 finding**, severity `MEDIUM`, `occurrences: 145`, tidak eskalasi.
+  - Teks `3 Tr` (invisible render mode) → `PDF_INVISIBLE_RENDER_MODE` severity `HIGH`, **tetap** eskalasi.
+  - Test regresi baru `test_pdf_micro_image_flagged_once_per_object` mengunci perilaku ini.
+- **⚠️ Batas yang harus jujur dicatat:**
+  - Perbaikan ini tidak menyentuh data yang sudah terlanjur masuk. Baris `candidate_anomalies` lama bertipe `PDF_MICRO_IMAGE` dan `triage_priority = 'HIGH_ATTENTION'` pada kandidat terdampak masih ada di MariaDB produksi dan perlu dibersihkan terpisah.
+  - `/SMask` (transparansi gambar) **masih belum diperiksa**. Docstring fungsi sebelumnya menjanjikan pemeriksaan itu, tapi tidak pernah diimplementasikan; docstring sudah dikoreksi agar tidak mengklaim lebih dari yang dikerjakan. Konsekuensinya gambar dekoratif ≤2x2 px tetap dilaporkan sebagai `PDF_MICRO_IMAGE` — kini hanya sekali per objek, dengan severity `MEDIUM` yang tidak mengeskalasi prioritas.
+  - Ambang tetap ≤2x2 px. Tidak ada pengukuran terhadap korpus PDF riil untuk memvalidasi ambang ini; angka 2 dipilih dari asumsi, bukan data.
+- **Catatan untuk Rekan Tim (Willy & Fardizza):**
+  - **Willy:** `PDF_MICRO_IMAGE` kini muncul paling banyak satu baris per kandidat per halaman, jadi `flags` tidak lagi meledak. Badge di `CandidateTable.jsx` juga sudah dibatasi 3 + `+N lainnya` dan disembunyikan selama kandidat belum di-scan — perubahan frontend itu di-commit terpisah di `LOG_WILLY.md`.
+  - **Fardizza:** anomali `PDF_MICRO_IMAGE` severity `MEDIUM` tidak lagi memengaruhi `triage_priority`. Kalau skoring perlu memperhitungkannya, ambil dari `candidate_anomalies` langsung, jangan dari `triage_priority`.
+- **Rencana Selanjutnya:** Bersihkan baris `PDF_MICRO_IMAGE` lama dan reset `triage_priority` kandidat terdampak di MariaDB produksi.
+
 
 

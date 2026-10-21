@@ -127,7 +127,8 @@ def test_overlap_anomaly_explains_which_jobs_collided():
 
     overlap = next(d for d in details if d["type"] == "CONCURRENT_FULLTIME_OVERLAP")
     assert overlap["severity"] == "HIGH"
-    assert overlap["overlap_months"] == 15
+    # Inclusive count: 2022-03..2023-06 covers 16 calendar months.
+    assert overlap["overlap_months"] == 16
     assert "PT Alpha" in overlap["description"]
     assert "PT Beta" in overlap["description"]
     assert "Backend Engineer" in overlap["description"]
@@ -153,3 +154,122 @@ def test_clean_timeline_reports_no_anomaly_details():
     assert risk == "LOW"
     assert flags == []
     assert details == []
+
+
+def _role(company, start, end, employment_type="full_time"):
+    return {
+        "role": "Engineer",
+        "company": company,
+        "is_relevant_role": True,
+        "employment_type": employment_type,
+        "start": start,
+        "end": end,
+    }
+
+
+def test_overlap_threshold_is_more_than_three_months():
+    """A 3-month overlap is tolerated; 4 months is not. Guards the inclusive count."""
+    three = DeterministicScoringEngine.evaluate_risk(
+        {}, [_role("PT A", "2023-01", "2023-12"), _role("PT B", "2023-05", "2023-07")]
+    )
+    assert three[0] == "LOW", "exactly 3 months of overlap must not raise risk"
+    assert three[2] == []
+
+    four = DeterministicScoringEngine.evaluate_risk(
+        {}, [_role("PT A", "2023-01", "2023-12"), _role("PT B", "2023-05", "2023-08")]
+    )
+    assert four[0] == "HIGH"
+    assert four[2][0]["overlap_months"] == 4
+
+
+def test_full_year_overlap_counts_twelve_months():
+    """2024-01..2025-12 is 24 months inclusive, not 23."""
+    risk, flags, details = DeterministicScoringEngine.evaluate_risk(
+        {}, [_role("Pondok Modern Tazakka", "2024-01", "2025-12"), _role("PT Media", "2024-01", "2025-12")]
+    )
+    assert risk == "HIGH"
+    assert details[0]["overlap_months"] == 24
+    assert "CONCURRENT_FULLTIME_OVERLAP_24_MONTHS" in flags
+
+
+def test_unknown_employment_type_does_not_break_extraction():
+    """A stray label used to fail the whole schema and drop the candidate to fallback."""
+    payload = {
+        "github_url": None,
+        "portfolio_url": None,
+        "claims": [],
+        "career_timeline": [
+            {"role": "Engineer", "company": "PT A", "is_relevant_role": True,
+             "employment_type": "full_time", "start": "2020-01", "end": "2021-01"},
+            {"role": "Jeda", "company": "-", "is_relevant_role": True,
+             "employment_type": "career_break", "start": "2021-02", "end": "2022-01"},
+            {"role": "Engineer", "company": "PT B", "is_relevant_role": True,
+             "employment_type": "full-time", "start": "2022-02", "end": "2023-01"},
+        ],
+        "education": None,
+        "anomalies": {},
+    }
+
+    schema = CandidateExtractionSchema.model_validate(payload)
+
+    assert schema.career_timeline[1].employment_type == "contract"
+    assert schema.career_timeline[2].employment_type == "full_time"
+
+
+def test_unknown_employment_type_does_not_create_false_overlap():
+    """Parking an unknown label as full_time would invent a concurrency alarm."""
+    timeline = [
+        {"role": "Engineer", "company": "PT A", "is_relevant_role": True,
+         "employment_type": "full_time", "start": "2022-01", "end": "2023-12"},
+        {"role": "Jeda", "company": "-", "is_relevant_role": True,
+         "employment_type": "career_break", "start": "2022-01", "end": "2023-12"},
+    ]
+    risk, flags, details = DeterministicScoringEngine.evaluate_risk({}, timeline)
+    assert risk == "LOW"
+    assert flags == []
+    assert details == []
+
+
+def test_exact_duplicate_technologies_collapse():
+    """'Next.js' and 'nextjs' are one skill in the dossier, not two nodes."""
+    claims = [
+        {"dimension": "SKILL", "technology": "Next.js", "has_implementation_detail": True,
+         "context_narrative": "built portal with next.js", "metric_string": None,
+         "repo_url": None, "source_location": "Proyek"},
+        {"dimension": "SKILL", "technology": "nextjs", "has_implementation_detail": False,
+         "context_narrative": None, "metric_string": None, "repo_url": None,
+         "source_location": "Skills"},
+    ]
+
+    score, records = DeterministicScoringEngine.calculate_skill_score(
+        claims=claims, core_competencies=["React"], verified_github_repos={}
+    )
+
+    names = [r["target_competency"] for r in records]
+    assert len(names) == len(set(n.lower().replace(".", "") for n in names))
+    assert sum(1 for n in names if n.lower().replace(".", "") == "nextjs") == 1
+    # The surviving row is the verified, better-scoring one.
+    survivor = next(r for r in records if r["target_competency"].lower().replace(".", "") == "nextjs")
+    assert survivor["verified"] is True
+    assert survivor["matched_requirement"] == "React"
+
+
+def test_distinct_but_related_technologies_are_kept():
+    """SQL and MySQL/PostgreSQL each cover a different requirement, so both stay."""
+    claims = [
+        {"dimension": "SKILL", "technology": "SQL", "has_implementation_detail": True,
+         "context_narrative": "membimbing praktikum skema relasional", "metric_string": None,
+         "repo_url": None, "source_location": "Pengalaman"},
+        {"dimension": "SKILL", "technology": "MySQL/PostgreSQL", "has_implementation_detail": True,
+         "context_narrative": "troubleshooting database engine", "metric_string": None,
+         "repo_url": None, "source_location": "Pengalaman"},
+    ]
+
+    _score, records = DeterministicScoringEngine.calculate_skill_score(
+        claims=claims, core_competencies=["PostgreSQL", "MariaDB"], verified_github_repos={}
+    )
+
+    by_tech = {r["target_competency"]: r for r in records}
+    assert by_tech["SQL"]["matched_requirement"] == "MariaDB"
+    assert by_tech["MySQL/PostgreSQL"]["matched_requirement"] == "PostgreSQL"
+    assert by_tech["MySQL/PostgreSQL"]["score_contribution"] == 60.0

@@ -5,6 +5,23 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 
 ---
 
+### 2026-10-21 - Fardizza - Koreksi Hitungan Bulan Overlap & Ketahanan Skema Ekstraksi
+- **Komponen / File:**
+  - `backend/app/core/scoring.py`
+  - `backend/app/schemas/extraction.py`
+  - `backend/tests/test_evidence_traceability.py`
+- **Catatan:** Dikerjakan & di-commit atas nama Fardizza, tindak lanjut laporan operator VPS atas kandidat `#TK-2FD8DC`. Bagian `init_db.py` dicatat di `LOG_NAJMI.md`.
+- **Yang Dikerjakan:**
+  - Hitungan bulan overlap sebelumnya memakai selisih eksklusif (`overlap_end - overlap_start`) sementara `merge_employment_intervals` memakai inklusif (`end - start + 1`). Periode 2024-01 s/d 2025-12 dilaporkan 23 bulan padahal 24. Kini keduanya inklusif; ambang tetap "lebih dari 3 bulan" sesuai PRD (`overlap_months > 3` setara dengan `overlap_end - overlap_start >= 3` sebelumnya, jadi tidak ada perubahan klasifikasi risiko).
+  - `CareerTimelineItem.employment_type` diberi `field_validator` (mode `before`). Sebelumnya nilai di luar `Literal` (mis. `career_break` dari kandidat ID 5) menggagalkan seluruh `CandidateExtractionSchema`, sehingga kandidat itu turun ke heuristic fallback dan tidak dianalisis LLM. Nilai tak dikenal kini dipetakan ke alias yang sah, dan sisa nilai asing diparkir sebagai `contract` — bukan `full_time`, karena memetakannya ke full-time akan menciptakan alarm overlap palsu.
+  - Menambahkan `normalize_technology_key()` dan `_collapse_exact_duplicates()`. Duplikat nama teknologi yang hanya beda kapitalisasi/tanda baca ("Next.js" vs "nextjs") kini menjadi satu node. Baris dengan teknologi sama tetapi `matched_requirement` berbeda tetap dipertahankan karena masing-masing satu-satunya bukti untuk requirement tersebut. `match_scores` tidak disentuh, jadi skor tidak berubah.
+  - Mengganti `model_validator` yang tidak terpakai dengan `field_validator` pada import Pydantic.
+  - Tes: assertion overlap dibalik ke 16 bulan (sebelumnya tes sempat diubah jadi 15 untuk mengikuti kode yang salah), ditambah 6 tes baru — ambang 3 vs 4 bulan, overlap setahun penuh = 24 bulan, `employment_type` asing tidak meruntuhkan skema, `career_break` tidak memicu overlap palsu, duplikat persis runtuh, dan SQL vs MySQL/PostgreSQL tetap terpisah.
+- **Status & Verifikasi:** Selesai. `pytest backend/tests/` → **212 passed**.
+- **Rencana Selanjutnya:** Kandidat ID 5 perlu di-triage ulang agar hasilnya memakai ekstraksi LLM, bukan heuristic fallback. Kandidat lain perlu triage ulang bila ingin angka bulan overlap di graf ikut terkoreksi.
+
+---
+
 ### 2026-10-21 - Fardizza - Evidence Graph Tidak Sinkron dengan CV & Anomali Tanpa Penjelasan
 - **Komponen / File:**
   - `backend/app/core/scoring.py`

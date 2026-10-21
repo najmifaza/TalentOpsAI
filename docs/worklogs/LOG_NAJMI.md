@@ -5,6 +5,18 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-21 - Najmi - init_db.py Tidak Lagi Mencetak Password Database
+- **Komponen / File:**
+  - `backend/scripts/init_db.py`
+- **Catatan:** Dikerjakan & di-commit atas nama Najmi, tindak lanjut laporan operator VPS. Perbaikan skoring & skema dicatat di `LOG_FARDIZZA.md`.
+- **Yang Dikerjakan:**
+  - `init_db.py` mencetak `settings.SYNC_DATABASE_URL` utuh, sehingga password user MariaDB (`talentops_app`) muncul di stdout, riwayat shell, dan `journalctl` setiap kali migrasi dijalankan. Output itu juga ikut tersalin ke laporan eksekusi.
+  - Menambahkan `_mask_dsn()` yang mengganti bagian password menjadi `***` sebelum dicetak; DSN asli tetap dipakai untuk `create_engine`.
+- **Status & Verifikasi:** Selesai. Fungsi diuji langsung: `mysql+pymysql://talentops_app:***@127.0.0.1:3306/talentops_db`. `pytest backend/tests/` → 212 passed.
+- **Rencana Selanjutnya:** Password `talentops_app` yang sudah bocor di laporan/log **wajib diganti** di MariaDB, `DATABASE_URL` di env VPS diperbarui, service di-restart, dan entri log lama yang memuat DSN dihapus.
+
+---
+
 ### 2026-10-21 - Najmi - Skema & API untuk Bukti yang Bisa Ditelusuri
 - **Komponen / File:**
   - `backend/migrations/003_evidence_verification.sql` (baru)

@@ -1,5 +1,6 @@
 """Database Initialization & DDL Migration Script for TalentOps AI (MariaDB 12 Tables)."""
 import os
+import re
 import sys
 from pathlib import Path
 from sqlalchemy import create_engine, text
@@ -11,6 +12,11 @@ sys.path.insert(0, str(backend_dir.parent))
 from backend.app.core.config import settings
 
 
+def _mask_dsn(dsn: str) -> str:
+    """Never print the DB password: this output lands in shell history and journald."""
+    return re.sub(r"(://[^:/@]+:)[^@]*@", r"\1***@", dsn)
+
+
 def init_database():
     migrations_dir = backend_dir / "migrations"
     sql_files = sorted(migrations_dir.glob("*.sql"))
@@ -18,7 +24,7 @@ def init_database():
         print(f"Error: No SQL files found in {migrations_dir}")
         sys.exit(1)
 
-    print(f"Connecting to database via: {settings.SYNC_DATABASE_URL}")
+    print(f"Connecting to database via: {_mask_dsn(settings.SYNC_DATABASE_URL)}")
     engine = create_engine(settings.SYNC_DATABASE_URL, isolation_level="AUTOCOMMIT")
 
     total_executed = 0

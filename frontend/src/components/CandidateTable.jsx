@@ -310,13 +310,22 @@ export default function CandidateTable({
                           </span>
                         )}
 
-                        {candidate.flags && candidate.flags.length > 0 && (
+                        {/* Anomalies come from ingestion-time PDF/DOCX auditing, so an
+                            unscanned candidate has them before triage ever runs. Show
+                            them only once the file has been scanned, and cap the list:
+                            a repeated marker can push the count into the hundreds. */}
+                        {!isUnscanned && candidate.flags && candidate.flags.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
-                            {candidate.flags.map((flag, idx) => (
+                            {candidate.flags.slice(0, 3).map((flag, idx) => (
                               <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-mono font-medium">
                                 {flag}
                               </span>
                             ))}
+                            {candidate.flags.length > 3 && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#f4f4f6] text-[#454554] border border-[#e6e6ea] font-mono font-medium">
+                                +{candidate.flags.length - 3} lainnya
+                              </span>
+                            )}
                           </div>
                         )}
                       </td>

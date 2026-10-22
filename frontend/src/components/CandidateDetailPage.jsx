@@ -22,7 +22,7 @@ import {
 import { CandidateEvidenceGraph } from './EvidenceGraph';
 import { recLabel } from '../lib/labels';
 import { DIMENSIONS } from '../lib/dimensions';
-import { can, roleLabel } from '../lib/roles';
+import { can, roleLabel, unmaskBlockedReason } from '../lib/roles';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
@@ -322,6 +322,11 @@ export default function CandidateDetailPage() {
       github_url: rawCandidate.github_url || row.verified_github || row.github_url,
     };
   }, [candidate, candidateDetail]);
+
+  // Mirrors the backend gate in unmask_candidate_pii: a recruiter cannot unmask a
+  // candidate that has not been APPROVED_DISPATCH yet. Showing the form anyway
+  // means the reviewer types a reason and then hits a button that cannot work.
+  const unmaskBlock = unmaskBlockedReason(activeCandidateObj.status);
 
   // Identity is only ever unmasked through the explicit reviewer action above.
   // Until then show the blind-review hint (`B**i S*****o`) computed at ingest;
@@ -673,11 +678,8 @@ export default function CandidateDetailPage() {
                     onClick={() => { setIsUnmaskFormOpen(v => !v); setUnmaskError(null); }}
                     aria-label="Buka identitas kandidat"
                     aria-expanded={isUnmaskFormOpen}
-                    title={canUnmask
-                      ? 'Buka identitas — akses dicatat ke audit log UU PDP beserta alasannya'
-                      : `Role ${roleLabel()} tidak berwenang membuka identitas`}
-                    className="p-1.5 rounded-full text-primary-slate-500 hover:text-primary-info hover:bg-primary-info-soft border border-primary-border-200 transition-colors disabled:opacity-40"
-                    disabled={!canUnmask}
+                    title={unmaskBlock || 'Buka identitas — akses dicatat ke audit log UU PDP beserta alasannya'}
+                    className="p-1.5 rounded-full text-primary-slate-500 hover:text-primary-info hover:bg-primary-info-soft border border-primary-border-200 transition-colors"
                   >
                     <Eye className="w-4 h-4" />
                   </button>
@@ -718,30 +720,40 @@ export default function CandidateDetailPage() {
                 </span>
               </div>
 
-              {/* Reason-gated unmask: every access is written to pii_access_logs */}
+              {/* Reason-gated unmask: every access is written to pii_access_logs.
+                  When the backend would refuse (blind review), say so here instead
+                  of offering a form whose submit button cannot work. */}
               {isUnmaskFormOpen && !resolvedIdentity.isUnmasked && (
                 <div className="mt-2 p-3 rounded-xl bg-primary-slate-50 border border-primary-border-200 space-y-2">
-                  <p className="text-[11px] text-primary-slate-700">
-                    Akses PII akan tercatat pada audit log beserta alasan dan identitas reviewer Anda.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={unmaskReason}
-                      onChange={(e) => setUnmaskReason(e.target.value)}
-                      placeholder="Alasan akses, mis. verifikasi berkas untuk wawancara"
-                      className="flex-1 bg-white border border-primary-border-200 rounded-lg text-xs text-primary-slate-900 px-2.5 py-1.5 focus:outline-none focus:border-primary-info"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleUnmask}
-                      disabled={isUnmasking || !unmaskReason.trim() || !canUnmask}
-                      title={canUnmask ? undefined : `Role ${roleLabel()} tidak berwenang membuka identitas`}
-                      className="px-3 py-1.5 bg-primary-info hover:bg-primary-info-dark disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
-                    >
-                      {isUnmasking ? 'Memproses...' : 'Buka Identitas'}
-                    </button>
-                  </div>
+                  {unmaskBlock ? (
+                    <div className="flex items-start gap-2 text-[11px] text-amber-900">
+                      <Lock className="w-3.5 h-3.5 shrink-0 mt-px text-amber-600" />
+                      <span>{unmaskBlock}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[11px] text-primary-slate-700">
+                        Akses PII akan tercatat pada audit log beserta alasan dan identitas reviewer Anda.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          value={unmaskReason}
+                          onChange={(e) => setUnmaskReason(e.target.value)}
+                          placeholder="Alasan akses, mis. verifikasi berkas untuk wawancara"
+                          className="flex-1 bg-white border border-primary-border-200 rounded-lg text-xs text-primary-slate-900 px-2.5 py-1.5 focus:outline-none focus:border-primary-info"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleUnmask}
+                          disabled={isUnmasking || !unmaskReason.trim()}
+                          className="px-3 py-1.5 bg-primary-info hover:bg-primary-info-dark disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
+                        >
+                          {isUnmasking ? 'Memproses...' : 'Buka Identitas'}
+                        </button>
+                      </div>
+                    </>
+                  )}
                   {unmaskError && (
                     <p className="text-[11px] text-rose-700 font-medium">{unmaskError}</p>
                   )}

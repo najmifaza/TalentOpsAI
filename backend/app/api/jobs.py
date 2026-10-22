@@ -1,7 +1,8 @@
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from datetime import date
+from typing import Any, ClassVar, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import text
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.auth import require_roles
-from app.core.scoring import DeterministicScoringEngine
+from app.core.scoring import DeterministicScoringEngine, inclusivity_from_findings
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,38 @@ class PolicySimulationRequest(BaseModel):
     )
 
 
-class CreateJobRequest(BaseModel):
+class JobProfileFields(BaseModel):
+    """Profil publik lowongan. Semua opsional: baris lama tidak punya isinya."""
+
+    company_name: Optional[str] = Field(None, max_length=150)
+    company_logo_url: Optional[str] = Field(None, max_length=255)
+    company_about: Optional[str] = None
+    company_address: Optional[str] = Field(None, max_length=255)
+    company_industry: Optional[str] = Field(None, max_length=100)
+    company_website: Optional[str] = Field(None, max_length=255)
+    job_function: Optional[str] = Field(None, max_length=100)
+    employment_level: Optional[str] = Field(None, max_length=50)
+    location: Optional[str] = Field(None, max_length=150)
+    deadline: Optional[date] = None
+    description_text: Optional[str] = None
+    requirements_text: Optional[str] = None
+
+    # Nama kolom DB. Dipakai sebagai allowlist supaya tidak ada field asing yang
+    # bocor ke INSERT/UPDATE, dan supaya subclass tidak menambah kolom diam-diam.
+    PROFILE_FIELDS: ClassVar[tuple] = (
+        "company_name", "company_logo_url", "company_about", "company_address",
+        "company_industry", "company_website", "job_function", "employment_level",
+        "location", "deadline", "description_text", "requirements_text",
+    )
+
+    def as_params(self) -> Dict[str, Any]:
+        data = self.model_dump()
+        if data.get("deadline") is not None:
+            data["deadline"] = data["deadline"].isoformat()
+        return {field: data[field] for field in self.PROFILE_FIELDS}
+
+
+class CreateJobRequest(JobProfileFields):
     title: str = Field(..., min_length=3, max_length=150, description="Judul posisi lowongan")
     department: str = Field(..., min_length=2, max_length=100, description="Departemen / Divisi")
     raw_text: str = Field(..., min_length=10, description="Deskripsi lengkap lowongan")
@@ -50,7 +82,7 @@ class CreateJobRequest(BaseModel):
     owner_id: int = Field(default=1, description="ID recruiter pemilik lowongan")
 
 
-class UpdateJobRequest(BaseModel):
+class UpdateJobRequest(JobProfileFields):
     title: Optional[str] = None
     department: Optional[str] = None
     raw_text: Optional[str] = None
@@ -78,10 +110,21 @@ async def create_job(
 
     comp_json = json.dumps(payload.core_competencies)
     w_json = json.dumps(payload.weight_config.model_dump())
+    profile = payload.as_params()
 
     insert_query = text("""
-        INSERT INTO job_descriptions (owner_id, title, department, raw_text, core_competencies, weight_config, status)
-        VALUES (:owner_id, :title, :department, :raw_text, :core_competencies, :weight_config, 'active')
+        INSERT INTO job_descriptions (
+            owner_id, title, department, raw_text, core_competencies, weight_config, status,
+            company_name, company_logo_url, company_about, company_address,
+            company_industry, company_website, job_function, employment_level,
+            location, deadline, description_text, requirements_text
+        )
+        VALUES (
+            :owner_id, :title, :department, :raw_text, :core_competencies, :weight_config, 'active',
+            :company_name, :company_logo_url, :company_about, :company_address,
+            :company_industry, :company_website, :job_function, :employment_level,
+            :location, :deadline, :description_text, :requirements_text
+        )
     """)
     res = await db.execute(insert_query, {
         "owner_id": payload.owner_id,
@@ -90,6 +133,7 @@ async def create_job(
         "raw_text": payload.raw_text,
         "core_competencies": comp_json,
         "weight_config": w_json,
+        **profile,
     })
     await db.commit()
 
@@ -105,6 +149,7 @@ async def create_job(
             "core_competencies": payload.core_competencies,
             "weight_config": payload.weight_config.model_dump(),
             "status": "active",
+            **profile,
         },
     }
 
@@ -145,6 +190,19 @@ async def update_job(
         updates.append("status = :status")
         params["status"] = payload.status
 
+    # Profil publik: hanya kolom yang benar-benar dikirim. `exclude_unset` penting
+    # di sini karena `None` yang eksplisit berarti "kosongkan", sedangkan field
+    # yang tidak dikirim sama sekali harus dibiarkan apa adanya.
+    sent = payload.model_dump(exclude_unset=True)
+    for field in JobProfileFields.PROFILE_FIELDS:
+        if field not in sent:
+            continue
+        value = sent[field]
+        if field == "deadline" and value is not None:
+            value = value.isoformat()
+        updates.append(f"{field} = :{field}")
+        params[field] = value
+
     if updates:
         sql = f"UPDATE job_descriptions SET {', '.join(updates)} WHERE id = :id"
         await db.execute(text(sql), params)
@@ -160,7 +218,13 @@ async def list_jobs(
 ):
     """Lists all active job openings with core competencies and baseline weights."""
     res = await db.execute(
-        text("SELECT id, title, department, core_competencies, weight_config, status FROM job_descriptions WHERE status = 'active'")
+        text("""
+            SELECT id, title, department, raw_text, core_competencies, weight_config, status,
+                   company_name, company_logo_url, company_about, company_address,
+                   company_industry, company_website, job_function, employment_level,
+                   location, deadline, description_text, requirements_text
+            FROM job_descriptions WHERE status = 'active'
+        """)
     )
     rows = []
     for r in res.mappings():
@@ -180,9 +244,25 @@ async def list_jobs(
             "id": r["id"],
             "title": r["title"],
             "department": r["department"],
+            "raw_text": r["raw_text"],
             "core_competencies": comp,
             "weight_config": w,
             "status": r["status"],
+            # Profil publik ikut di list: modal edit di JobManagement dibuka dari
+            # baris tabel ini. Tanpa kolomnya di sini, form terbuka kosong dan
+            # menyimpan akan menghapus profil yang sudah diisi.
+            "company_name": r["company_name"],
+            "company_logo_url": r["company_logo_url"],
+            "company_about": r["company_about"],
+            "company_address": r["company_address"],
+            "company_industry": r["company_industry"],
+            "company_website": r["company_website"],
+            "job_function": r["job_function"],
+            "employment_level": r["employment_level"],
+            "location": r["location"],
+            "deadline": r["deadline"].isoformat() if r["deadline"] else None,
+            "description_text": r["description_text"],
+            "requirements_text": r["requirements_text"],
         })
     return {"data": rows, "count": len(rows)}
 
@@ -225,6 +305,20 @@ async def get_job_detail(
         "weight_config": w,
         "status": job["status"],
         "created_at": job["created_at"].isoformat() if job["created_at"] else None,
+        # Profil publik dipakai form admin Job Management, bukan hanya portal.
+        "company_name": job["company_name"],
+        "company_logo_url": job["company_logo_url"],
+        "company_about": job["company_about"],
+        "company_address": job["company_address"],
+        "company_industry": job["company_industry"],
+        "company_website": job["company_website"],
+        "job_function": job["job_function"],
+        "employment_level": job["employment_level"],
+        "location": job["location"],
+        "deadline": job["deadline"].isoformat() if job["deadline"] else None,
+        "description_text": job["description_text"],
+        "requirements_text": job["requirements_text"],
+        "flagged_ambiguities": json.loads(job["flagged_ambiguities"]) if isinstance(job["flagged_ambiguities"], str) else job["flagged_ambiguities"],
     }
 
 
@@ -451,7 +545,6 @@ async def analyze_job_bias(
     ]
 
     findings = []
-    penalty_points = 0
 
     for rule in bias_rules:
         matches = list(re.finditer(rule["regex"], text_to_analyze))
@@ -469,15 +562,7 @@ async def analyze_job_bias(
                 "actionable_suggestion": rule["suggestion"],
             })
 
-            if rule["severity"] == "HIGH":
-                penalty_points += 15
-            elif rule["severity"] == "MEDIUM":
-                penalty_points += 8
-            else:
-                penalty_points += 4
-
-    inclusivity_score = max(0, 100 - penalty_points)
-    inclusivity_rating = "EXCELLENT" if inclusivity_score >= 90 else "GOOD" if inclusivity_score >= 75 else "NEEDS_REVISION"
+    inclusivity_score, inclusivity_rating = inclusivity_from_findings(findings)
 
     # Persist audit result to database
     findings_json = json.dumps(findings)

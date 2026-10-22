@@ -5,6 +5,36 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-22 - Willy - Satu Definisi Kategori Kandidat untuk KPI, Tabel, Filter & Kartu Lowongan
+
+> Dikerjakan dan di-commit oleh Najmi atas nama Willy; folder `frontend/` adalah kepemilikan Willy sesuai matriks RACI. Audit dipicu keluhan "UI /admin/candidates/ membingungkan".
+
+- **Branch:** `feat/ui-candidate-queue-consistency`
+- **Komponen / File:**
+  - `frontend/src/lib/labels.js` (sumber tunggal kategori + label anomali)
+  - `frontend/src/components/DashboardOverview.jsx` (KPI 5 kartu, kartu lowongan, import `Info`)
+  - `frontend/src/components/CandidateTable.jsx` (badge, filter, legenda 4D, toolbar)
+  - `frontend/src/components/Header.jsx` (pil status API di mobile)
+  - `frontend/src/components/CandidateDetailPage.jsx` (duplicate key `confidence_level`)
+- **Catatan:** Tiga definisi kategori yang saling bertentangan membuat angka di layar tidak bisa dipercaya. Diukur headless (dump DOM + iframe 390px) terhadap backend live, bukan dibaca dari source saja.
+- **Yang Dikerjakan:**
+  - **1. Akar masalah: tiga definisi kategori.** Kartu KPI menganggap flag apa pun sebagai karantina, tabel memakai `recommendation`, kartu lowongan hanya mengenal tiga kategori. Akibat terukur: kartu "Karantina Keamanan" = 2 sementara tabel berlabel karantina 0 baris, dan `CAREER_BREAK_FLAG` (severity LOW, `scoring.py:516` menyebutnya "bukan pelanggaran") ikut dikarantina. Sekarang `categorize()` di `lib/labels.js` dipakai bersama oleh kartu KPI, badge tabel, dropdown filter, dan kartu per-lowongan. Urutannya mengikuti matriks keputusan backend (`scoring.py:549-561`), dan predikat karantina disalin dari `jobs.py:275-276` + `triage_service.py:121`.
+  - **2. KPI tidak menjumlah ke total.** 0 + 1 + 1 + 2 = 4 dari 5 berkas karena `WEAK_FIT` tidak punya kartu, hanya catatan kaki di kartu "Sangat Sesuai". Kartu kelima "Kurang Sesuai" ditambahkan, grid jadi `xl:grid-cols-5`. Terukur sekarang 0 + 1 + 1 + 2 + 1 = 5.
+  - **3. Escape `\u2022` bocor ke layar.** `DashboardOverview.jsx` menulis `'\u2022 1 kurang sesuai'` di dalam JSX (bukan string JS), sehingga tercetak literal. Diganti karakter asli `≥` dan `•`; catatan kaki itu dihapus karena sudah jadi kartu sendiri.
+  - **4. Enum anomali tampil mentah dan dobel.** `PROMPT_INJECTION`/`CAREER_BREAK_FLAG` dicetak apa adanya, dan backend menulis satu baris per temuan sehingga badge kembar muncul. Ditambah `flagLabel()` + `dedupeFlags()` di `lib/labels.js`; kode asli tetap tersedia di atribut `title` untuk audit.
+  - **5. Legenda 4D tidak terbaca.** Empat angka kecil hanya dijelaskan lewat `title` parent, jadi di layar tampil "32.0 · 0 100 20 0". Kini tiap angka berlabel `Skill 0 · Exp 100 · Edu 20 · Port 0`.
+  - **6. Overflow horizontal mobile.** Diukur pada iframe 390px: `docScrollW` 405 > `innerW` 390, sumbernya klaster kanan `Header` (tombol logout) dan toolbar segmented `CandidateTable` (362px di kontainer 352px). Pil status API disembunyikan di bawah `sm`, segmented control diberi `flex-wrap max-w-full`. Hasil ukur sekarang `docScrollW == innerW == 390`, `offscreen` kosong.
+  - **7. Hotfix saat verifikasi: halaman blank total.** Kartu ke-5 memakai `<Info />` tanpa `Info` di daftar import `lucide-react`. `vite build` tetap hijau (import dan JSX adalah dua edit terpisah), tetapi di runtime ErrorBoundary menangkap `Info is not defined` dan seluruh dashboard gagal render. Import ditambahkan, halaman render penuh.
+  - **8. Dua warning esbuild lama dirapikan.** Atribut `title` ganda pada tombol Batch Triage (digabung jadi satu ekspresi bersyarat, alasan penolakan role tetap menang) dan key `confidence_level` ganda pada objek `row` di `CandidateDetailPage.jsx` (yang tanpa fallback dihapus).
+- **Status & Verifikasi:** Selesai. `node node_modules/vite/bin/vite.js build` bersih — tanpa `vite:esbuild`, 1789 modul. Verifikasi DOM headless terhadap backend live (`https://api-talentops.fawt.biz.id`, 5 kandidat): `/admin/dashboard` 0 ErrorBoundary, KPI 0 + 1 + 1 + 2 + 1 = 5 = total berkas; `/admin/candidates/1`, `/admin/jobs`, `/admin/what-if/1` masing-masing 0 ErrorBoundary dan ter-render; badge anomali 1x per kode; mobile 390px tanpa overflow.
+- **Catatan untuk Rekan Tim (Najmi & Fardizza):**
+  - **Najmi:** `categorize()` membaca `recommendation` **dan** `flags`. Kalau nanti backend menambah kode anomali karantina baru, daftar prefix di `lib/labels.js` (`SECURITY_FLAG_PREFIXES`) harus ikut diperbarui — kalau tidak, kartu KPI dan tabel akan mulai berbeda lagi.
+  - **Najmi:** `/admin/candidates/` (tanpa `:id`) belum punya route; path itu jatuh ke catch-all dan diam-diam dialihkan ke `/admin/dashboard`. Daftar kandidat memang hidup di `/admin/dashboard`. Perlu keputusan: tambah route daftar, atau redirect eksplisit yang memberi tahu pengguna.
+  - **Fardizza:** `PROMPT_INJECTION` masih tersimpan dua baris untuk satu kandidat. UI sekarang men-dedup di sisi tampilan, tetapi sumbernya di `candidate_anomalies` sebaiknya tetap dibereskan.
+- **Rencana Selanjutnya:** Putuskan route `/admin/candidates`; beri label teks pada tombol ikon `Radio` di kolom Aksi; pertimbangkan menyatukan tab "Belum Di-scan" dengan dropdown kategori yang kini mengatur hal serupa.
+
+---
+
 ### 2026-10-21 - Willy - Label "AUDIT GITHUB" Tidak Lagi Menyebut Anomali untuk Repo yang Belum Diperiksa
 - **Komponen / File:**
   - `frontend/src/components/CandidateTable.jsx` (kolom GitHub Audit)

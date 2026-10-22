@@ -16,12 +16,21 @@ export default {
         'primary-slate-50': '#F8FAFC',
         'primary-slate-100': '#F1F5F9',
         'primary-slate-300': '#CBD5E1',
+        'primary-slate-200': '#E2E8F0',
         'primary-slate-400': '#94A3B8',
+        'primary-slate-500': '#64748B',
         'primary-slate-600': '#475569',
         'primary-slate-700': '#334155',
+        'primary-slate-800': '#1E293B',
         'primary-slate-900': '#0F172A',
         'primary-slate-1000': '#2B313B', // Dark Footer / Charcoal
         'primary-slate-1100': '#97989F', // Muted Metadata
+        // Info blue used to be written as raw hex in the dossier, the upload modal
+        // and the trace terminal; these tokens replace those literals.
+        'primary-info': '#1B55F5',
+        'primary-info-dark': '#1545C7',
+        'primary-info-soft': '#EAF0FF',
+        'primary-info-border': '#8EC0FF',
       },
       fontFamily: {
         jkt: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],

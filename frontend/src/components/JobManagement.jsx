@@ -1,23 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Briefcase, 
-  Plus, 
-  CheckCircle2, 
-  Sliders, 
-  Edit3, 
-  Trash2, 
-  X, 
-  Layers, 
-  Code2, 
-  GraduationCap, 
-  Calendar, 
-  ShieldCheck, 
-  RefreshCw, 
+import {
+  Briefcase,
+  Plus,
+  CheckCircle2,
+  Sliders,
+  Edit3,
+  X,
+  RefreshCw,
   AlertCircle,
   Building2,
-  Sparkles,
   Check
 } from 'lucide-react';
+import WeightBar from './WeightBar';
+import WeightSliders from './WeightSliders';
+import { toPercent, toRatio, DEFAULT_WEIGHT_PCT } from '../lib/dimensions';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
@@ -56,7 +52,7 @@ export default function JobManagement() {
   const [formDept, setFormDept] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formComp, setFormComp] = useState('');
-  const [formWeights, setFormWeights] = useState({ SKILL: 40, EXPERIENCE: 30, EDUCATION: 10, PORTFOLIO: 20 });
+  const [formWeights, setFormWeights] = useState(DEFAULT_WEIGHT_PCT);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -92,7 +88,7 @@ export default function JobManagement() {
     setFormDept('Core Engineering');
     setFormDesc('');
     setFormComp('');
-    setFormWeights({ SKILL: 40, EXPERIENCE: 30, EDUCATION: 10, PORTFOLIO: 20 });
+    setFormWeights(DEFAULT_WEIGHT_PCT);
     setErrorMsg(null);
     setIsModalOpen(true);
   };
@@ -103,13 +99,7 @@ export default function JobManagement() {
     setFormDept(job.department || 'General');
     setFormDesc(job.raw_text || '');
     setFormComp((job.core_competencies || []).join(', '));
-    const w = job.weight_config || {};
-    setFormWeights({
-      SKILL: Math.round((w.SKILL || 0.4) * 100),
-      EXPERIENCE: Math.round((w.EXPERIENCE || 0.3) * 100),
-      EDUCATION: Math.round((w.EDUCATION || 0.1) * 100),
-      PORTFOLIO: Math.round((w.PORTFOLIO || 0.2) * 100),
-    });
+    setFormWeights(toPercent(job.weight_config));
     setErrorMsg(null);
     setIsModalOpen(true);
   };
@@ -144,22 +134,9 @@ export default function JobManagement() {
       return;
     }
 
-    const rawTotal = formWeights.SKILL + formWeights.EXPERIENCE + formWeights.EDUCATION + formWeights.PORTFOLIO;
-    if (rawTotal <= 0) {
-      setErrorMsg('Total bobot harus lebih dari 0%.');
-      return;
-    }
-
-    const normalizedWeights = {
-      SKILL: Math.round((formWeights.SKILL / rawTotal) * 100) / 100,
-      EXPERIENCE: Math.round((formWeights.EXPERIENCE / rawTotal) * 100) / 100,
-      EDUCATION: Math.round((formWeights.EDUCATION / rawTotal) * 100) / 100,
-      PORTFOLIO: Math.round((formWeights.PORTFOLIO / rawTotal) * 100) / 100,
-    };
-
-    const sumNorm = normalizedWeights.SKILL + normalizedWeights.EXPERIENCE + normalizedWeights.EDUCATION + normalizedWeights.PORTFOLIO;
-    const diff = Math.round((1.0 - sumNorm) * 100) / 100;
-    normalizedWeights.SKILL = Math.round((normalizedWeights.SKILL + diff) * 100) / 100;
+    // Sliders already hold 100% (redistribute guarantees it); toRatio only scales
+    // and fixes float drift, so what the user sees is what gets stored.
+    const normalizedWeights = toRatio(formWeights);
 
     setIsSubmitting(true);
 
@@ -213,13 +190,25 @@ export default function JobManagement() {
   const handleToggleStatus = async (job) => {
     const nextStatus = job.status === 'active' ? 'closed' : 'active';
     try {
-      await fetch(`${API_BASE_URL}/api/jobs/${job.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/jobs/${job.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus }),
       });
-    } catch (e) {}
-    setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: nextStatus } : j));
+      if (!res.ok) {
+        // Don't flip the badge on a rejected write — that made the card disagree
+        // with the database until the next reload.
+        setFeedbackMsg(`Status lowongan gagal diubah (server ${res.status}). Muat ulang lalu coba lagi.`);
+        setTimeout(() => setFeedbackMsg(null), 5000);
+        return;
+      }
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: nextStatus } : j));
+      setFeedbackMsg(nextStatus === 'active' ? 'Lowongan diaktifkan.' : 'Lowongan ditutup.');
+      setTimeout(() => setFeedbackMsg(null), 3000);
+    } catch (err) {
+      setFeedbackMsg('Gagal menghubungi server. Status lowongan tidak berubah.');
+      setTimeout(() => setFeedbackMsg(null), 5000);
+    }
   };
 
   return (
@@ -263,7 +252,7 @@ export default function JobManagement() {
 
       {/* Notification Toast */}
       {feedbackMsg && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs font-semibold text-emerald-800 flex items-center justify-between shadow-xs animate-fade-in">
+        <div className={`p-3.5 rounded-xl border text-xs font-semibold flex items-center justify-between shadow-xs animate-fade-in ${/gagal|tidak berubah/i.test(feedbackMsg) ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`}>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{feedbackMsg}</span>
@@ -286,11 +275,7 @@ export default function JobManagement() {
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {jobs.map((job) => {
-          const w = job.weight_config || { SKILL: 0.4, EXPERIENCE: 0.3, EDUCATION: 0.1, PORTFOLIO: 0.2 };
-          const pSkill = Math.round((w.SKILL || 0) * 100);
-          const pExp = Math.round((w.EXPERIENCE || 0) * 100);
-          const pEdu = Math.round((w.EDUCATION || 0) * 100);
-          const pPort = Math.round((w.PORTFOLIO || 0) * 100);
+          const weightPct = toPercent(job.weight_config);
           const isActive = job.status === 'active';
 
           return (
@@ -371,33 +356,7 @@ export default function JobManagement() {
                   <span className="font-mono text-[11px] font-bold text-primary-orange">Total 100%</span>
                 </div>
 
-                {/* Segmented Color Bar */}
-                <div className="h-2 w-full rounded-full bg-primary-slate-100 overflow-hidden flex">
-                  <div style={{ width: `${pSkill}%` }} className="bg-primary-orange" title={`Skill: ${pSkill}%`}></div>
-                  <div style={{ width: `${pExp}%` }} className="bg-primary-blue" title={`Experience: ${pExp}%`}></div>
-                  <div style={{ width: `${pEdu}%` }} className="bg-purple-500" title={`Education: ${pEdu}%`}></div>
-                  <div style={{ width: `${pPort}%` }} className="bg-emerald-500" title={`Portfolio: ${pPort}%`}></div>
-                </div>
-
-                {/* Legend Chips */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-2.5 text-[11px]">
-                  <div className="flex items-center gap-1.5 text-primary-slate-600">
-                    <span className="w-2 h-2 rounded-full bg-primary-orange shrink-0"></span>
-                    <span>Skill: <strong>{pSkill}%</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-primary-slate-600">
-                    <span className="w-2 h-2 rounded-full bg-primary-blue shrink-0"></span>
-                    <span>Exp: <strong>{pExp}%</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-primary-slate-600">
-                    <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>
-                    <span>Edu: <strong>{pEdu}%</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-primary-slate-600">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                    <span>Port: <strong>{pPort}%</strong></span>
-                  </div>
-                </div>
+                <WeightBar weights={weightPct} />
               </div>
             </div>
           );
@@ -513,13 +472,10 @@ export default function JobManagement() {
                       Formula Bobot 4 Dimensi Penilaian
                     </h4>
                     <p className="text-[11px] text-primary-slate-500">
-                      Tentukan porsi evaluasi untuk lowongan ini (Total otomatis dinormalisasikan 100%)
+                      Tentukan porsi evaluasi untuk lowongan ini. Menggeser satu dimensi menyesuaikan tiga lainnya agar total tetap 100%.
                     </p>
                   </div>
 
-                  <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-primary-orange/10 text-primary-orange border border-primary-orange/30">
-                    Total: {formWeights.SKILL + formWeights.EXPERIENCE + formWeights.EDUCATION + formWeights.PORTFOLIO}%
-                  </span>
                 </div>
 
                 {/* Preset Fast Selector */}
@@ -539,88 +495,7 @@ export default function JobManagement() {
                   ))}
                 </div>
 
-                {/* Sliders */}
-                <div className="space-y-3 bg-primary-slate-50 p-4 rounded-xl border border-primary-border-200">
-                  {/* Skill */}
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-semibold text-primary-black flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-primary-orange"></span>
-                        Kesesuaian Keahlian Inti (SKILL)
-                      </span>
-                      <span className="font-mono font-bold text-primary-orange">{formWeights.SKILL}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={formWeights.SKILL}
-                      onChange={(e) => setFormWeights(prev => ({ ...prev, SKILL: Number(e.target.value) }))}
-                      className="w-full accent-[#F49523]"
-                    />
-                  </div>
-
-                  {/* Experience */}
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-semibold text-primary-black flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-primary-blue"></span>
-                        Kronologi Pengalaman Kerja (EXPERIENCE)
-                      </span>
-                      <span className="font-mono font-bold text-primary-blue">{formWeights.EXPERIENCE}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={formWeights.EXPERIENCE}
-                      onChange={(e) => setFormWeights(prev => ({ ...prev, EXPERIENCE: Number(e.target.value) }))}
-                      className="w-full accent-[#01A0E4]"
-                    />
-                  </div>
-
-                  {/* Education */}
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-semibold text-primary-black flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                        Linieritas Jenjang Pendidikan (EDUCATION)
-                      </span>
-                      <span className="font-mono font-bold text-purple-700">{formWeights.EDUCATION}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={formWeights.EDUCATION}
-                      onChange={(e) => setFormWeights(prev => ({ ...prev, EDUCATION: Number(e.target.value) }))}
-                      className="w-full accent-purple-500"
-                    />
-                  </div>
-
-                  {/* Portfolio */}
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-semibold text-primary-black flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Portofolio &amp; Repositori GitHub (PORTFOLIO)
-                      </span>
-                      <span className="font-mono font-bold text-emerald-700">{formWeights.PORTFOLIO}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={formWeights.PORTFOLIO}
-                      onChange={(e) => setFormWeights(prev => ({ ...prev, PORTFOLIO: Number(e.target.value) }))}
-                      className="w-full accent-emerald-500"
-                    />
-                  </div>
-                </div>
+                <WeightSliders weights={formWeights} onChange={setFormWeights} />
               </div>
 
               {/* Submit Button */}

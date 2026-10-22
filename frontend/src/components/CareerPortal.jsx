@@ -1,29 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Briefcase, 
-  UploadCloud, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle, 
-  ShieldCheck, 
-  Lock, 
-  Sparkles, 
-  ArrowRight, 
-  Building2, 
-  Trash2, 
-  RefreshCw, 
+import {
+  Briefcase,
+  UploadCloud,
+  FileText,
+  AlertCircle,
+  ShieldCheck,
+  Lock,
+  ArrowRight,
+  Building2,
+  Trash2,
+  RefreshCw,
   ExternalLink,
-  ChevronRight,
-  Info,
-  Clock,
   Search,
-  Check,
   EyeOff,
   Cpu,
-  Compass,
-  ArrowUpRight
+  Compass
 } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import DemoDataBanner from './DemoDataBanner';
 import DpaModal from './DpaModal';
 import TokenIssuedModal from './TokenIssuedModal';
 import ApplicationTracker from './ApplicationTracker';
@@ -85,7 +79,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
         const json = await res.json();
         const activeJobs = json.data && json.data.length > 0 ? json.data : [];
         setJobs(activeJobs);
-        setSelectedJob(activeJobs[0] || null);
+        setSelectedJob(null);
       } else {
         setJobs([]);
         setSelectedJob(null);
@@ -215,7 +209,11 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
             submitted_at: new Date().toISOString().replace('T', ' ').slice(0, 16),
             source: 'LIVE_DATABASE'
           }));
-        } catch (e) {}
+        } catch (e) {
+          // The token is already on screen in the modal, so this is not fatal —
+          // but the applicant must know the browser did not keep a copy.
+          console.warn('Could not cache tracking token locally:', e);
+        }
 
         // Clear form
         setName('');
@@ -230,30 +228,13 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
         setSubmitError(errorData.detail || `Gagal mengirim lamaran (Kode respon ${res.status}).`);
       }
     } catch (err) {
-      console.warn('Live submit failed, triggering deterministic simulation response:', err);
-      const simMasked = `#TK-${Math.random().toString(16).substring(2, 8).toUpperCase()}`;
-      const simToken = (typeof crypto !== 'undefined' && crypto.randomUUID) 
-        ? crypto.randomUUID() 
-        : `${Math.random().toString(16).substring(2, 10)}-7425-40de-944b-${Math.random().toString(16).substring(2, 14)}`;
-      
-      setIssuedResult({
-        maskedIdentifier: simMasked,
-        trackingToken: simToken,
-        jobTitle: selectedJob.title,
-        piiStats: { total_replacements: 4, names_masked: 1, emails_masked: 1, phone_masked: 1 },
-      });
-
-      try {
-        localStorage.setItem(`talentops_app_${simToken}`, JSON.stringify({
-          masked_identifier: simMasked,
-          job_title: selectedJob.title,
-          department: selectedJob.department || 'Core Engineering',
-          status: 'queued',
-          recommendation: 'REVIEW_REQUIRED',
-          submitted_at: new Date().toISOString().replace('T', ' ').slice(0, 16),
-          source: 'RESILIENT_OFFLINE_CACHE'
-        }));
-      } catch (e) {}
+      // Never invent a tracking token here. An earlier version minted a random
+      // UUID on network failure and showed the success modal, so the applicant
+      // believed the application was queued while the backend never saw it.
+      console.warn('Application submit failed:', err);
+      setSubmitError(
+        'Lamaran belum terkirim: koneksi ke server gagal. Periksa jaringan Anda lalu coba lagi — jangan tutup halaman ini sebelum token pelacakan muncul.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -266,36 +247,28 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
 
   return (
     <div className="min-h-screen bg-primary-slate-50 text-primary-slate-900 font-sans antialiased selection:bg-primary-orange selection:text-white">
-      {/* 1. WebEkspor Signature Top Promo Ticker Bar */}
-      <section className="fixed top-0 left-0 right-0 z-50">
-        <div className="bg-primary-orange h-10 flex flex-col justify-center">
+      {/* 1. Compliance Strip. Deliberately static: an earlier version scrolled
+          fabricated applicant activity ("#TK-E82F baru saja mendaftar"), which
+          contradicted the privacy promise in the same bar. */}
+      <section className="sticky top-0 z-50">
+        <div className="bg-primary-orange min-h-10 flex items-center py-1.5">
           <div className="container mx-auto max-w-7xl px-4 lg:px-6">
-            <div className="flex items-center gap-4 sm:gap-8">
-              <div className="text-left font-normal font-jkt text-xs sm:text-sm text-black shrink-0">
-                KODE ETIK <span className="font-black">UU PDP NO. 27/2022</span>, PRIVASI <span className="font-black">100% TERENKRIPSI</span>
-              </div>
-              <div className="flex-1 relative overflow-hidden hidden sm:block">
-                <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-primary-orange to-transparent z-10"></div>
-                <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-r from-transparent to-primary-orange z-10"></div>
-                <div className="overflow-hidden">
-                  <div aria-hidden="true" className="flex flex-row items-center gap-4 whitespace-nowrap promotion-scroll">
-                    <span className="font-light font-jkt text-xs text-zinc-900 mx-3">Pelamar #TK-E82F baru saja mendaftar Backend Engineer</span>
-                    <span className="font-light font-jkt text-xs text-zinc-900 mx-3">Pelamar #TK-A19C lolos audit portofolio AI Triage</span>
-                    <span className="font-light font-jkt text-xs text-zinc-900 mx-3">Kandidat #TK-F440 berhasil dijadwalkan wawancara</span>
-                    <span className="font-light font-jkt text-xs text-zinc-900 mx-3">Pelamar #TK-D310 diverifikasi repositori GitHub live</span>
-                    <span className="font-light font-jkt text-xs text-zinc-900 mx-3">Pelamar #TK-E82F baru saja mendaftar Backend Engineer</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <p className="font-jkt text-[11px] sm:text-sm text-black leading-snug">
+              <span className="font-black">UU PDP NO. 27/2022</span>
+              <span className="mx-1.5 sm:mx-2">&bull;</span>
+              PRIVASI <span className="font-black">100% TERENKRIPSI</span>
+              <span className="mx-1.5 sm:mx-2">&bull;</span>
+              Identitas disanitasi sebelum dievaluasi
+            </p>
           </div>
         </div>
       </section>
 
       {/* 2. WebEkspor Header Navbar */}
-      <header className="h-16 sm:h-20 flex flex-col justify-center bg-white/95 backdrop-blur-md border-b border-primary-border-100 sticky top-10 z-40 shadow-xs">
+      <div className="sticky top-10 z-40">
+      <header className="h-16 sm:h-20 flex flex-col justify-center bg-white/95 backdrop-blur-md border-b border-primary-border-100 shadow-xs">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex flex-row items-center justify-between">
+          <div className="flex flex-row items-center justify-between gap-2">
             {/* Logo */}
             <div className="flex items-center gap-3">
               <a href="/" className="flex items-center gap-2.5">
@@ -325,7 +298,8 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                   }`}
                 >
                   <Search className="w-3.5 h-3.5 text-primary-orange" />
-                  <span>Lacak Status Berkas</span>
+                  <span className="hidden sm:inline">Lacak Status Berkas</span>
+                  <span className="sm:hidden">Lacak</span>
                 </button>
               </div>
 
@@ -345,6 +319,8 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
           </div>
         </div>
       </header>
+      <DemoDataBanner />
+      </div>
 
       {/* Main Content */}
       <main>
@@ -356,7 +332,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
         ) : (
           <div>
             {/* 3. Hero Section with Dot Matrix & WebEkspor Highlight Marker */}
-            <section className="relative pt-16 sm:pt-20 pb-12 sm:pb-16 overflow-hidden bg-white">
+            <section className="relative pt-10 sm:pt-14 pb-12 sm:pb-16 overflow-hidden bg-white">
               <div aria-hidden="true" className="absolute inset-0 opacity-[0.04] bg-dot-matrix pointer-events-none"></div>
               <div className="relative container mx-auto max-w-7xl px-4 sm:px-6">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-end">
@@ -375,7 +351,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
 
                     {/* Main Headline with WebEkspor Orange Skewed Marker */}
                     <h1 className="font-jkt font-extrabold text-[2.25rem] sm:text-4xl lg:text-[3.25rem] text-primary-black leading-[1.06] tracking-tight">
-                      Karier profesional berkeadilan <span className="relative inline-block"><span className="relative z-10 italic font-medium">tanpa bias</span><span aria-hidden="true" className="absolute left-0 right-0 bottom-1 sm:bottom-2 h-3 sm:h-4 lg:h-5 bg-primary-orange/60 -z-0 -skew-x-6"></span></span> demografi.
+                      Karier profesional berkeadilan <span className="relative inline-block"><span className="relative z-10 italic font-medium">tanpa bias</span><span aria-hidden="true" className="absolute left-0 right-0 bottom-0 h-2.5 sm:h-3 lg:h-3.5 bg-primary-orange/60 -z-0 -skew-x-6"></span></span> demografi.
                     </h1>
 
                     <p className="font-jkt font-medium text-base lg:text-lg text-primary-slate-700 leading-relaxed max-w-2xl">
@@ -450,6 +426,14 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                       <div className="p-8 rounded-2xl border border-primary-border-200 bg-white flex flex-col items-center justify-center text-xs text-primary-slate-600 gap-2">
                         <RefreshCw className="w-5 h-5 animate-spin text-primary-orange" />
                         <span>Memuat daftar lowongan kerja...</span>
+                      </div>
+                    ) : jobs.length === 0 ? (
+                      <div className="p-8 rounded-2xl border border-dashed border-primary-border-200 bg-white flex flex-col items-center justify-center text-center gap-2">
+                        <Briefcase className="w-6 h-6 text-primary-slate-400" />
+                        <p className="text-sm font-bold text-primary-black">Belum Ada Lowongan Aktif</p>
+                        <p className="text-xs text-primary-slate-600 max-w-xs">
+                          Saat ini tidak ada posisi yang dibuka. Silakan kembali lagi nanti.
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -732,7 +716,8 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                         {/* Submit Button (WebEkspor Rounded-Full Orange Button) */}
                         <button
                           type="submit"
-                          disabled={submitting}
+                          disabled={submitting || !selectedJob}
+                          title={!selectedJob ? 'Pilih salah satu posisi lowongan terlebih dahulu' : undefined}
                           className="w-full py-3.5 px-6 rounded-full bg-primary-orange hover:opacity-90 disabled:opacity-60 text-white font-jkt font-bold text-xs shadow-lg shadow-primary-orange/25 transition-all duration-200 flex items-center justify-center gap-2"
                         >
                           {submitting ? (
@@ -767,7 +752,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                         Transparansi Penuh
                       </span>
                       <h2 className="font-jkt font-extrabold text-[1.75rem] sm:text-[2.25rem] lg:text-[2.75rem] text-white leading-[1.08]">
-                        Pantau status berkas Anda secara <span className="relative inline-block"><span className="relative z-10 italic font-medium text-white">real-time</span><span aria-hidden="true" className="absolute left-0 right-0 bottom-1 sm:bottom-2 h-3 sm:h-4 bg-primary-orange/70 -z-0 -skew-x-6"></span></span> dan mandiri.
+                        Pantau status berkas Anda secara <span className="relative inline-block"><span className="relative z-10 italic font-medium text-white">real-time</span><span aria-hidden="true" className="absolute left-0 right-0 bottom-0 h-2.5 sm:h-3 bg-primary-orange/70 -z-0 -skew-x-6"></span></span> dan mandiri.
                       </h2>
                       <p className="font-jkt font-medium text-sm sm:text-base text-primary-slate-300 leading-relaxed max-w-xl">
                         Simpan Secret Tracking Token Anda dengan aman. Lacak setiap tahapan evaluasi tanpa perlu menghubungi rekruter secara manual.

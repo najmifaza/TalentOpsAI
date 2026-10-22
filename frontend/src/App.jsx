@@ -107,7 +107,7 @@ function DashboardLayout() {
 
   const getTitle = () => {
     if (location.pathname.startsWith('/admin/candidates/')) return 'Dossier Kandidat';
-    if (location.pathname.startsWith('/admin/what-if')) return 'What-If Policy Simulation Studio';
+    if (location.pathname.startsWith('/admin/what-if')) return 'Simulasi Bobot & Ambang';
     return titles[location.pathname] || 'Dashboard & Triage Antrean';
   };
 

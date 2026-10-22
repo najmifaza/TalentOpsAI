@@ -1,50 +1,47 @@
 import React, { useState } from 'react';
-import { 
-  CheckCircle2, 
-  AlertTriangle, 
-  XCircle, 
-  ExternalLink, 
-  Filter, 
-  Search, 
-  Eye, 
-  Github, 
-  Zap, 
-  Info, 
-  Radio, 
-  Play, 
-  Clock, 
-  ChevronRight,
+import {
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
+  Filter,
+  Search,
+  Eye,
+  Github,
+  Zap,
+  Info,
+  Radio,
+  Play,
+  Clock,
   ShieldAlert
 } from 'lucide-react';
+import { DIMENSIONS } from '../lib/dimensions';
+import { categorize, isUnscanned, flagLabel, dedupeFlags } from '../lib/labels';
+
+// Two-char badge from the masked identifier ("#TK-A17C9B" -> "9B"). The raw
+// database id was rendered here and overflowed the box past two digits.
+const initialsOf = (masked) => {
+  const clean = String(masked || '').replace(/[^A-Za-z0-9]/g, '');
+  return clean.slice(-2).toUpperCase() || '—';
+};
 
 export default function CandidateTable({ 
   candidates, 
   onSelectCandidate, 
   onStreamCandidate,
-  onStartTriage,
-  onBatchTriage,
-  isBatchRunning = false
+  onStartTriage
 }) {
   const [search, setSearch] = useState('');
   const [filterRec, setFilterRec] = useState('ALL');
   const [scanTab, setScanTab] = useState('ALL');
 
-  const unscannedCandidates = candidates.filter(c => 
-    c.scan_status === 'UNSCANNED' || 
-    c.overall_score === null || 
-    c.overall_score === undefined ||
-    c.recommendation === 'PENDING_SCAN' || 
-    c.status === 'queued'
-  );
+  const unscannedCandidates = candidates.filter(isUnscanned);
 
-  const scannedCandidates = candidates.filter(c => 
-    !unscannedCandidates.some(u => u.id === c.id)
-  );
+  const scannedCandidates = candidates.filter(c => !isUnscanned(c));
 
   const filtered = candidates.filter(c => {
-    const isUnscanned = unscannedCandidates.some(u => u.id === c.id);
-    if (scanTab === 'UNSCANNED' && !isUnscanned) return false;
-    if (scanTab === 'SCANNED' && isUnscanned) return false;
+    const unscanned = isUnscanned(c);
+    if (scanTab === 'UNSCANNED' && !unscanned) return false;
+    if (scanTab === 'SCANNED' && unscanned) return false;
 
     const q = search.trim().toLowerCase();
     const matchesSearch = !q ||
@@ -54,7 +51,9 @@ export default function CandidateTable({
       (c.candidate_name_masked && c.candidate_name_masked.toLowerCase().includes(q)) ||
       (c.key_technologies && c.key_technologies.some(t => t.toLowerCase().includes(q)));
 
-    const matchesRec = filterRec === 'ALL' || c.recommendation === filterRec;
+    // Same `categorize` the KPI cards and the per-job cards use, so filtering by
+    // "Karantina Keamanan" returns the rows those cards counted.
+    const matchesRec = filterRec === 'ALL' || categorize(c) === filterRec;
 
     return matchesSearch && matchesRec;
   });
@@ -106,11 +105,12 @@ export default function CandidateTable({
   };
 
   return (
-    <div className="space-y-4 select-none font-jkt">
+    <div className="space-y-4 font-jkt">
       {/* 1. Header Filters & Segmented Control */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-primary-border-100 pb-3">
-        {/* Segmented Control */}
-        <div className="inline-flex p-1 rounded-full bg-primary-slate-100 border border-primary-border-200 w-fit">
+        {/* Segmented Control — wraps instead of overflowing at 390px, where the
+            three labels needed 362px inside a 352px container. */}
+        <div className="inline-flex flex-wrap p-1 rounded-full bg-primary-slate-100 border border-primary-border-200 w-fit max-w-full">
           <button
             onClick={() => setScanTab('ALL')}
             className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${
@@ -166,16 +166,6 @@ export default function CandidateTable({
 
         {/* Action Link & Info */}
         <div className="flex items-center gap-2">
-          {unscannedCandidates.length > 0 && onBatchTriage && (
-            <button
-              onClick={onBatchTriage}
-              disabled={isBatchRunning}
-              className="px-4 py-1.5 rounded-full bg-primary-orange hover:opacity-90 text-white text-xs font-bold transition-all shadow-md shadow-primary-orange/20 flex items-center gap-1.5"
-            >
-              <Zap className={`w-3.5 h-3.5 ${isBatchRunning ? 'animate-spin text-white' : 'fill-current'}`} />
-              <span>{isBatchRunning ? 'Memproses...' : `Scan Semua (${unscannedCandidates.length})`}</span>
-            </button>
-          )}
           <span className="text-xs text-primary-slate-400 hidden lg:inline-block">
             Klik baris untuk membuka evaluasi lengkap kandidat
           </span>
@@ -213,15 +203,63 @@ export default function CandidateTable({
         </div>
       </div>
 
-      {/* 3. Candidates Table */}
-      <div className="bg-white rounded-2xl border border-primary-border-200 overflow-hidden shadow-sm">
+      {/* 3a. Mobile card list. A 720px-wide table forced horizontal scrolling on
+          phones with no hint that more columns existed, so small screens get cards. */}
+      <div className="md:hidden space-y-2.5">
+        {filtered.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-primary-border-200 p-8 text-center text-xs text-primary-slate-500">
+            Tidak ada berkas kandidat yang cocok dengan kriteria pencarian.
+          </div>
+        ) : (
+          filtered.map((candidate) => {
+            const isUnscanned = unscannedCandidates.some(u => u.id === candidate.id);
+            const recInfo = getRecBadge(categorize(candidate));
+            const RecIcon = recInfo.icon;
+            return (
+              <div
+                key={candidate.id}
+                onClick={() => onSelectCandidate(candidate)}
+                className="bg-white rounded-2xl border border-primary-border-200 p-4 shadow-sm active:bg-primary-slate-50 transition-colors cursor-pointer"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-mono font-bold text-primary-black text-xs truncate">
+                      {candidate.masked_identifier}
+                    </p>
+                    <p className="text-[11px] text-primary-slate-500 truncate">{candidate.job_title}</p>
+                  </div>
+                  {isUnscanned || candidate.overall_score === null ? (
+                    <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary-slate-100 text-primary-slate-600 border border-primary-border-200">
+                      <Clock className="w-2.5 h-2.5 text-primary-orange" /> Belum Scan
+                    </span>
+                  ) : (
+                    <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-extrabold text-xs border ${getScoreBadge(candidate.overall_score)}`}>
+                      {candidate.overall_score.toFixed(1)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-primary-border-100">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${recInfo.bg}`}>
+                    <RecIcon className="w-2.5 h-2.5" /> {recInfo.label}
+                  </span>
+                  <span className="text-[10px] text-primary-slate-400">{candidate.applied_date}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* 3b. Desktop table */}
+      <div className="hidden md:block bg-white rounded-2xl border border-primary-border-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[720px]">
             <thead className="bg-primary-slate-50 text-primary-slate-500 font-bold uppercase tracking-wider text-[11px] border-b border-primary-border-100">
               <tr>
                 <th className="py-3.5 px-5 font-bold">Kandidat</th>
                 <th className="py-3.5 px-4 font-bold">Posisi &amp; Tanggal</th>
-                <th className="py-3.5 px-4 text-center font-bold">Skor 4D</th>
+                <th className="py-3.5 px-4 text-center font-bold">Skor Total &amp; 4D</th>
                 <th className="py-3.5 px-4 font-bold">Rekomendasi AI</th>
                 <th className="py-3.5 px-4 font-bold">Audit GitHub</th>
                 <th className="py-3.5 px-4 font-bold">Keahlian</th>
@@ -238,7 +276,7 @@ export default function CandidateTable({
               ) : (
                 filtered.map((candidate) => {
                   const isUnscanned = unscannedCandidates.some(u => u.id === candidate.id);
-                  const recInfo = getRecBadge(candidate.recommendation);
+                  const recInfo = getRecBadge(categorize(candidate));
                   const RecIcon = recInfo.icon;
 
                   return (
@@ -250,12 +288,12 @@ export default function CandidateTable({
                       {/* Identifier */}
                       <td className="py-4 px-5">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono font-bold text-xs shrink-0 ${
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-mono font-bold text-[10px] shrink-0 ${
                             isUnscanned 
                               ? 'bg-primary-orange/10 text-primary-orange border border-primary-orange/30' 
                               : 'bg-primary-blue/10 text-primary-black border border-primary-blue/30'
                           }`}>
-                            {candidate.id}
+                            {initialsOf(candidate.masked_identifier)}
                           </div>
                           <div className="min-w-0">
                             <div className="font-mono font-bold text-primary-black text-xs truncate">
@@ -288,8 +326,14 @@ export default function CandidateTable({
                               <span>{candidate.overall_score.toFixed(1)}</span>
                             </span>
                             {candidate.scores_4d && (
-                              <div className="text-[10px] text-primary-slate-400 font-medium mt-1">
-                                Skill: {candidate.scores_4d.s_comp}%
+                              <div className="flex items-center justify-center gap-1.5 mt-1">
+                                {DIMENSIONS.map((d) => (
+                                  <span key={d.key} className="flex items-center gap-0.5 text-[9px] text-primary-slate-500 font-medium tabular-nums whitespace-nowrap" title={d.label}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${d.dot}`} />
+                                    <span className="text-primary-slate-400">{d.short}</span>
+                                    <span className="text-primary-slate-700">{Math.round(candidate.scores_4d[d.key] ?? 0)}</span>
+                                  </span>
+                                ))}
                               </div>
                             )}
                           </div>
@@ -313,21 +357,26 @@ export default function CandidateTable({
                         {/* Anomalies come from ingestion-time PDF/DOCX auditing, so an
                             unscanned candidate has them before triage ever runs. Show
                             them only once the file has been scanned, and cap the list:
-                            a repeated marker can push the count into the hundreds. */}
-                        {!isUnscanned && candidate.flags && candidate.flags.length > 0 && (
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {candidate.flags.slice(0, 3).map((flag, idx) => (
-                              <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-mono font-medium">
-                                {flag}
-                              </span>
-                            ))}
-                            {candidate.flags.length > 3 && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#f4f4f6] text-[#454554] border border-[#e6e6ea] font-mono font-medium">
-                                +{candidate.flags.length - 3} lainnya
-                              </span>
-                            )}
-                          </div>
-                        )}
+                            a repeated marker can push the count into the hundreds.
+                            Backend writes one row per finding, so identical codes are
+                            collapsed before the cap and the label is humanised. */}
+                        {!isUnscanned && candidate.flags && candidate.flags.length > 0 && (() => {
+                          const flags = dedupeFlags(candidate.flags);
+                          return (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {flags.slice(0, 3).map((flag) => (
+                                <span key={flag} title={flag} className="text-[9px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-medium">
+                                  {flagLabel(flag)}
+                                </span>
+                              ))}
+                              {flags.length > 3 && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary-slate-100 text-primary-slate-700 border border-primary-border-200 font-medium">
+                                  +{flags.length - 3} lainnya
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* GitHub Audit */}

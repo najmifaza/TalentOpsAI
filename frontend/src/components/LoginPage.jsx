@@ -57,7 +57,7 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-primary-border-200 bg-primary-slate-50 focus:outline-none focus:ring-2 focus:ring-primary-orange/40"
-                placeholder="recruiter_talentops"
+                placeholder="Username atau email"
               />
             </div>
           </div>
@@ -98,8 +98,13 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-[11px] text-center text-primary-slate-400 mt-4">
-          Sesi menggunakan JWT HS256. Token disimpan di perangkat ini dan dikirim sebagai Bearer.
+        <div className="mt-4 p-3.5 rounded-xl bg-white border border-primary-border-200 text-[11px] text-primary-slate-600 space-y-1.5">
+          <p className="font-bold text-primary-black uppercase tracking-wider text-[10px]">Akun Demo</p>
+          <p>Gunakan kredensial yang diberikan tim saat demo. Tidak ada pendaftaran mandiri — akun dibuat oleh admin workspace.</p>
+        </div>
+
+        <p className="text-[11px] text-center text-primary-slate-400 mt-3">
+          <a href="/" className="underline hover:text-primary-black">Kembali ke Portal Pelamar</a>
         </p>
       </div>
     </div>

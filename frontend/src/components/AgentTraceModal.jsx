@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  X, 
-  Terminal, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  Radio, 
-  RotateCcw, 
-  Cpu, 
+import {
+  X,
+  Terminal,
+  CheckCircle2,
+  AlertCircle,
+  Radio,
+  RotateCcw,
   Sparkles,
   ShieldCheck,
   Check
@@ -224,19 +222,20 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
           if (isFinalStep) {
             const details = parsed.details || {};
             const dimScores = details.dimension_scores || {};
-            const s_comp = dimScores.SKILL !== undefined ? dimScores.SKILL : 80.0;
-            const s_port = dimScores.PORTFOLIO !== undefined ? dimScores.PORTFOLIO : 70.0;
-            const s_conf = dimScores.EXPERIENCE !== undefined ? dimScores.EXPERIENCE : 85.0;
-            const s_risk = details.risk === 'LOW' ? 10.0 : details.risk === 'MEDIUM' ? 25.0 : details.risk === 'HIGH' ? 45.0 : 15.0;
+            const round1 = (v) => Math.round(v * 10) / 10;
 
+            // Same four keys as the weight editor and the dossier. This used to
+            // emit s_conf/s_risk, where s_conf actually carried EXPERIENCE.
             triageResult = {
               overall_score: details.overall_score !== undefined ? details.overall_score : (parsed.overall_score || 75.0),
               scores_4d: {
-                s_comp: Math.round(s_comp * 10) / 10,
-                s_port: Math.round(s_port * 10) / 10,
-                s_conf: Math.round(s_conf * 10) / 10,
-                s_risk: Math.round(s_risk * 10) / 10
+                SKILL: round1(dimScores.SKILL ?? 0),
+                EXPERIENCE: round1(dimScores.EXPERIENCE ?? 0),
+                EDUCATION: round1(dimScores.EDUCATION ?? 0),
+                PORTFOLIO: round1(dimScores.PORTFOLIO ?? 0),
               },
+              confidence_level: details.confidence_level || null,
+              unresolved_risk: details.risk || null,
               recommendation: details.recommendation || parsed.recommendation || 'REVIEW_REQUIRED',
               status: details.status || 'waiting_approval',
               scan_status: 'SCANNED'
@@ -288,24 +287,24 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="clean-card w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl border border-[#383a42] bg-[#2b2d32]">
+      <div className="clean-card w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl border border-[#383a42] bg-primary-slate-1000">
         
         {/* Header Bar */}
         <div className="px-6 py-4 border-b border-[#383a42] flex items-center justify-between bg-[#23252a]">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-[#1b55f5]/20 text-[#1b55f5]">
-              <Radio className={`w-5 h-5 ${isStreaming ? 'animate-pulse text-[#1b55f5]' : 'text-[#8ec0ff]'}`} />
+            <div className="p-2 rounded-lg bg-primary-info/20 text-primary-info">
+              <Radio className={`w-5 h-5 ${isStreaming ? 'animate-pulse text-primary-info' : 'text-primary-info-border'}`} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white tracking-tight">
                   Transparansi Proses Kerja AI (Live Trace)
                 </h3>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#1b55f5] text-white">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-primary-info text-white">
                   REAL-TIME SSE
                 </span>
                 {streamStatus === 'COMPLETED' && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#1b55f5]/20 text-[#8ec0ff] border border-[#1b55f5]/30">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary-info/20 text-primary-info-border border border-primary-info/30">
                     Selesai &amp; Tersimpan
                   </span>
                 )}
@@ -315,7 +314,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
                   </span>
                 )}
               </div>
-              <p className="text-xs text-[#9a9aa8] mt-0.5">
+              <p className="text-xs text-primary-slate-400 mt-0.5">
                 Kandidat: <span className="font-mono text-white font-semibold">{candidate.masked_identifier}</span> • {candidate.job_title}
               </p>
             </div>
@@ -332,6 +331,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
               <span>Analisis Ulang</span>
             </button>
             <button
+              aria-label="Tutup monitor trace"
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"
             >
@@ -344,12 +344,12 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
         <div className="grid grid-cols-1 md:grid-cols-12 flex-1 min-h-0 overflow-hidden">
           
           {/* Left Column: 7 Canonical Steps Visualizer */}
-          <div className="md:col-span-5 bg-[#f4f4f6] border-r border-[#e6e6ea] flex flex-col overflow-y-auto p-4 sm:p-5 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#e6e6ea]">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#67677e]">
+          <div className="md:col-span-5 bg-primary-slate-100 border-r border-primary-border-200 flex flex-col overflow-y-auto p-4 sm:p-5 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-primary-border-200">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-primary-slate-600">
                 Alur Transparansi 7 Tahap
               </span>
-              <span className="text-[10px] font-semibold text-[#1b55f5]">
+              <span className="text-[10px] font-semibold text-primary-info">
                 Deterministik • 0 Halusinasi
               </span>
             </div>
@@ -364,39 +364,39 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
                     key={step.key}
                     className={`p-3 rounded-xl border transition-all duration-200 ${
                       isCurrent
-                        ? 'bg-white border-[#1b55f5] shadow-sm ring-2 ring-[#1b55f5]/20'
+                        ? 'bg-white border-primary-info shadow-sm ring-2 ring-primary-info/20'
                         : isCompleted
-                        ? 'bg-white border-[#1b55f5]/30 shadow-2xs'
-                        : 'bg-white/60 border-[#e6e6ea] opacity-60'
+                        ? 'bg-white border-primary-info/30 shadow-2xs'
+                        : 'bg-white/60 border-primary-border-200 opacity-60'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2.5">
                         <div className="mt-0.5">
                           {isCompleted ? (
-                            <div className="w-5 h-5 rounded-full bg-[#eaf0ff] text-[#1b55f5] flex items-center justify-center">
+                            <div className="w-5 h-5 rounded-full bg-primary-info-soft text-primary-info flex items-center justify-center">
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
                             </div>
                           ) : isCurrent ? (
-                            <div className="w-5 h-5 rounded-full bg-[#1b55f5] text-white flex items-center justify-center animate-spin">
+                            <div className="w-5 h-5 rounded-full bg-primary-info text-white flex items-center justify-center animate-spin">
                               <RotateCcw className="w-3 h-3" />
                             </div>
                           ) : (
-                            <div className="w-5 h-5 rounded-full bg-[#e6e6ea] text-[#67677e] flex items-center justify-center text-[10px] font-bold">
+                            <div className="w-5 h-5 rounded-full bg-primary-border-200 text-primary-slate-600 flex items-center justify-center text-[10px] font-bold">
                               {idx + 1}
                             </div>
                           )}
                         </div>
                         <div>
-                          <div className={`text-xs font-bold ${isCurrent ? 'text-[#1b55f5]' : isCompleted ? 'text-[#000000]' : 'text-[#67677e]'}`}>
+                          <div className={`text-xs font-bold ${isCurrent ? 'text-primary-info' : isCompleted ? 'text-primary-black' : 'text-primary-slate-600'}`}>
                             {step.title}
                           </div>
-                          <div className="text-[11px] text-[#67677e] leading-snug mt-0.5">
+                          <div className="text-[11px] text-primary-slate-600 leading-snug mt-0.5">
                             {step.subtitle}
                           </div>
                         </div>
                       </div>
-                      <span className="text-[10px] font-mono text-[#67677e] shrink-0">
+                      <span className="text-[10px] font-mono text-primary-slate-600 shrink-0">
                         {step.timeTarget}
                       </span>
                     </div>
@@ -405,10 +405,10 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
               })}
             </div>
 
-            <div className="pt-2 border-t border-[#e6e6ea]">
+            <div className="pt-2 border-t border-primary-border-200">
               <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#1b55f5] shrink-0" />
-                <span className="text-[11px] text-[#1b55f5] font-medium leading-tight">
+                <ShieldCheck className="w-4 h-4 text-primary-info shrink-0" />
+                <span className="text-[11px] text-primary-info font-medium leading-tight">
                   Kepatuhan UU PDP No. 27/2022 • Seluruh data pribadi disanitasi sebelum evaluasi.
                 </span>
               </div>
@@ -417,9 +417,9 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
 
           {/* Right Column: Live Backend SSE Execution Logs */}
           <div className="md:col-span-7 bg-[#181a1f] flex flex-col overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#2b2d32] flex items-center justify-between bg-[#1f2127]">
+            <div className="px-5 py-3 border-b border-primary-slate-1000 flex items-center justify-between bg-primary-slate-900">
               <div className="flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-[#1b55f5]" />
+                <Terminal className="w-4 h-4 text-primary-info" />
                 <span className="text-xs font-mono font-bold text-white tracking-wide">
                   &gt;_ Log Eksekusi Real-Time SSE Backend
                 </span>
@@ -427,9 +427,9 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${
                   streamStatus === 'STREAMING' ? 'bg-amber-400 animate-ping' : 
-                  streamStatus === 'COMPLETED' ? 'bg-[#1b55f5]' : 'bg-rose-500'
+                  streamStatus === 'COMPLETED' ? 'bg-primary-info' : 'bg-rose-500'
                 }`} />
-                <span className="text-[10px] font-mono font-bold text-[#9a9aa8]">
+                <span className="text-[10px] font-mono font-bold text-primary-slate-400">
                   {streamStatus}
                 </span>
               </div>
@@ -449,29 +449,29 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
               className="flex-1 p-5 overflow-y-auto font-mono text-xs space-y-3.5 bg-[#121418]"
             >
               {events.length === 0 && streamStatus === 'CONNECTING' && (
-                <div className="text-[#67677e] italic py-8 text-center space-y-2">
-                  <RotateCcw className="w-5 h-5 animate-spin mx-auto text-[#1b55f5]" />
+                <div className="text-primary-slate-600 italic py-8 text-center space-y-2">
+                  <RotateCcw className="w-5 h-5 animate-spin mx-auto text-primary-info" />
                   <div>Menghubungkan ke SSE stream candidate #{candidate?.id}...</div>
-                  <div className="text-[10px] text-[#67677e]">Endpoint: {API_BASE_URL}/api/candidates/{candidate?.id}/trace-stream (tiket sekali pakai)</div>
+                  <div className="text-[10px] text-primary-slate-600">Endpoint: {API_BASE_URL}/api/candidates/{candidate?.id}/trace-stream (tiket sekali pakai)</div>
                 </div>
               )}
 
               {events.map((evt, idx) => (
                 <div 
                   key={idx} 
-                  className="p-3 rounded-lg border border-[#2b2d32] bg-[#1a1c22] transition-all"
+                  className="p-3 rounded-lg border border-primary-slate-1000 bg-[#1a1c22] transition-all"
                 >
-                  <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-[#2b2d32] mb-2">
-                    <span className="text-[#1b55f5] font-bold flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#1b55f5]" />
+                  <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-primary-slate-1000 mb-2">
+                    <span className="text-primary-info font-bold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary-info" />
                       {evt.step}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[#8ec0ff] font-bold text-[10px]">{evt.status}</span>
-                      <span className="text-[#67677e] text-[10px]">{evt.time}</span>
+                      <span className="text-primary-info-border font-bold text-[10px]">{evt.status}</span>
+                      <span className="text-primary-slate-600 text-[10px]">{evt.time}</span>
                     </div>
                   </div>
-                  <pre className="text-[#d8d8df] text-[11px] whitespace-pre-wrap break-all overflow-x-auto leading-relaxed">
+                  <pre className="text-primary-border-200 text-[11px] whitespace-pre-wrap break-all overflow-x-auto leading-relaxed">
                     {typeof evt.details === 'object' 
                       ? JSON.stringify(evt.details, null, 2) 
                       : evt.details}
@@ -480,15 +480,15 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
               ))}
 
               {streamStatus === 'COMPLETED' && (
-                <div className="p-3 rounded-lg border border-[#1b55f5]/30 bg-[#1b55f5]/10 text-[#8ec0ff] text-[11px] flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-[#1b55f5]" />
+                <div className="p-3 rounded-lg border border-primary-info/30 bg-primary-info/10 text-primary-info-border text-[11px] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-primary-info" />
                   <span>Proses autonomous triage selesai secara deterministik. Hasil telah disinkronkan ke basis data.</span>
                 </div>
               )}
             </div>
 
             {/* Terminal Status Footer */}
-            <div className="px-5 py-2.5 border-t border-[#2b2d32] bg-[#1a1c22] flex items-center justify-between text-[10px] text-[#9a9aa8] font-mono">
+            <div className="px-5 py-2.5 border-t border-primary-slate-1000 bg-[#1a1c22] flex items-center justify-between text-[10px] text-primary-slate-400 font-mono">
               <span>Metode: FastAPI Real-Time SSE Broadcaster</span>
               <span>Candidate ID: {candidate?.id}</span>
               <span>Kepatuhan: UU PDP No. 27/2022</span>
@@ -498,13 +498,13 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
 
         {/* Modal Footer */}
         <div className="px-6 py-3.5 border-t border-[#383a42] bg-[#23252a] flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-[#9a9aa8]">
-            <Sparkles className="w-4 h-4 text-[#1b55f5]" />
+          <div className="flex items-center gap-2 text-xs text-primary-slate-400">
+            <Sparkles className="w-4 h-4 text-primary-info" />
             <span>Riwayat keputusan AI tersimpan transparan untuk proses audit rekrutmen.</span>
           </div>
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-bold transition-all shadow-xs"
+            className="px-5 py-2 rounded-lg bg-primary-info hover:bg-primary-info-dark text-white text-xs font-bold transition-all shadow-xs"
           >
             Tutup Monitor
           </button>

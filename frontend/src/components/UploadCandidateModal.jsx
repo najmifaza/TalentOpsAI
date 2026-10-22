@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  X, 
-  UploadCloud, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle, 
-  Lock, 
-  Briefcase, 
-  User, 
-  Mail, 
+import {
+  X,
+  UploadCloud,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Lock,
+  Briefcase,
+  User,
+  Mail,
   RefreshCw,
-  Sparkles,
   Info,
   ShieldCheck,
   ShieldAlert
@@ -46,7 +45,11 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
             setJobTitle(json.data[0].title);
           }
         }
-      } catch (e) {}
+      } catch (e) {
+        // Falls through to the placeholder option list below; log so a dead
+        // /api/jobs is diagnosable instead of looking like an empty dropdown.
+        console.warn('Job list unavailable for upload modal:', e);
+      }
     }
     if (isOpen) {
       setUploadResult(null);
@@ -193,24 +196,25 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
     const risky = Boolean(uploadResult.residual_risk);
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-        <div className="bg-white rounded-2xl border border-[#e6e6ea] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-          <div className="p-5 border-b border-[#e6e6ea] flex items-center justify-between bg-[#f4f4f6]">
+        <div className="bg-white rounded-2xl border border-primary-border-200 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="p-5 border-b border-primary-border-200 flex items-center justify-between bg-primary-slate-100">
             <div className="flex items-center gap-2.5">
               <div className={`w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-xs ${risky ? 'bg-amber-500' : 'bg-emerald-600'}`}>
                 {risky ? <ShieldAlert className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#000000] font-display">
+                <h3 className="text-base font-bold text-primary-slate-900 font-display">
                   Berkas Masuk Antrean
                 </h3>
-                <p className="text-xs text-[#67677e]">
+                <p className="text-xs text-primary-slate-600">
                   Laporan sanitasi PII untuk berkas yang baru diunggah
                 </p>
               </div>
             </div>
             <button
+              aria-label="Tutup dialog unggah"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-[#67677e] hover:text-[#000000] hover:bg-[#e6e6ea] transition-colors"
+              className="p-1.5 rounded-lg text-primary-slate-600 hover:text-primary-slate-900 hover:bg-primary-border-200 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -235,28 +239,28 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] space-y-2 text-xs">
-              <div className="flex justify-between gap-3 py-1 border-b border-[#e6e6ea]">
-                <span className="text-[#67677e]">Nama terdeteksi</span>
-                <span className="font-mono font-bold text-[#000000] text-right break-all">
+            <div className="p-3.5 rounded-xl bg-primary-slate-100 border border-primary-border-200 space-y-2 text-xs">
+              <div className="flex justify-between gap-3 py-1 border-b border-primary-border-200">
+                <span className="text-primary-slate-600">Nama terdeteksi</span>
+                <span className="font-mono font-bold text-primary-slate-900 text-right break-all">
                   {uploadResult.detected_name || '—'}
                 </span>
               </div>
               <div className="flex justify-between gap-3 py-1">
-                <span className="text-[#67677e]">Sumber nama</span>
-                <span className="font-mono font-bold text-[#1b55f5]">{uploadResult.name_source || '—'}</span>
+                <span className="text-primary-slate-600">Sumber nama</span>
+                <span className="font-mono font-bold text-primary-info">{uploadResult.name_source || '—'}</span>
               </div>
             </div>
 
             {Array.isArray(uploadResult.limitations) && uploadResult.limitations.length > 0 && (
               <div className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#67677e]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-primary-slate-600">
                   Batasan yang dilaporkan sanitizer
                 </span>
                 <ul className="space-y-1">
                   {uploadResult.limitations.map((lim, idx) => (
-                    <li key={idx} className="p-2.5 rounded-lg bg-white border border-[#e6e6ea] text-[11px] text-[#454554] leading-snug flex items-start gap-2">
-                      <Info className="w-3.5 h-3.5 text-[#1b55f5] shrink-0 mt-0.5" />
+                    <li key={idx} className="p-2.5 rounded-lg bg-white border border-primary-border-200 text-[11px] text-primary-slate-700 leading-snug flex items-start gap-2">
+                      <Info className="w-3.5 h-3.5 text-primary-info shrink-0 mt-0.5" />
                       <span>{lim}</span>
                     </li>
                   ))}
@@ -268,7 +272,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-bold transition-all shadow-xs"
+                className="px-5 py-2 rounded-lg bg-primary-info hover:bg-primary-info-dark text-white text-xs font-bold transition-all shadow-xs"
               >
                 Mengerti &amp; Tutup
               </button>
@@ -281,25 +285,26 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white rounded-2xl border border-[#e6e6ea] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl border border-primary-border-200 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="p-5 border-b border-[#e6e6ea] flex items-center justify-between bg-[#f4f4f6]">
+        <div className="p-5 border-b border-primary-border-200 flex items-center justify-between bg-primary-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#1b55f5] text-white flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-primary-info text-white flex items-center justify-center shadow-xs">
               <UploadCloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#000000] font-display">
+              <h3 className="text-base font-bold text-primary-slate-900 font-display">
                 Upload CV Pelamar Baru
               </h3>
-              <p className="text-xs text-[#67677e]">
+              <p className="text-xs text-primary-slate-600">
                 Berkas akan masuk antrean dalam status <strong>Belum Di-scan</strong>
               </p>
             </div>
           </div>
           <button
+            aria-label="Tutup laporan sanitasi"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#67677e] hover:text-[#000000] hover:bg-[#e6e6ea] transition-colors"
+            className="p-1.5 rounded-lg text-primary-slate-600 hover:text-primary-slate-900 hover:bg-primary-border-200 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -317,11 +322,11 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
           {/* Candidate Name Input */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-[#000000] flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-[#1b55f5]" />
+              <label className="text-xs font-bold text-primary-slate-900 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-primary-info" />
                 <span>Nama Lengkap Pelamar *</span>
               </label>
-              <span className="text-[10px] text-[#1b55f5] font-semibold flex items-center gap-1 bg-[#eaf0ff] px-2 py-0.5 rounded-full border border-[#8ec0ff]">
+              <span className="text-[10px] text-primary-info font-semibold flex items-center gap-1 bg-primary-info-soft px-2 py-0.5 rounded-full border border-primary-info-border">
                 <Lock className="w-2.5 h-2.5" /> Sensor UU PDP
               </span>
             </div>
@@ -331,14 +336,14 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
               placeholder="Contoh: Ahmad Rizky Pratama"
               value={candidateName}
               onChange={(e) => setCandidateName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#d8d8df] bg-white text-xs text-[#000000] placeholder-[#67677e] focus:outline-none focus:border-[#1b55f5] focus:ring-1 focus:ring-[#1b55f5]/20"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-primary-slate-300 bg-white text-xs text-primary-slate-900 placeholder-primary-slate-600 focus:outline-none focus:border-primary-info focus:ring-1 focus:ring-primary-info/20"
             />
           </div>
 
           {/* Email Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#000000] flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-[#1b55f5]" />
+            <label className="text-xs font-bold text-primary-slate-900 flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-primary-info" />
               <span>Email Pelamar *</span>
             </label>
             <input
@@ -347,14 +352,14 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
               placeholder="ahmad.rizky@example.com"
               value={candidateEmail}
               onChange={(e) => setCandidateEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#d8d8df] bg-white text-xs text-[#000000] placeholder-[#67677e] focus:outline-none focus:border-[#1b55f5] focus:ring-1 focus:ring-[#1b55f5]/20"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-primary-slate-300 bg-white text-xs text-primary-slate-900 placeholder-primary-slate-600 focus:outline-none focus:border-primary-info focus:ring-1 focus:ring-primary-info/20"
             />
           </div>
 
           {/* Job Position Dropdown */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#000000] flex items-center gap-1.5">
-              <Briefcase className="w-3.5 h-3.5 text-[#1b55f5]" />
+            <label className="text-xs font-bold text-primary-slate-900 flex items-center gap-1.5">
+              <Briefcase className="w-3.5 h-3.5 text-primary-info" />
               <span>Posisi yang Dilamar *</span>
             </label>
             <select
@@ -365,7 +370,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
                 const found = jobsList.find(j => String(j.id) === String(jid));
                 if (found) setJobTitle(found.title);
               }}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-[#d8d8df] bg-white text-xs text-[#000000] font-medium focus:outline-none focus:border-[#1b55f5]"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-primary-slate-300 bg-white text-xs text-primary-slate-900 font-medium focus:outline-none focus:border-primary-info"
             >
               {jobsList.length > 0 ? (
                 jobsList.map(j => (
@@ -385,19 +390,19 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
 
           {/* Dropzone File Upload */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[#000000]">
+            <label className="text-xs font-bold text-primary-slate-900">
               Unggah Berkas CV / Resume *
             </label>
 
             {file ? (
-              <div className="p-3.5 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff] flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-primary-info-soft border border-primary-info-border flex items-center justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <FileText className="w-6 h-6 text-[#1b55f5] shrink-0" />
+                  <FileText className="w-6 h-6 text-primary-info shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#000000] truncate">
+                    <p className="text-xs font-bold text-primary-slate-900 truncate">
                       {file.name}
                     </p>
-                    <p className="text-[10px] text-[#67677e]">
+                    <p className="text-[10px] text-primary-slate-600">
                       {(file.size / 1024).toFixed(1)} KB &bull; Siap dimasukkan antrean
                     </p>
                   </div>
@@ -405,7 +410,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
                 <button
                   type="button"
                   onClick={() => setFile(null)}
-                  className="p-1 rounded-lg text-[#67677e] hover:text-rose-600 transition-colors"
+                  className="p-1 rounded-lg text-primary-slate-600 hover:text-rose-600 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -418,8 +423,8 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
                 onClick={() => fileInputRef.current?.click()}
                 className={`p-6 border-2 border-dashed rounded-xl text-center cursor-pointer transition-all ${
                   isDragging
-                    ? 'border-[#1b55f5] bg-[#eaf0ff]'
-                    : 'border-[#d8d8df] hover:border-[#1b55f5] bg-[#f4f4f6]/50 hover:bg-[#f4f4f6]'
+                    ? 'border-primary-info bg-primary-info-soft'
+                    : 'border-primary-slate-300 hover:border-primary-info bg-primary-slate-100/50 hover:bg-primary-slate-100'
                 }`}
               >
                 <input
@@ -433,13 +438,13 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
                     }
                   }}
                 />
-                <div className="w-10 h-10 mx-auto rounded-xl bg-white border border-[#e6e6ea] flex items-center justify-center text-[#1b55f5] shadow-xs mb-2">
+                <div className="w-10 h-10 mx-auto rounded-xl bg-white border border-primary-border-200 flex items-center justify-center text-primary-info shadow-xs mb-2">
                   <UploadCloud className="w-5 h-5" />
                 </div>
-                <p className="text-xs font-bold text-[#000000]">
+                <p className="text-xs font-bold text-primary-slate-900">
                   Klik untuk pilih berkas, atau tarik &amp; lepas ke sini
                 </p>
-                <p className="text-[10px] text-[#67677e] mt-0.5">
+                <p className="text-[10px] text-primary-slate-600 mt-0.5">
                   Mendukung format PDF atau DOCX (Maksimal 10 MB)
                 </p>
               </div>
@@ -454,8 +459,8 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
           </div>
 
           {/* Privacy & On-Demand Notice */}
-          <div className="p-3 rounded-lg bg-[#f4f4f6] border border-[#e6e6ea] text-[11px] text-[#454554] flex items-start gap-2">
-            <Info className="w-4 h-4 text-[#1b55f5] shrink-0 mt-0.5" />
+          <div className="p-3 rounded-lg bg-primary-slate-100 border border-primary-border-200 text-[11px] text-primary-slate-700 flex items-start gap-2">
+            <Info className="w-4 h-4 text-primary-info shrink-0 mt-0.5" />
             <span>
               <strong>Kendali Penuh HR:</strong> Berkas akan tersimpan aman tanpa langsung diproses oleh AI. Anda dapat memicu <strong>"Mulai Analisis AI"</strong> kapan pun Anda siap.
             </span>
@@ -467,14 +472,14 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg border border-[#d8d8df] text-xs font-semibold text-[#000000] hover:bg-[#f4f4f6] transition-colors"
+              className="px-4 py-2 rounded-lg border border-primary-slate-300 text-xs font-semibold text-primary-slate-900 hover:bg-primary-slate-100 transition-colors"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !file}
-              className="px-5 py-2 rounded-lg bg-[#1b55f5] hover:bg-[#1545c7] disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2"
+              className="px-5 py-2 rounded-lg bg-primary-info hover:bg-primary-info-dark disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2"
             >
               {isSubmitting ? (
                 <>

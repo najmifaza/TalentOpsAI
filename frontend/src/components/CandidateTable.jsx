@@ -15,7 +15,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { DIMENSIONS } from '../lib/dimensions';
-import { categorize, isUnscanned, flagLabel, dedupeFlags } from '../lib/labels';
+import { categorize, isUnscanned, flagLabel, dedupeFlags, formatScore } from '../lib/labels';
 
 // Two-char badge from the masked identifier ("#TK-A17C9B" -> "9B"). The raw
 // database id was rendered here and overflowed the box past two digits.
@@ -234,7 +234,7 @@ export default function CandidateTable({
                     </span>
                   ) : (
                     <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-extrabold text-xs border ${getScoreBadge(candidate.overall_score)}`}>
-                      {candidate.overall_score.toFixed(1)}
+                      {formatScore(candidate.overall_score)}
                     </span>
                   )}
                 </div>
@@ -323,7 +323,7 @@ export default function CandidateTable({
                           <div>
                             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-extrabold text-xs border ${getScoreBadge(candidate.overall_score)}`}>
                               <Zap className="w-3 h-3 fill-current" />
-                              <span>{candidate.overall_score.toFixed(1)}</span>
+                              <span>{formatScore(candidate.overall_score)}</span>
                             </span>
                             {candidate.scores_4d && (
                               <div className="flex items-center justify-center gap-1.5 mt-1">

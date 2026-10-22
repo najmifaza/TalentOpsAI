@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sliders, ArrowLeft, RefreshCw, ShieldAlert, TrendingUp, TrendingDown, Minus, Sparkles, Gauge } from 'lucide-react';
-import { recLabel } from '../lib/labels';
+import { recLabel, formatScore } from '../lib/labels';
 import WeightSliders from './WeightSliders';
 import { toPercent, toRatio, DEFAULT_WEIGHT_PCT } from '../lib/dimensions';
 
@@ -220,7 +220,7 @@ export default function WhatIfStudio() {
                   {ranking.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-primary-slate-500">
-                        {isLoading ? 'Menghitung ulang skor kandidat...' : 'Belum ada kandidat ter-triage pada lowongan ini.'}
+                        {isLoading ? 'Menghitung ulang skor kandidat...' : 'Belum ada kandidat tersaring pada lowongan ini.'}
                       </td>
                     </tr>
                   )}
@@ -238,15 +238,15 @@ export default function WhatIfStudio() {
                           )}
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-primary-slate-600">
-                          {c.baseline.overall_score.toFixed(1)}
+                          {formatScore(c.baseline.overall_score)}
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums font-bold text-primary-black">
-                          {c.simulated.overall_score.toFixed(1)}
+                          {formatScore(c.simulated.overall_score)}
                         </td>
                         <td className={`px-4 py-2.5 text-right tabular-nums font-semibold ${
                           c.simulated.delta_score > 0 ? 'text-emerald-700' : c.simulated.delta_score < 0 ? 'text-rose-700' : 'text-primary-slate-400'
                         }`}>
-                          {c.simulated.delta_score > 0 ? `+${c.simulated.delta_score.toFixed(1)}` : c.simulated.delta_score.toFixed(1)}
+                          {c.simulated.delta_score > 0 ? `+${formatScore(c.simulated.delta_score)}` : formatScore(c.simulated.delta_score)}
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-0.5">

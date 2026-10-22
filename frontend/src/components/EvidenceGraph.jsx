@@ -13,6 +13,7 @@ import {
   Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { formatScore } from '../lib/labels';
 import { 
   GitBranch, 
   ShieldCheck, 
@@ -63,7 +64,7 @@ function CandidateNode({ data }) {
           <span className="text-[10px] font-mono font-bold uppercase text-primary-info-border">Kandidat Dossier</span>
         </div>
         <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary-info text-white font-mono font-bold">
-          Skor: {typeof data.score === 'number' ? data.score.toFixed(1) : (data.score || '-')}
+          Skor: {formatScore(data.score)}
         </span>
       </div>
       <div className="mt-2.5 space-y-1">
@@ -712,7 +713,7 @@ function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false, i
                 ) : (
                   <>
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Jalankan Triage AI Sekarang (Live API)</span>
+                    <span>Jalankan Penyaringan AI Sekarang (Live API)</span>
                   </>
                 )}
               </button>
@@ -909,7 +910,7 @@ export default function EvidenceGraph() {
           </div>
           <p className="text-sm font-bold text-primary-slate-900">Belum Ada Data Kandidat</p>
           <p className="text-xs text-primary-slate-600 max-w-xs">
-            Upload berkas CV kandidat dan jalankan analisis AI triage dari HR Dashboard terlebih dahulu.
+            Upload berkas CV kandidat dan jalankan penyaringan AI dari HR Dashboard terlebih dahulu.
           </p>
         </div>
       ) : (

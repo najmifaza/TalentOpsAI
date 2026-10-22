@@ -6,7 +6,7 @@ import WorkflowStrip from './WorkflowStrip';
 import { can } from '../lib/roles';
 import { toPercent } from '../lib/dimensions';
 import { formatDateTime } from '../lib/format';
-import { categorize, isUnscanned } from '../lib/labels';
+import { categorize, isUnscanned, formatScore } from '../lib/labels';
 import AgentTraceModal from './AgentTraceModal';
 import UploadCandidateModal from './UploadCandidateModal';
 import {
@@ -160,7 +160,7 @@ export default function DashboardOverview() {
   const avgScore = useMemo(() => {
     if (scannedCandidates.length === 0) return null;
     const total = scannedCandidates.reduce((acc, c) => acc + (c.overall_score || 0), 0);
-    return (total / scannedCandidates.length).toFixed(1);
+    return formatScore(total / scannedCandidates.length);
   }, [scannedCandidates]);
 
   const highConfPct = useMemo(() => {
@@ -218,7 +218,7 @@ export default function DashboardOverview() {
     }
 
     setIsBatchRunning(true);
-    setBatchMessage(`Menjalankan batch triage untuk ${unscannedCandidates.length} kandidat...`);
+    setBatchMessage(`Menjalankan penyaringan massal untuk ${unscannedCandidates.length} kandidat...`);
     try {
       const targetIds = unscannedCandidates.map(c => c.id);
       const res = await fetch(`${API_BASE_URL}/api/candidates/batch-triage`, {
@@ -228,19 +228,19 @@ export default function DashboardOverview() {
       });
 
       if (!res.ok) {
-        throw new Error(`Batch triage server responded with ${res.status}`);
+        throw new Error(`Penyaringan massal gagal, server merespons ${res.status}`);
       }
 
       setTimeout(() => {
         fetchCandidates();
         setIsBatchRunning(false);
-        setBatchMessage(`Batch triage berhasil diproses (${unscannedCandidates.length} kandidat).`);
+        setBatchMessage(`Penyaringan massal berhasil diproses (${unscannedCandidates.length} kandidat).`);
         setTimeout(() => setBatchMessage(null), 3500);
       }, 2500);
     } catch (err) {
       console.warn('Batch triage fallback:', err);
       setIsBatchRunning(false);
-      setBatchMessage('Batch triage diproses di latar belakang server.');
+      setBatchMessage('Penyaringan massal diproses di latar belakang server.');
       setTimeout(() => {
         fetchCandidates();
         setBatchMessage(null);
@@ -285,8 +285,8 @@ export default function DashboardOverview() {
             onClick={handleBatchTriage}
             disabled={isBatchRunning || unscannedCandidates.length === 0 || !canBatchTriage}
             title={canBatchTriage
-              ? 'Jalankan autonomous agent triage untuk seluruh berkas yang belum di-scan'
-              : 'Role Anda tidak berwenang menjalankan triage massal'}
+              ? 'Jalankan penyaringan otomatis untuk seluruh berkas yang belum dipindai'
+              : 'Role Anda tidak berwenang menjalankan penyaringan massal'}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-xs ${
               unscannedCandidates.length > 0 && !isBatchRunning
                 ? 'bg-primary-black hover:bg-primary-black/90 text-white'
@@ -297,7 +297,7 @@ export default function DashboardOverview() {
             <span>
               {isBatchRunning 
                 ? 'Memproses Batch...' 
-                : `Batch Triage AI (${unscannedCandidates.length})`}
+                : `Penyaringan Massal AI (${unscannedCandidates.length})`}
             </span>
           </button>
 
@@ -338,11 +338,11 @@ export default function DashboardOverview() {
       {/* 2. Pipeline Stage Cards (WebEkspor Cards) — lima kategori, satu kartu per
           kategori supaya jumlahnya bisa dijumlahkan ke total berkas. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {/* Stage 1: Menunggu Triage AI */}
+        {/* Stage 1: Menunggu Penyaringan AI */}
         <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-primary-slate-500">
-              <span className="uppercase tracking-wider text-[11px]">Menunggu Triage AI</span>
+              <span className="uppercase tracking-wider text-[11px]">Menunggu Penyaringan AI</span>
               <div className="w-7 h-7 rounded-lg bg-primary-orange/10 text-primary-orange flex items-center justify-center">
                 <Clock className="w-4 h-4" />
               </div>
@@ -611,7 +611,7 @@ export default function DashboardOverview() {
                 <button
                   onClick={() => navigate(`/admin/what-if/${g.job_id}`)}
                   disabled={g.scannedCount === 0}
-                  title={g.scannedCount === 0 ? 'Belum ada kandidat ter-triage untuk disimulasikan' : 'Buka studio simulasi bobot & ambang'}
+                  title={g.scannedCount === 0 ? 'Belum ada kandidat tersaring untuk disimulasikan' : 'Buka studio simulasi bobot & ambang'}
                   className={`mt-4 w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold transition-all ${
                     g.scannedCount === 0
                       ? 'bg-primary-slate-100 text-primary-slate-400 border border-primary-border-200 cursor-not-allowed'

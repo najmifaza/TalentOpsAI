@@ -40,6 +40,36 @@ const PRESETS = {
   },
 };
 
+// Profil publik (migrasi 005). Kolom yang dipakai halaman /lowongan/:id dan
+// kartu di /lowongan. Kosong berarti portal menyembunyikan barisnya.
+const EMPTY_PROFILE = {
+  company_name: '',
+  company_logo_url: '',
+  company_about: '',
+  company_address: '',
+  company_industry: '',
+  company_website: '',
+  job_function: '',
+  employment_level: '',
+  location: '',
+  deadline: '',
+  description_text: '',
+  requirements_text: '',
+};
+
+// Input teks pendek: satu baris konfigurasi, bukan satu blok JSX per field.
+const PROFILE_TEXT_FIELDS = [
+  { key: 'company_name', label: 'Nama Perusahaan', placeholder: 'PT Global Service Indonesia', half: true },
+  { key: 'company_logo_url', label: 'URL Logo Perusahaan', placeholder: 'https://.../logo.png', half: true },
+  { key: 'job_function', label: 'Fungsi Pekerjaan', placeholder: 'Engineering / Supply Chain', half: true },
+  { key: 'employment_level', label: 'Jenjang', placeholder: 'Lulusan Baru / Profesional', half: true },
+  { key: 'location', label: 'Lokasi Kerja', placeholder: 'Jakarta Selatan (Hibrida)', half: true },
+  { key: 'deadline', label: 'Batas Lamar', type: 'date', half: true },
+  { key: 'company_industry', label: 'Industri', placeholder: 'Teknologi Informasi', half: true },
+  { key: 'company_website', label: 'Website Perusahaan', placeholder: 'https://perusahaan.co.id', half: true },
+  { key: 'company_address', label: 'Alamat Kantor', placeholder: 'Jl. ... Kota, Provinsi', half: false },
+];
+
 export default function JobManagement() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -53,6 +83,9 @@ export default function JobManagement() {
   const [formDesc, setFormDesc] = useState('');
   const [formComp, setFormComp] = useState('');
   const [formWeights, setFormWeights] = useState(DEFAULT_WEIGHT_PCT);
+  // Profil publik (migrasi 005) disimpan sebagai satu objek: 12 useState terpisah
+  // hanya menambah baris tanpa menambah kejelasan.
+  const [formProfile, setFormProfile] = useState(EMPTY_PROFILE);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -89,6 +122,7 @@ export default function JobManagement() {
     setFormDesc('');
     setFormComp('');
     setFormWeights(DEFAULT_WEIGHT_PCT);
+    setFormProfile(EMPTY_PROFILE);
     setErrorMsg(null);
     setIsModalOpen(true);
   };
@@ -100,6 +134,14 @@ export default function JobManagement() {
     setFormDesc(job.raw_text || '');
     setFormComp((job.core_competencies || []).join(', '));
     setFormWeights(toPercent(job.weight_config));
+    // Deadline dari API berupa ISO penuh; <input type="date"> hanya menerima YYYY-MM-DD.
+    setFormProfile({
+      ...EMPTY_PROFILE,
+      ...Object.fromEntries(
+        Object.keys(EMPTY_PROFILE).map((key) => [key, job[key] ?? ''])
+      ),
+      deadline: job.deadline ? String(job.deadline).slice(0, 10) : '',
+    });
     setErrorMsg(null);
     setIsModalOpen(true);
   };
@@ -147,6 +189,14 @@ export default function JobManagement() {
         raw_text: formDesc.trim(),
         core_competencies: competenciesArray,
         weight_config: normalizedWeights,
+        // String kosong dikirim sebagai null supaya portal menyembunyikan barisnya,
+        // bukan mencetak label dengan nilai kosong.
+        ...Object.fromEntries(
+          Object.entries(formProfile).map(([key, value]) => [
+            key,
+            typeof value === 'string' && value.trim() === '' ? null : value.trim(),
+          ])
+        ),
       };
 
       let res;
@@ -462,6 +512,75 @@ export default function JobManagement() {
                 <p className="text-[11px] text-primary-slate-500">
                   Keahlian ini digunakan oleh <em>Coverage Scoring Engine</em> untuk mencocokkan klaim kandidat secara deterministik.
                 </p>
+              </div>
+
+              {/* Profil Publik: dipakai kartu /lowongan dan sidebar /lowongan/:id.
+                  Semua opsional — kosong berarti portal menyembunyikan barisnya. */}
+              <div className="pt-3 border-t border-primary-border-100 space-y-4">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-primary-black">
+                    Profil Publik Lowongan
+                  </h4>
+                  <p className="text-[11px] text-primary-slate-500">
+                    Tampil di portal karier publik. Kolom yang dikosongkan tidak ditampilkan, bukan tampil kosong.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {PROFILE_TEXT_FIELDS.map(({ key, label, placeholder, half, type }) => (
+                    <div key={key} className={`space-y-1.5 ${half ? '' : 'sm:col-span-2'}`}>
+                      <label className="text-xs font-bold text-primary-black">{label}</label>
+                      <input
+                        type={type || 'text'}
+                        placeholder={placeholder}
+                        value={formProfile[key] || ''}
+                        onChange={(e) => setFormProfile((prev) => ({ ...prev, [key]: e.target.value }))}
+                        className="w-full px-3 py-2 bg-primary-slate-50 border border-primary-border-200 rounded-xl text-xs text-primary-black placeholder:text-primary-slate-400 font-medium focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 focus:bg-white"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-primary-black">Tentang Perusahaan</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Profil singkat perusahaan yang tampil di sidebar halaman detail..."
+                    value={formProfile.company_about || ''}
+                    onChange={(e) => setFormProfile((prev) => ({ ...prev, company_about: e.target.value }))}
+                    className="w-full px-3 py-2 bg-primary-slate-50 border border-primary-border-200 rounded-xl text-xs text-primary-black placeholder:text-primary-slate-400 font-medium focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 focus:bg-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-primary-black">Deskripsi Pekerjaan</label>
+                    <textarea
+                      rows={5}
+                      placeholder={'Satu butir per baris.\nMerancang layanan backend...\nMengelola basis data...'}
+                      value={formProfile.description_text || ''}
+                      onChange={(e) => setFormProfile((prev) => ({ ...prev, description_text: e.target.value }))}
+                      className="w-full px-3 py-2 bg-primary-slate-50 border border-primary-border-200 rounded-xl text-xs text-primary-black placeholder:text-primary-slate-400 font-medium focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 focus:bg-white"
+                    />
+                    <p className="text-[11px] text-primary-slate-500">
+                      Portal menomori otomatis. Tulis satu butir per baris tanpa angka.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-primary-black">Persyaratan</label>
+                    <textarea
+                      rows={5}
+                      placeholder={'Satu butir per baris.\nS1 Informatika.\nPengalaman 3 tahun...'}
+                      value={formProfile.requirements_text || ''}
+                      onChange={(e) => setFormProfile((prev) => ({ ...prev, requirements_text: e.target.value }))}
+                      className="w-full px-3 py-2 bg-primary-slate-50 border border-primary-border-200 rounded-xl text-xs text-primary-black placeholder:text-primary-slate-400 font-medium focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 focus:bg-white"
+                    />
+                    <p className="text-[11px] text-primary-slate-500">
+                      Satu butir per baris. Ini yang dibaca pelamar, terpisah dari teks yang dinilai mesin.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* 4D Weight Config Section */}

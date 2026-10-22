@@ -31,6 +31,34 @@ CONTEXT_KEYWORDS = {
 }
 
 
+def inclusivity_from_findings(findings: list[dict]) -> tuple[int, str]:
+    """
+    Score inklusivitas dari daftar temuan bias (lihat analyze-bias di api/jobs.py).
+
+    Single source of truth: endpoint audit dan portal publik sama-sama memakai
+    fungsi ini, supaya skor yang tersimpan dan yang tampil ke pelamar tidak
+    pernah berbeda. HIGH -15, MEDIUM -8, LOW -4.
+    """
+    penalty = 0
+    for finding in findings:
+        severity = (finding or {}).get("severity")
+        if severity == "HIGH":
+            penalty += 15
+        elif severity == "MEDIUM":
+            penalty += 8
+        else:
+            penalty += 4
+
+    score = max(0, 100 - penalty)
+    if score >= 90:
+        rating = "EXCELLENT"
+    elif score >= 75:
+        rating = "GOOD"
+    else:
+        rating = "NEEDS_REVISION"
+    return score, rating
+
+
 # ==============================================================================
 # 2. HELPER FUNCTIONS
 # ==============================================================================

@@ -485,7 +485,7 @@ export default function DashboardOverview() {
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs">
-            <span className="text-primary-slate-400">Penyaring</span>
+            <span className="text-primary-slate-400">Kategori</span>
             <span className={`font-semibold px-2 py-0.5 rounded-full text-[11px] border ${
               candidates.length === 0
                 ? 'bg-primary-slate-100 text-primary-slate-500 border-primary-border-200'
@@ -509,7 +509,7 @@ export default function DashboardOverview() {
             </div>
             <p className="text-xs text-primary-slate-600">
               {avgScore !== null
-                ? <>Dihitung dari <strong className="text-primary-black">{scannedCandidates.length}</strong> berkas terverifikasi</>
+                ? <>Dihitung dari <strong className="text-primary-black">{scannedCandidates.length}</strong> berkas yang sudah dinilai</>
                 : 'Belum ada berkas yang telah dianalisis AI'}
             </p>
           </div>

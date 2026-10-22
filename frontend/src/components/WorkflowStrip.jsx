@@ -9,7 +9,7 @@ import { UploadCloud, Sparkles, CalendarCheck, ChevronRight } from 'lucide-react
 export default function WorkflowStrip({ unscannedCount = 0, reviewCount = 0, onUpload }) {
   const steps = [
     { key: 'upload', icon: UploadCloud, title: 'Unggah Berkas', detail: 'CV PDF/DOCX masuk antrean', onClick: onUpload },
-    { key: 'triage', icon: Sparkles, title: 'Triage AI', detail: 'Ekstraksi bukti & skor 4D', count: unscannedCount, label: 'menunggu' },
+    { key: 'triage', icon: Sparkles, title: 'Penyaringan AI', detail: 'Ekstraksi bukti & skor 4D', count: unscannedCount, label: 'menunggu' },
     { key: 'review', icon: CalendarCheck, title: 'Review & Jadwalkan', detail: 'Validasi HR lalu kunci slot', count: reviewCount, label: 'perlu review' },
   ];
 

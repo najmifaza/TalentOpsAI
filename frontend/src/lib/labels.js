@@ -80,3 +80,49 @@ export const categorize = (candidate) => {
 export const recLabel = (key) => RECOMMENDATION_LABELS[key] || key || '—';
 
 export const priorityLabel = (key) => PRIORITY_LABELS[key] || key || '—';
+
+// Status siklus berkas. ENUM di migrations/001_initial_schema.sql:67.
+// Dulu dossier mencetak nilai mentahnya ("WAITING_APPROVAL") karena melewati
+// labels.js; setiap enum yang tampil di JSX harus lewat sini.
+const STATUS_LABELS = {
+  queued: 'Dalam Antrean',
+  analyzing: 'Sedang Dianalisis',
+  waiting_approval: 'Menunggu Keputusan HR',
+  approved: 'Disetujui',
+  rejected: 'Tidak Dilanjutkan',
+  request_info: 'Butuh Klarifikasi',
+  failed: 'Gagal Diproses',
+};
+
+// Tingkat keyakinan bukti. Bukan skor — jangan dicampur ke grid 4 dimensi.
+const CONFIDENCE_LABELS = {
+  HIGH: 'Tinggi',
+  MEDIUM: 'Sedang',
+  LOW: 'Rendah',
+};
+
+// Risiko yang belum terurai. HIGH wajib ditandai, bukan sekadar angka.
+const RISK_LABELS = {
+  HIGH: 'Perlu Ditelusuri',
+  MEDIUM: 'Sebagian Belum Jelas',
+  LOW: 'Tidak Ada Indikasi',
+};
+
+const SLOT_STATUS_LABELS = {
+  available: 'Tersedia',
+  tentative: 'Sementara',
+  booked: 'Terisi',
+};
+
+export const statusLabel = (key) => STATUS_LABELS[key] || key || '—';
+export const confidenceLabel = (key) => CONFIDENCE_LABELS[key] || key || '—';
+export const riskLabel = (key) => RISK_LABELS[key] || key || '—';
+export const slotStatusLabel = (key) => SLOT_STATUS_LABELS[key] || key || '—';
+
+// Skor selalu dua desimal dengan koma (id-ID). Sebelumnya dossier mencetak
+// "88.7" sementara halaman lacak mencetak "88,67" untuk angka yang sama.
+export const formatScore = (value) => {
+  const n = Number(value);
+  if (value === null || value === undefined || Number.isNaN(n)) return '—';
+  return n.toFixed(2).replace('.', ',');
+};

@@ -9,6 +9,8 @@ import { isAuthenticated } from './lib/api';
 // Code Splitting via Dynamic Imports (Sprint 5 Vite Optimization)
 const JobManagement = lazy(() => import('./components/JobManagement'));
 const CareerPortal = lazy(() => import('./components/CareerPortal'));
+const JobBoardPage = lazy(() => import('./components/careers/JobBoardPage'));
+const JobDetailPage = lazy(() => import('./components/careers/JobDetailPage'));
 const LoginPage = lazy(() => import('./components/LoginPage'));
 const CalendarPanel = lazy(() => import('./components/CalendarPanel'));
 const CandidateDetailPage = lazy(() => import('./components/CandidateDetailPage'));
@@ -98,8 +100,8 @@ function DashboardLayout() {
   }, []);
 
   const titles = {
-    '/admin': 'Dashboard & Triage Antrean',
-    '/admin/dashboard': 'Dashboard & Triage Antrean',
+    '/admin': 'Dashboard & Antrean Berkas',
+    '/admin/dashboard': 'Dashboard & Antrean Berkas',
     '/admin/jobs': 'Kelola Lowongan & Konfigurasi Bobot 4D',
     '/admin/what-if': 'Kelola Lowongan & Konfigurasi Bobot 4D',
     '/admin/calendar': 'Integrasi Google Calendar',
@@ -108,7 +110,7 @@ function DashboardLayout() {
   const getTitle = () => {
     if (location.pathname.startsWith('/admin/candidates/')) return 'Dossier Kandidat';
     if (location.pathname.startsWith('/admin/what-if')) return 'Simulasi Bobot & Ambang';
-    return titles[location.pathname] || 'Dashboard & Triage Antrean';
+    return titles[location.pathname] || 'Dashboard & Antrean Berkas';
   };
 
   const currentTitle = getTitle();
@@ -202,13 +204,15 @@ export default function App() {
       <Suspense fallback={<ComponentLoader label="Memuat ekosistem TalentOps AI..." />}>
         <Routes>
           {/* Public Career Portal at Root */}
-          <Route path="/" element={<CareerPortal initialTab="apply" />} />
+          <Route path="/" element={<Navigate to="/lowongan" replace />} />
+          <Route path="/lowongan" element={<JobBoardPage />} />
+          <Route path="/lowongan/:id" element={<JobDetailPage />} />
           <Route path="/apply" element={<CareerPortal initialTab="apply" />} />
           <Route path="/track" element={<CareerPortal initialTab="track" />} />
           <Route path="/track/:token" element={<CareerPortal initialTab="track" />} />
 
           {/* Legacy Career Portal Routes */}
-          <Route path="/careers" element={<CareerPortal initialTab="apply" />} />
+          <Route path="/careers" element={<Navigate to="/lowongan" replace />} />
           <Route path="/careers/apply" element={<CareerPortal initialTab="apply" />} />
           <Route path="/careers/track" element={<CareerPortal initialTab="track" />} />
           <Route path="/careers/track/:token" element={<CareerPortal initialTab="track" />} />

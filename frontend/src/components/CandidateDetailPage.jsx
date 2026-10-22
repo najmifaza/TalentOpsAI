@@ -20,7 +20,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { CandidateEvidenceGraph } from './EvidenceGraph';
-import { recLabel } from '../lib/labels';
+import { recLabel, statusLabel, confidenceLabel, riskLabel, slotStatusLabel, formatScore } from '../lib/labels';
 import { DIMENSIONS } from '../lib/dimensions';
 import { can, roleLabel, unmaskBlockedReason } from '../lib/roles';
 
@@ -394,7 +394,7 @@ export default function CandidateDetailPage() {
       // Triage is dispatched as a background task, so completion has to be observed
       // by polling the dossier. A fixed sleep would report success on a job that
       // may still be running or may have failed.
-      setAnalyzeMessage('Triage berjalan di latar belakang. Menunggu hasil...');
+      setAnalyzeMessage('Penyaringan berjalan di latar belakang. Menunggu hasil...');
       const deadline = Date.now() + 120000;
       while (Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 2500));
@@ -412,12 +412,12 @@ export default function CandidateDetailPage() {
         }
       }
       setIsAnalyzing(false);
-      setAnalyzeMessage('Triage melewati batas tunggu 2 menit. Muat ulang dossier beberapa saat lagi.');
+      setAnalyzeMessage('Penyaringan melewati batas tunggu 2 menit. Muat ulang dossier beberapa saat lagi.');
       scheduleMessageClear(6000);
     } catch (err) {
       console.error('Triage run error:', err);
       setIsAnalyzing(false);
-      setAnalyzeMessage('Gagal menghubungi backend triage.');
+      setAnalyzeMessage('Gagal menghubungi layanan penyaringan.');
       scheduleMessageClear(4000);
     }
   };
@@ -542,7 +542,7 @@ export default function CandidateDetailPage() {
           bg: 'bg-primary-slate-100 text-primary-slate-600 border-primary-border-200',
           icon: Clock,
           label: rec || 'Menunggu Analisis',
-          desc: 'Berkas belum dievaluasi oleh sistem triage AI.'
+          desc: 'Berkas belum dievaluasi oleh sistem penyaringan AI.'
         };
     }
   }, [activeCandidateObj.recommendation]);
@@ -556,7 +556,7 @@ export default function CandidateDetailPage() {
   const aiExplanation = useMemo(() => {
     const rec = activeCandidateObj.recommendation;
     const score = activeCandidateObj.overall_score;
-    const scoreStr = typeof score === 'number' ? score.toFixed(1) : '-';
+    const scoreStr = formatScore(score);
     const tech = activeCandidateObj.key_technologies || [];
     const flags = activeCandidateObj.flags || [];
     const anomalies = candidateDetail?.anomalies || [];
@@ -698,7 +698,7 @@ export default function CandidateDetailPage() {
                 </span>
                 {activeCandidateObj.overall_score !== null && activeCandidateObj.overall_score !== undefined && (
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary-orange text-white font-mono font-bold shadow-xs">
-                    Skor: {typeof activeCandidateObj.overall_score === 'number' ? activeCandidateObj.overall_score.toFixed(1) : activeCandidateObj.overall_score}
+                    Skor: {formatScore(activeCandidateObj.overall_score)}
                   </span>
                 )}
               </div>
@@ -768,7 +768,7 @@ export default function CandidateDetailPage() {
                 onClick={handleRunAIAnalysis}
                 disabled={isAnalyzing}
                 className="px-4 py-2 bg-primary-orange hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center gap-1.5"
-                title="Picu triage AI untuk memindai berkas dan memperbarui skor 4D di database"
+                title="Picu penyaringan AI untuk memindai berkas dan memperbarui skor 4D di database"
               >
                 <Sparkles className={`w-3.5 h-3.5 text-white ${isAnalyzing ? 'animate-spin' : ''}`} />
                 <span>{isAnalyzing ? 'Menganalisis Berkas CV...' : 'Jalankan Analisis AI'}</span>
@@ -831,7 +831,7 @@ export default function CandidateDetailPage() {
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary-info" />
                     <h4 className="text-xs font-bold uppercase tracking-wider text-primary-slate-900">
-                      Rasional Evaluasi {aiExplanation.isTemplate ? '(Template Kategori Rekomendasi)' : '(Dari Hasil Triage Backend)'}
+                      Rasional Evaluasi {aiExplanation.isTemplate ? '(Template Kategori Rekomendasi)' : '(Dari Hasil Penyaringan Backend)'}
                     </h4>
                   </div>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-primary-info font-semibold border border-primary-info-border">
@@ -918,7 +918,7 @@ export default function CandidateDetailPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3.5 rounded-xl bg-primary-slate-50 border border-primary-border-200 flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-primary-slate-600">Keyakinan Bukti</span>
-                      <span className="text-xs font-extrabold text-primary-black">{activeCandidateObj.confidence_level || '—'}</span>
+                      <span className="text-xs font-extrabold text-primary-black">{confidenceLabel(activeCandidateObj.confidence_level)}</span>
                     </div>
                     <div className="p-3.5 rounded-xl bg-primary-slate-50 border border-primary-border-200 flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-primary-slate-600">Risiko Tak Terurai</span>
@@ -927,7 +927,7 @@ export default function CandidateDetailPage() {
                         : activeCandidateObj.unresolved_risk === 'MEDIUM' ? 'text-amber-700'
                         : 'text-emerald-700'
                       }`}>
-                        {activeCandidateObj.unresolved_risk || '—'}
+                        {riskLabel(activeCandidateObj.unresolved_risk)}
                       </span>
                     </div>
                   </div>
@@ -1023,9 +1023,7 @@ export default function CandidateDetailPage() {
                     <div>
                       <span className="text-[10px] uppercase font-semibold text-primary-slate-600 block">Skor Total</span>
                       <span className="text-3xl font-extrabold text-primary-black tabular-nums leading-none">
-                        {typeof activeCandidateObj.overall_score === 'number'
-                          ? activeCandidateObj.overall_score.toFixed(1)
-                          : '—'}
+                        {formatScore(activeCandidateObj.overall_score)}
                       </span>
                       <span className="text-[10px] text-primary-slate-500 font-mono"> /100</span>
                     </div>
@@ -1038,7 +1036,7 @@ export default function CandidateDetailPage() {
                   <div className="space-y-1.5 pt-2 border-t border-primary-border-200 text-[11px]">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-primary-slate-600">Status</span>
-                      <span className="font-mono font-bold text-primary-slate-900 uppercase">{activeCandidateObj.status || '—'}</span>
+                      <span className="font-bold text-primary-slate-900 text-right">{statusLabel(activeCandidateObj.status)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-primary-slate-600">Posisi</span>
@@ -1046,7 +1044,7 @@ export default function CandidateDetailPage() {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-primary-slate-600">Keyakinan</span>
-                      <span className="font-bold text-primary-slate-900">{activeCandidateObj.confidence_level || '—'}</span>
+                      <span className="font-bold text-primary-slate-900">{confidenceLabel(activeCandidateObj.confidence_level)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-primary-slate-600">Terdaftar</span>
@@ -1232,7 +1230,7 @@ export default function CandidateDetailPage() {
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                 : 'bg-primary-border-200 text-primary-slate-700 border-primary-slate-300'
                             }`}>
-                              {(slot.status || 'available').toUpperCase()}
+                              {slotStatusLabel(slot.status || 'available')}
                             </span>
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                               isSelected ? 'border-primary-info bg-primary-info' : 'border-gray-300'

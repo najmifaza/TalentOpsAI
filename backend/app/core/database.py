@@ -16,8 +16,13 @@ engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    # Siklus koneksi lebih pendek dari wait_timeout server (300s). Tanpa ini,
+    # koneksi idle di pool bisa dimatikan server lebih dulu dan request
+    # berikutnya menerima "server has gone away" sebelum pre_ping sempat
+    # menolongnya. Juga menjaga jumlah koneksi tiap worker tetap terbatas.
+    pool_recycle=240,
+    pool_size=5,
+    max_overflow=5,
 )
 
 AsyncSessionLocal = async_sessionmaker(

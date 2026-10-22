@@ -11,7 +11,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   const initials = (user?.username || 'HR').slice(0, 2).toUpperCase();
 
   const menuItems = [
-    { path: '/admin/dashboard', label: 'Dashboard & Triage', sublabel: 'Antrean & Evaluasi AI', icon: LayoutDashboard },
+    { path: '/admin/dashboard', label: 'Dashboard & Antrean Berkas', sublabel: 'Antrean & Evaluasi AI', icon: LayoutDashboard },
     { path: '/admin/jobs', label: 'Kelola Lowongan', sublabel: 'Bobot 4D & Kriteria', icon: Briefcase },
     { path: '/admin/calendar', label: 'Kalender', sublabel: 'Google Calendar OAuth', icon: CalendarDays },
   ];

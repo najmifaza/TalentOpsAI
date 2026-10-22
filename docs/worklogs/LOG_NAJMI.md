@@ -5,6 +5,34 @@ Tanggung Jawab: Core API FastAPI, MariaDB 12 Tabel, Sanitasi PII & Kriptografi, 
 
 ---
 
+### 2026-10-22 - Najmi - Profil Publik Lowongan (Migrasi 005), Endpoint Portal Karier & Batas Pool Koneksi DB
+
+- **Branch:** `feat/backend-career-public-profile`
+- **Komponen / File:**
+  - `backend/migrations/005_job_public_profile.sql` (berkas baru, 12 kolom)
+  - `backend/app/api/careers.py` (`PUBLIC_JOB_COLUMNS`, `_job_public_row`, `public_rule_label`, filter list, detail + `bias_audit`, track + `assessment`)
+  - `backend/app/api/jobs.py` (`JobProfileFields`, `PROFILE_FIELDS`, create/update 12 kolom, `list_jobs` payload lengkap, `analyze-bias` pakai fungsi bersama)
+  - `backend/app/core/database.py` (`pool_recycle`, `pool_size`, `max_overflow`)
+  - `backend/scripts/seed_data.py` (profil job id 1)
+  - `backend/tests/test_careers_public_payload.py`, `test_careers_track_public_scope.py`, `test_jobs_list_profile_payload.py` (3 berkas baru, 22 tes)
+- **Catatan:** Portal karier publik meniru struktur Astra tetapi datanya tidak ada sama sekali. `job_descriptions` hanya punya `id, owner_id, title, department, raw_text, core_competencies, status, created_at` — tanpa nama perusahaan, logo, jenjang, fungsi, deadline, deskripsi, atau persyaratan. Selain itu VPS sempat menolak seluruh koneksi baru dengan `1040 Too many connections`.
+- **Yang Dikerjakan:**
+  - **Skema (keputusan: satu tabel, bukan tabel `companies` baru).** `005_job_public_profile.sql` menambah 12 kolom nullable ke `job_descriptions`: `company_name`, `company_logo_url`, `company_about`, `company_address`, `company_industry`, `company_website`, `job_function`, `employment_level`, `deadline`, `location`, `description_text`, `requirements_text`. Semua NULL-able supaya baris lama tetap jalan tanpa backfill. `description_text`/`requirements_text` dipisah dari `raw_text` karena `raw_text` adalah input triage, bukan teks yang dibaca pelamar.
+  - **Endpoint publik.** `GET /api/careers` sekarang menerima filter `q`/`company`/`job_function`/`employment_level` dan mengembalikan `filters` turunan (companies/functions/levels) supaya dropdown tidak di-hardcode di frontend. `GET /api/careers/{id}` mengirim profil + `bias_audit`; `GET /api/careers/track/{token}` menambah `assessment` (skor 4 dimensi, bobot, total, keyakinan, risiko, `decision_reason`).
+  - **`bias_audit` null ≠ skor 100.** `flagged_ambiguities` NULL berarti lowongan belum diaudit. Seed menulis `None`, bukan `[]`, agar lowongan tidak tampil seolah lulus audit dengan nilai sempurna.
+  - **`public_rule_label()`.** Matriks keputusan mengembalikan nama aturan internal ("Aturan 1 (Kandidat Unggul)"). Halaman publik tidak boleh menampilkan itu, jadi dipetakan ke satu kalimat biasa. Aturan tak dikenal jatuh ke kalimat netral, bukan `None`.
+  - **Jalur tulis.** `JobProfileFields` + `PROFILE_FIELDS: ClassVar[tuple]` sebagai allowlist kolom, mencegah field asing masuk INSERT/UPDATE. `update_job` memakai `exclude_unset`: `None` eksplisit mengosongkan, field yang tidak dikirim tidak tersentuh.
+  - **`list_jobs` mengembalikan seluruh kolom profil + `raw_text`.** Ini bug yang ditemukan sendiri: modal edit di JobManagement dibuka dari baris tabel ini, jadi tanpa kolomnya form terbuka kosong dan menyimpan akan menghapus profil yang sudah diisi.
+  - **Pool koneksi.** `pool_size=10, max_overflow=20` per proses tanpa daur ulang = 30 koneksi/proses. Dengan `max_connections` 30 di server dan `wait_timeout` 8 jam, koneksi `Sleep` dari skrip verifikasi menumpuk sampai habis. Sekarang `pool_size=5, max_overflow=5, pool_recycle=240` — daur ulang di bawah `wait_timeout` server (300s) supaya koneksi tidak diputus server diam-diam sebelum dipakai lagi.
+- **Status & Verifikasi:** Selesai. `pytest tests/` → **283 passed**. Migrasi 005 dieksekusi ke DB live dan dikonfirmasi lewat `SHOW COLUMNS`. Verifikasi live: list total 1 dengan `filters {TalentOps AI / Engineering / Profesional}`; filter `q` yang tidak cocok → 0, `level` cocok → 1; detail 20 field, deskripsi 5 baris, persyaratan 6 baris; track `#TK-A17C9B` → 88.67 `STRONG_MATCH`, keyakinan HIGH, risiko LOW, bobot `{40,30,10,20}`; bias 1 HIGH + 1 LOW → 81/GOOD. Tes baru mengunci himpunan kolom `SELECT` == `PROFILE_FIELDS`, dan memastikan `claim_text`/`github_url`/`masked_name_hint` tidak pernah ikut ter-SELECT.
+- **Keterbatasan yang belum tertutup:** Form admin untuk 12 kolom ini ada di `frontend/src/components/JobManagement.jsx` (kepemilikan Willy). Tanpa form itu, pengisian profil hanya bisa lewat API.
+- **Catatan untuk Rekan Tim (Fardizza & Willy):**
+  - **Fardizza:** `inclusivity_from_findings()` di `scoring.py` sekarang dipakai `analyze-bias` **dan** portal publik. Jangan hitung penalti di tempat lain — skor yang tersimpan dan yang tampil ke pelamar harus berasal dari satu fungsi.
+  - **Willy:** `GET /api/jobs` (list) sekarang mengembalikan 12 kolom profil + `raw_text`. Modal edit boleh langsung membacanya; jangan kirim balik field yang tidak diubah sebagai `null`, karena `exclude_unset` memperlakukan `null` sebagai perintah mengosongkan.
+- **Rencana Selanjutnya:** Isi profil untuk lowongan selain id 1, dan tambahkan `deadline` ke query urutan list supaya lowongan yang hampir tutup muncul lebih dulu.
+
+---
+
 ### 2026-10-21 - Najmi - Seed Data Demo: github_url & Evidence Graph Tidak Pernah Terisi
 - **Komponen / File:**
   - `backend/scripts/seed_demo_candidates.py` (kolom `github_url` + insert `candidate_evidence`)

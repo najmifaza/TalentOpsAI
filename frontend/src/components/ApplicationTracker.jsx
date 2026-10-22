@@ -15,6 +15,24 @@ import {
 } from 'lucide-react';
 import { recLabel } from '../lib/labels';
 import { formatDateTime } from '../lib/format';
+import { DIMENSIONS } from '../lib/dimensions';
+
+// Enum backend tidak boleh tampil mentah. Dua label ini khusus halaman publik:
+// "Perlu Pemeriksaan Manual" bukan istilah yang dipakai rekruter internal.
+const CONFIDENCE_LABELS = {
+  HIGH: 'Tinggi — bukti pada CV terverifikasi',
+  MEDIUM: 'Sedang — sebagian klaim tanpa rincian teknis',
+  LOW: 'Rendah — sedikit klaim teknis yang bisa diverifikasi',
+};
+
+const RISK_LABELS = {
+  LOW: 'Tidak ada indikasi',
+  MEDIUM: 'Ada indikasi yang perlu dikonfirmasi',
+  HIGH: 'Perlu konfirmasi sebelum diproses',
+};
+
+const confidenceLabel = (key) => CONFIDENCE_LABELS[key] || key || '—';
+const riskLabel = (key) => RISK_LABELS[key] || key || '—';
 
 
 export default function ApplicationTracker({ initialToken = '', onBackToPortal }) {
@@ -65,6 +83,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
           status: data.status || 'queued',
           recommendation: data.recommendation,
           submitted_at: data.submitted_at,
+          assessment: data.assessment || null,
           source: 'LIVE_DATABASE'
         });
         setLastChecked(new Date().toLocaleTimeString('id-ID'));
@@ -115,14 +134,14 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
       {
         id: 1,
         title: 'Berkas Diterima & Disanitasi',
-        desc: 'Enkripsi AES-256-GCM & sensor PII in-memory aktif',
+        desc: 'Nama, kontak, dan data pribadi disamarkan sebelum berkas dibaca sistem',
         done: true,
         current: false,
       },
       {
         id: 2,
-        title: 'Audit Integritas & Anti-Injeksi',
-        desc: 'Pemeriksaan tag tersembunyi DOCX & validasi format Magic Bytes',
+        title: 'Audit Integritas Berkas',
+        desc: 'Pemeriksaan berkas rusak, teks tak terlihat, dan instruksi tersembunyi',
         done: ['analyzing', 'in_review', 'waiting_approval', 'interview_scheduled', 'shortlisted'].includes(status),
         current: status === 'queued',
       },
@@ -136,13 +155,13 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
       {
         id: 4,
         title: 'Evaluasi 4 Dimensi & Audit Portofolio',
-        desc: 'Penilaian objektif: Keahlian Inti, Portofolio Proyek, Bukti, dan Resiko',
+        desc: 'Keahlian inti, pengalaman kerja, pendidikan, dan portofolio dinilai terpisah lalu digabung dengan bobot lowongan',
         done: ['waiting_approval', 'interview_scheduled', 'shortlisted'].includes(status),
         current: false,
       },
       {
         id: 5,
-        title: 'Keputusan Triage & Peninjauan Tim HR',
+        title: 'Keputusan Penyaringan & Peninjauan Tim HR',
         desc: 'Rekomendasi otomatis & reservasi kalender wawancara',
         done: ['interview_scheduled', 'shortlisted'].includes(status),
         current: ['waiting_approval'].includes(status),
@@ -156,7 +175,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
         return (
           <span className="px-3 py-1 rounded-full text-xs font-jkt font-bold bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1.5 animate-pulse">
             <Clock className="w-3.5 h-3.5 text-amber-600" />
-            Dalam Antrean Triage
+            Dalam Antrean Penyaringan
           </span>
         );
       case 'analyzing':
@@ -179,7 +198,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
         return (
           <span className="px-3 py-1 rounded-full text-xs font-jkt font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            Lolos Triage &bull; Siap Wawancara
+            Lolos Penyaringan &bull; Siap Wawancara
           </span>
         );
       case 'rejected':
@@ -323,7 +342,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
                 </span>
                 {trackingData.source === 'LIVE_DATABASE' ? (
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-semibold border border-emerald-300">
-                    Data Server
+                    Terbaru dari server
                   </span>
                 ) : (
                   <span
@@ -363,7 +382,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
           {/* Stepper Timeline */}
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-primary-black mb-4">
-              Perkembangan Evaluasi Triage AI
+              Perkembangan Evaluasi Penyaringan AI
             </h4>
             <div className="space-y-4">
               {getTimelineSteps(trackingData.status).map((step, idx) => (
@@ -404,6 +423,94 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
               ))}
             </div>
           </div>
+
+          {/* Assessment Breakdown: skor per dimensi + alasan keputusan.
+              Backend hanya mengirim ini setelah penyaringan benar-benar berjalan
+              (assessment null selama queued), jadi tidak ada angka palsu 0.0. */}
+          {trackingData.assessment && (
+            <div className="pt-4 border-t border-primary-border-100 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary-black">
+                  Rincian Penilaian 4 Dimensi
+                </h4>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-primary-slate-500">
+                    Total
+                  </span>
+                  <span className="font-mono text-sm font-extrabold text-primary-black tabular-nums">
+                    {trackingData.assessment.overall_score.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-primary-slate-400">/ 100</span>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {DIMENSIONS.map((dim) => {
+                  const value = trackingData.assessment.dimension_scores?.[dim.key] ?? 0;
+                  const weight = trackingData.assessment.weights?.[dim.key];
+                  return (
+                    <div key={dim.key}>
+                      <div className="flex items-center justify-between text-[11px] mb-1">
+                        <span className="font-semibold text-primary-black">
+                          {dim.label}
+                          {weight != null && (
+                            <span className="ml-1.5 font-normal text-primary-slate-400">
+                              &times; {Math.round(weight * 100)}%
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-mono font-bold text-primary-slate-700 tabular-nums">
+                          {value.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-primary-slate-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${dim.bar}`}
+                          style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="text-[10px] text-primary-slate-400 leading-relaxed">
+                Total adalah rata-rata berbobot keempat dimensi di atas, bukan rata-rata biasa.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                <div className="p-2.5 rounded-xl bg-primary-slate-50 border border-primary-border-200">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-primary-slate-500 mb-0.5">
+                    Tingkat Keyakinan Data
+                  </span>
+                  <span className="font-semibold text-primary-black">
+                    {confidenceLabel(trackingData.assessment.confidence_level)}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-primary-slate-50 border border-primary-border-200">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-primary-slate-500 mb-0.5">
+                    Perlu Pemeriksaan Manual
+                  </span>
+                  <span className="font-semibold text-primary-black">
+                    {riskLabel(trackingData.assessment.unresolved_risk)}
+                  </span>
+                </div>
+              </div>
+
+              {trackingData.assessment.decision_reason && (
+                <p className="text-[11px] text-primary-slate-600 leading-relaxed">
+                  <span className="font-bold text-primary-black">Dasar keputusan: </span>
+                  {trackingData.assessment.decision_reason} Keputusan akhir tetap diambil tim HR setelah
+                  meninjau bukti pada CV Anda.
+                </p>
+              )}
+
+              <p className="text-[10px] text-primary-slate-400 leading-relaxed">
+                Skor dihitung dari kecocokan kompetensi, durasi pengalaman, jenjang pendidikan, dan bukti
+                portofolio. Kutipan isi CV dan catatan pemeriksaan internal tidak ditampilkan di halaman publik.
+              </p>
+            </div>
+          )}
 
           {/* Recommendation Note if Available */}
           {trackingData.recommendation && (

@@ -5,7 +5,7 @@ import { roleLabel } from '../lib/roles';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
-export default function Header({ currentTitle = "Dashboard & Triage", onActionClick, onToggleMobileMenu }) {
+export default function Header({ currentTitle = "Dashboard & Antrean Berkas", onActionClick, onToggleMobileMenu }) {
   const [apiStatus, setApiStatus] = useState('checking'); // 'ok' | 'error' | 'checking'
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);

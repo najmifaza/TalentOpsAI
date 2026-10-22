@@ -16,7 +16,7 @@ import {
   Cpu,
   Compass
 } from 'lucide-react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import DemoDataBanner from './DemoDataBanner';
 import DpaModal from './DpaModal';
 import TokenIssuedModal from './TokenIssuedModal';
@@ -26,6 +26,10 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
   const navigate = useNavigate();
   const { token: urlToken } = useParams();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  // /apply?job=12 datang dari tombol "Lamar" di papan lowongan. Tanpa ini
+  // pelamar mendarat di formulir kosong dan harus mencari posisinya lagi.
+  const requestedJobId = searchParams.get('job');
 
   const isTrackRoute = location.pathname.includes('/track') || initialTab === 'track';
   const [activeTab, setActiveTab] = useState(isTrackRoute ? 'track' : 'apply');
@@ -79,7 +83,12 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
         const json = await res.json();
         const activeJobs = json.data && json.data.length > 0 ? json.data : [];
         setJobs(activeJobs);
-        setSelectedJob(null);
+        // Preselect hanya kalau id-nya benar-benar ada di daftar aktif; kalau
+        // lowongan sudah ditutup, biarkan kosong daripada memasang entri hantu.
+        const preselected = requestedJobId
+          ? activeJobs.find((j) => String(j.id) === String(requestedJobId))
+          : null;
+        setSelectedJob(preselected || null);
       } else {
         setJobs([]);
         setSelectedJob(null);
@@ -280,6 +289,12 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
             <div className="flex items-center gap-3">
               <div className="inline-flex p-1 rounded-full bg-primary-slate-100 border border-primary-border-200">
                 <button
+                  onClick={() => navigate('/lowongan')}
+                  className="px-3 sm:px-4 py-1.5 rounded-full text-xs font-jkt font-semibold text-primary-slate-600 hover:text-primary-black transition-all"
+                >
+                  Lowongan
+                </button>
+                <button
                   onClick={() => navigate('/apply')}
                   className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-jkt font-semibold transition-all ${
                     activeTab === 'apply'
@@ -345,7 +360,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                         <Compass className="size-3.5 text-white" />
                       </span>
                       <span className="font-jkt font-semibold text-[11px] tracking-[0.22em] uppercase text-primary-black">
-                        Portal Publik Pelamar · Triage Otonom
+                        Portal Publik Pelamar · Penyaringan Otomatis
                       </span>
                     </div>
 
@@ -363,7 +378,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                   <div className="hidden lg:flex lg:col-span-3 flex-col items-end gap-2 pb-2">
                     <span className="font-jkt font-semibold text-[11px] tracking-[0.22em] uppercase text-primary-slate-1100">Jaminan Layanan</span>
                     <span className="font-jkt italic font-medium text-xs text-primary-slate-600 text-right max-w-[14rem]">
-                      Hasil triage deterministik keluar dalam hitungan detik setelah berkas terenkripsi.
+                      Berkas Anda masuk antrean penyaringan. Hasilnya muncul di halaman Lacak Status setelah tim HR menjalankannya.
                     </span>
                   </div>
                 </div>
@@ -723,7 +738,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                           {submitting ? (
                             <>
                               <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                              <span>Mengenkripsi & Mengirim Lamaran ke Queue Triage...</span>
+                              <span>Mengenkripsi & Mengirim Lamaran ke Antrean Penyaringan...</span>
                             </>
                           ) : (
                             <>
@@ -834,7 +849,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                   Fitur Utama
                 </h4>
                 <ul className="space-y-2 text-xs text-primary-slate-400 font-jkt">
-                  <li><a href="#main" className="hover:text-white transition-colors">Triage Otonom Deterministik</a></li>
+                  <li><a href="#main" className="hover:text-white transition-colors">Penyaringan Otomatis Deterministik</a></li>
                   <li><a href="#main" className="hover:text-white transition-colors">Sanitasi PII In-Memory</a></li>
                   <li><a href="#main" className="hover:text-white transition-colors">Audit Portofolio 0 Halusinasi</a></li>
                   <li><a href="#main" className="hover:text-white transition-colors">Skoring 4 Dimensi</a></li>

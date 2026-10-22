@@ -167,7 +167,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
         setStreamError(
           triageRes.status === 404
             ? `Kandidat (ID: ${candidateId}) tidak ditemukan di basis data backend VPS (${API_BASE_URL}). Pastikan ID terdaftar.`
-            : `Backend Triage Galat (${triageRes.status}): ${errJson.detail || 'Gagal memulai triage di server.'}`
+            : `Penyaringan Galat (${triageRes.status}): ${errJson.detail || 'Gagal memulai penyaringan di server.'}`
         );
         setIsStreaming(false);
         cleanupConnections();
@@ -325,7 +325,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
               onClick={startStream}
               disabled={isStreaming}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all border border-white/10 disabled:opacity-50"
-              title="Jalankan Ulang Triage Backend"
+              title="Jalankan Ulang Penyaringan Berkas"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isStreaming ? 'animate-spin' : ''}`} />
               <span>Analisis Ulang</span>
@@ -482,7 +482,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
               {streamStatus === 'COMPLETED' && (
                 <div className="p-3 rounded-lg border border-primary-info/30 bg-primary-info/10 text-primary-info-border text-[11px] flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0 text-primary-info" />
-                  <span>Proses autonomous triage selesai secara deterministik. Hasil telah disinkronkan ke basis data.</span>
+                  <span>Proses penyaringan otomatis selesai secara deterministik. Hasil telah disinkronkan ke basis data.</span>
                 </div>
               )}
             </div>

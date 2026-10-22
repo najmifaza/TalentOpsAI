@@ -28,6 +28,7 @@ from app.core.file_parser import (
     delete_resume_file,
 )
 from app.core.rate_limiter import apply_rate_limiter
+from app.core.scoring import DeterministicScoringEngine, inclusivity_from_findings
 from app.core.erasure import execute_talentops_erasure
 from app.core.email import email_service
 from app.core.email_templates import application_received, erasure_confirmation
@@ -36,58 +37,139 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/careers", tags=["Public Career Portal"])
 
 
-@router.get("")
-async def list_active_jobs(db: AsyncSession = Depends(get_db)):
-    """Public list of active job descriptions."""
-    res = await db.execute(
-        text("SELECT id, title, department, raw_text, core_competencies, status, created_at FROM job_descriptions WHERE status = 'active'")
-    )
-    jobs = []
-    for row in res.mappings():
-        comp = row["core_competencies"]
-        if isinstance(comp, str):
-            try:
-                comp = json.loads(comp)
-            except Exception:
-                comp = []
-        jobs.append({
-            "id": row["id"],
-            "title": row["title"],
-            "department": row["department"],
-            "raw_text": row["raw_text"],
-            "core_competencies": comp,
-            "status": row["status"],
-            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-        })
-    return {"data": jobs, "total": len(jobs)}
-
-
-@router.get("/{job_id}")
-async def get_job_detail(job_id: int, db: AsyncSession = Depends(get_db)):
-    """Public detail of single active job description."""
-    res = await db.execute(
-        text("SELECT id, title, department, raw_text, core_competencies, status FROM job_descriptions WHERE id = :id AND status = 'active'"),
-        {"id": job_id},
-    )
-    job = res.mappings().first()
-    if not job:
-        raise HTTPException(status_code=404, detail="JOB_NOT_FOUND_OR_CLOSED")
-
-    comp = job["core_competencies"]
+def _job_public_row(row) -> dict:
+    """Kolom lowongan yang aman dan relevan untuk portal publik."""
+    comp = row["core_competencies"]
     if isinstance(comp, str):
         try:
             comp = json.loads(comp)
         except Exception:
             comp = []
 
+    raw_findings = row["flagged_ambiguities"] if "flagged_ambiguities" in row.keys() else None
+    audited = raw_findings is not None
+    findings = raw_findings
+    if isinstance(findings, str):
+        try:
+            findings = json.loads(findings)
+        except Exception:
+            findings = []
+    findings = findings or []
+    inclusivity_score, inclusivity_rating = inclusivity_from_findings(findings)
+
     return {
-        "id": job["id"],
-        "title": job["title"],
-        "department": job["department"],
-        "raw_text": job["raw_text"],
+        "id": row["id"],
+        "title": row["title"],
+        "department": row["department"],
+        "raw_text": row["raw_text"],
         "core_competencies": comp,
-        "status": job["status"],
+        "status": row["status"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "company_name": row["company_name"],
+        "company_logo_url": row["company_logo_url"],
+        "company_industry": row["company_industry"],
+        "job_function": row["job_function"],
+        "employment_level": row["employment_level"],
+        "location": row["location"],
+        "deadline": row["deadline"].isoformat() if row["deadline"] else None,
+        "description_text": row["description_text"],
+        "requirements_text": row["requirements_text"],
+        "company_about": row["company_about"],
+        "company_address": row["company_address"],
+        "company_website": row["company_website"],
+        # Audit bias hanya ditampilkan kalau rekruter pernah menjalankannya.
+        # NULL berarti "belum diaudit", bukan "skor 100".
+        "bias_audit": (
+            {
+                "inclusivity_score": inclusivity_score,
+                "inclusivity_rating": inclusivity_rating,
+                "total_flags": len(findings),
+                "categories": sorted({f.get("category") for f in findings if f.get("category")}),
+            }
+            if audited
+            else None
+        ),
     }
+
+
+PUBLIC_JOB_COLUMNS = """
+    id, title, department, raw_text, core_competencies, flagged_ambiguities, status, created_at,
+    company_name, company_logo_url, company_industry, job_function, employment_level,
+    location, deadline, description_text, requirements_text,
+    company_about, company_address, company_website
+"""
+
+
+PUBLIC_RULE_LABELS = {
+    "Aturan 1 (Kandidat Unggul)": "Seluruh syarat utama terpenuhi dengan bukti yang dapat diverifikasi.",
+    "Aturan 2 (Ambang Kritis / Anomali)": "Kompetensi cukup, namun ada bagian yang perlu dikonfirmasi tim HR.",
+    "Aturan 3 (Kandidat Kompeten Standard)": "Kompetensi memenuhi ambang minimum yang ditetapkan lowongan.",
+    "Aturan 4 (Eliminasi Kelayakan)": "Skor keseluruhan belum mencapai ambang minimum lowongan.",
+}
+
+
+def public_rule_label(rule: str | None) -> str | None:
+    """Kalimat publik untuk nama aturan internal, bukan nama aturannya."""
+    if not rule:
+        return None
+    return PUBLIC_RULE_LABELS.get(rule, "Penilaian mengikuti ambang batas yang ditetapkan lowongan.")
+
+
+@router.get("")
+async def list_active_jobs(
+    q: Optional[str] = None,
+    company: Optional[str] = None,
+    job_function: Optional[str] = None,
+    employment_level: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public list of active job descriptions, filterable by keyword/company/function/level."""
+    where = ["status = 'active'"]
+    params: dict = {}
+
+    if q and q.strip():
+        where.append("(title LIKE :q OR company_name LIKE :q OR raw_text LIKE :q)")
+        params["q"] = f"%{q.strip()}%"
+    if company:
+        where.append("company_name = :company")
+        params["company"] = company
+    if job_function:
+        where.append("job_function = :job_function")
+        params["job_function"] = job_function
+    if employment_level:
+        where.append("employment_level = :employment_level")
+        params["employment_level"] = employment_level
+
+    res = await db.execute(
+        text(f"SELECT {PUBLIC_JOB_COLUMNS} FROM job_descriptions WHERE {' AND '.join(where)} ORDER BY created_at DESC"),
+        params,
+    )
+    jobs = [_job_public_row(row) for row in res.mappings()]
+
+    # Opsi filter diturunkan dari hasil, jadi frontend tidak butuh endpoint sendiri.
+    return {
+        "data": jobs,
+        "total": len(jobs),
+        "filters": {
+            "companies": sorted({j["company_name"] for j in jobs if j["company_name"]}),
+            "functions": sorted({j["job_function"] for j in jobs if j["job_function"]}),
+            "levels": sorted({j["employment_level"] for j in jobs if j["employment_level"]}),
+        },
+    }
+
+
+@router.get("/{job_id}")
+async def get_job_detail(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Public detail of single active job description."""
+    res = await db.execute(
+        text(f"SELECT {PUBLIC_JOB_COLUMNS} FROM job_descriptions WHERE id = :id AND status = 'active'"),
+        {"id": job_id},
+    )
+    job = res.mappings().first()
+    if not job:
+        raise HTTPException(status_code=404, detail="JOB_NOT_FOUND_OR_CLOSED")
+
+    return _job_public_row(job)
 
 
 @router.post("/{job_id}/apply")
@@ -364,11 +446,16 @@ async def track_application_status(tracking_token: str, db: AsyncSession = Depen
     """
     Public candidate status tracker using secret UUIDv4 tracking_token.
     Prevents sequential enumeration attacks.
+
+    Yang dibuka ke pelamar: status, rekomendasi, keyakinan, tingkat risiko,
+    skor per dimensi, dan aturan keputusan yang dipakai. Yang TIDAK dibuka:
+    kutipan CV (claim_text), detail anomali keamanan, dan tautan repositori.
     """
     res = await db.execute(
         text("""
             SELECT c.masked_identifier, c.status, c.recommendation, c.created_at,
-                   j.title as job_title, j.department
+                   c.overall_score, c.confidence_level, c.unresolved_risk, c.dimension_scores,
+                   j.title as job_title, j.department, j.weight_config
             FROM candidates c
             JOIN job_descriptions j ON c.job_id = j.id
             WHERE c.tracking_token = :token AND c.is_deleted = FALSE
@@ -379,13 +466,73 @@ async def track_application_status(tracking_token: str, db: AsyncSession = Depen
     if not row:
         raise HTTPException(status_code=404, detail="APPLICATION_NOT_FOUND_OR_WITHDRAWN")
 
+    dims = row["dimension_scores"]
+    if isinstance(dims, str):
+        try:
+            dims = json.loads(dims)
+        except Exception:
+            dims = None
+
+    overall = float(row["overall_score"]) if row["overall_score"] is not None else None
+    confidence = row["confidence_level"]
+    risk = row["unresolved_risk"]
+    recommendation = row["recommendation"]
+
+    weights = row["weight_config"]
+    if isinstance(weights, str):
+        try:
+            weights = json.loads(weights)
+        except Exception:
+            weights = None
+    weights = weights or DeterministicScoringEngine.DEFAULT_WEIGHTS
+
+    # Alasan keputusan dihitung ulang dari skor tersimpan, bukan disimpan sebagai
+    # kolom baru: satu sumber kebenaran tetap scoring.py. has_prompt_injection
+    # sengaja False supaya pelamar tidak pernah melihat label "Security Quarantine".
+    decision_rule = None
+    if overall is not None and confidence and risk and recommendation:
+        _, _, decision_rule = DeterministicScoringEngine.evaluate_decision_points(
+            overall_score=overall,
+            confidence=confidence,
+            risk=risk,
+            has_prompt_injection=False,
+        )
+
     return {
         "masked_identifier": row["masked_identifier"],
         "job_title": row["job_title"],
         "department": row["department"],
         "status": row["status"],
-        "recommendation": row["recommendation"],
+        "recommendation": recommendation,
         "submitted_at": row["created_at"].isoformat() if row["created_at"] else None,
+        # Null selama masih queued/analyzing: jangan tampilkan 0.0 seolah sudah dinilai.
+        "assessment": (
+            {
+                "overall_score": overall,
+                "dimension_scores": {
+                    "SKILL": float((dims or {}).get("SKILL", 0.0)),
+                    "EXPERIENCE": float((dims or {}).get("EXPERIENCE", 0.0)),
+                    "EDUCATION": float((dims or {}).get("EDUCATION", 0.0)),
+                    "PORTFOLIO": float((dims or {}).get("PORTFOLIO", 0.0)),
+                },
+                # Bobot ikut dikirim: tanpa ini total 88.67 tidak bisa dicocokkan
+                # dengan rata-rata empat bar (82.92), dan pelamar menyimpulkan
+                # angkanya salah.
+                "weights": {
+                    "SKILL": float(weights.get("SKILL", 0.4)),
+                    "EXPERIENCE": float(weights.get("EXPERIENCE", 0.3)),
+                    "EDUCATION": float(weights.get("EDUCATION", 0.1)),
+                    "PORTFOLIO": float(weights.get("PORTFOLIO", 0.2)),
+                },
+                "confidence_level": confidence,
+                "unresolved_risk": risk,
+                "decision_rule": decision_rule,
+                # Label publik untuk aturan internal ("Aturan 1 (Kandidat Unggul)").
+                "decision_reason": public_rule_label(decision_rule),
+            }
+            if overall is not None
+            else None
+        ),
     }
 
 

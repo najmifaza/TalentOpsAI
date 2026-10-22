@@ -37,7 +37,7 @@ export default function DpaModal({ isOpen, onClose, onAccept }) {
             <div className="text-xs space-y-1">
               <span className="font-bold text-[#0B201B] block">Jaminan Keamanan & Kerahasiaan Kriptografis</span>
               <p className="text-[#3D544E]">
-                TalentOps AI menerapkan arsitektur <em>Zero-Knowledge LLM Triage</em>. Seluruh data identitas sensitif Anda (nama, email, nomor telepon, dan almamater) disensor sebelum diproses oleh model kecerdasan buatan.
+                TalentOps AI menerapkan arsitektur <em>Penyaringan LLM Zero-Knowledge</em>. Seluruh data identitas sensitif Anda (nama, email, nomor telepon, dan almamater) disensor sebelum diproses oleh model kecerdasan buatan.
               </p>
             </div>
           </div>

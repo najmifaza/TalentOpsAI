@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, ExternalLink, Menu, Circle, Sparkles, RefreshCw, LogOut } from 'lucide-react';
+import { Building2, ExternalLink, Menu, Circle, RefreshCw, LogOut } from 'lucide-react';
 import { getUser, logout } from '../lib/api';
+import { roleLabel } from '../lib/roles';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
 export default function Header({ currentTitle = "Dashboard & Triage", onActionClick, onToggleMobileMenu }) {
   const [apiStatus, setApiStatus] = useState('checking'); // 'ok' | 'error' | 'checking'
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [user] = useState(() => getUser());
 
   const checkHealth = async () => {
@@ -20,6 +22,16 @@ export default function Header({ currentTitle = "Dashboard & Triage", onActionCl
       setTimeout(() => setIsRefreshing(false), 400);
     }
   };
+
+  useEffect(() => {
+    const sync = () => setIsOffline(!navigator.onLine);
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    return () => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('offline', sync);
+    };
+  }, []);
 
   useEffect(() => {
     checkHealth();
@@ -63,11 +75,14 @@ export default function Header({ currentTitle = "Dashboard & Triage", onActionCl
       </div>
 
       <div className="flex items-center gap-2.5">
-        {/* Real-time API Health Pill */}
+        {/* Real-time API Health Pill. Hidden while the global offline banner is up:
+            two independent "you are offline" signals with different wording was the
+            confusing part, not the missing signal. Also hidden below sm, where the
+            header row overflowed the viewport at 390px. */}
         <button
           type="button"
           onClick={checkHealth}
-          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-primary-border-200 bg-primary-slate-50 hover:bg-primary-slate-100 text-primary-slate-700 transition-all"
+          className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-primary-border-200 bg-primary-slate-50 hover:bg-primary-slate-100 text-primary-slate-700 transition-all ${isOffline ? 'sm:hidden' : ''}`}
           title="Klik untuk cek status API"
         >
           <Circle className={`w-2 h-2 fill-current ${
@@ -100,7 +115,7 @@ export default function Header({ currentTitle = "Dashboard & Triage", onActionCl
         <div className="flex items-center gap-1.5 pl-2 border-l border-primary-border-100">
           <span className="hidden xl:inline text-[11px] font-semibold text-primary-slate-600">
             {user?.username || 'Sesi aktif'}
-            {user?.role ? <span className="text-primary-slate-400"> · {user.role}</span> : null}
+            {user?.role ? <span className="text-primary-slate-400"> · {roleLabel(user.role)}</span> : null}
           </span>
           <button
             type="button"

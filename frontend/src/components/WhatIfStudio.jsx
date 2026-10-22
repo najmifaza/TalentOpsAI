@@ -1,47 +1,24 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sliders, ArrowLeft, RefreshCw, ShieldAlert, TrendingUp, TrendingDown, Minus, Sparkles, Gauge } from 'lucide-react';
+import { recLabel } from '../lib/labels';
+import WeightSliders from './WeightSliders';
+import { toPercent, toRatio, DEFAULT_WEIGHT_PCT } from '../lib/dimensions';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
-const DIMENSIONS = [
-  { key: 'SKILL', label: 'Keahlian & Core Skills' },
-  { key: 'EXPERIENCE', label: 'Pengalaman Kerja' },
-  { key: 'EDUCATION', label: 'Linieritas Pendidikan' },
-  { key: 'PORTFOLIO', label: 'Portofolio GitHub' },
-];
-
 const BUCKETS = [
-  { key: 'STRONG_MATCH', label: 'Strong Match', cls: 'text-emerald-700 bg-emerald-50 border-emerald-300' },
-  { key: 'REVIEW_REQUIRED', label: 'Review Required', cls: 'text-primary-blue bg-primary-blue/10 border-primary-blue/30' },
-  { key: 'WEAK_FIT', label: 'Weak Fit', cls: 'text-rose-700 bg-rose-50 border-rose-200' },
+  { key: 'STRONG_MATCH', label: recLabel('STRONG_MATCH'), cls: 'text-emerald-700 bg-emerald-50 border-emerald-300' },
+  { key: 'REVIEW_REQUIRED', label: recLabel('REVIEW_REQUIRED'), cls: 'text-primary-blue bg-primary-blue/10 border-primary-blue/30' },
+  { key: 'WEAK_FIT', label: recLabel('WEAK_FIT'), cls: 'text-rose-700 bg-rose-50 border-rose-200' },
 ];
-
-const toPercent = (w) => ({
-  SKILL: Math.round((w?.SKILL ?? 0.4) * 100),
-  EXPERIENCE: Math.round((w?.EXPERIENCE ?? 0.3) * 100),
-  EDUCATION: Math.round((w?.EDUCATION ?? 0.1) * 100),
-  PORTFOLIO: Math.round((w?.PORTFOLIO ?? 0.2) * 100),
-});
-
-// Sliders move independently; the API requires weights summing to 1.0, so normalise here.
-const normalise = (pct) => {
-  const total = pct.SKILL + pct.EXPERIENCE + pct.EDUCATION + pct.PORTFOLIO;
-  if (total <= 0) return { SKILL: 0.25, EXPERIENCE: 0.25, EDUCATION: 0.25, PORTFOLIO: 0.25 };
-  return {
-    SKILL: +(pct.SKILL / total).toFixed(4),
-    EXPERIENCE: +(pct.EXPERIENCE / total).toFixed(4),
-    EDUCATION: +(pct.EDUCATION / total).toFixed(4),
-    PORTFOLIO: +(pct.PORTFOLIO / total).toFixed(4),
-  };
-};
 
 export default function WhatIfStudio() {
   const { jobId } = useParams();
   const navigate = useNavigate();
 
   const [job, setJob] = useState(null);
-  const [weights, setWeights] = useState({ SKILL: 40, EXPERIENCE: 30, EDUCATION: 10, PORTFOLIO: 20 });
+  const [weights, setWeights] = useState(DEFAULT_WEIGHT_PCT);
   // Start at the production cut-off so the first run isolates the weight effect;
   // lowering it afterwards shows what loosening the policy would let through.
   const [cutoff, setCutoff] = useState(85);
@@ -73,7 +50,7 @@ export default function WhatIfStudio() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          weights: normalise(weights),
+          weights: toRatio(weights),
           min_overall_score: cutoff,
         }),
       });
@@ -111,7 +88,7 @@ export default function WhatIfStudio() {
           <div className="max-w-2xl space-y-1.5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-orange/10 text-primary-black text-xs font-semibold border border-primary-orange/30">
               <Sliders className="w-3.5 h-3.5 text-primary-orange" />
-              <span className="font-bold tracking-wider uppercase text-[11px]">What-If Policy Simulation</span>
+              <span className="font-bold tracking-wider uppercase text-[11px]">Simulasi Kebijakan Rekrutmen</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-primary-black tracking-tight leading-tight">
               {job ? job.title : 'Simulasi Kebijakan Rekrutmen'}
@@ -127,7 +104,7 @@ export default function WhatIfStudio() {
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white border border-primary-border-200 text-primary-slate-700 text-xs font-bold hover:border-primary-orange hover:text-primary-orange transition-all"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
+              <span>Kembali</span>
             </button>
             <button
               onClick={runSimulation}
@@ -153,28 +130,9 @@ export default function WhatIfStudio() {
         <div className="lg:col-span-1 bg-white rounded-2xl border border-primary-border-200 p-5 shadow-sm space-y-5">
           <div>
             <h3 className="text-sm font-extrabold text-primary-black tracking-tight">Bobot Dimensi 4D</h3>
-            <p className="text-[11px] text-primary-slate-500 mt-0.5">Normalisasi otomatis ke total 100%.</p>
+            <p className="text-[11px] text-primary-slate-500 mt-0.5">Total selalu 100%. Angka di bawah slider adalah nilai yang dipakai simulasi.</p>
           </div>
-          {DIMENSIONS.map((d) => (
-            <div key={d.key} className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <label htmlFor={`w-${d.key}`} className="font-semibold text-primary-black">{d.label}</label>
-                <span className="font-mono font-bold text-primary-orange tabular-nums">
-                  {Math.round((normalise(weights)[d.key]) * 100)}%
-                </span>
-              </div>
-              <input
-                id={`w-${d.key}`}
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value={weights[d.key]}
-                onChange={(e) => setWeights((prev) => ({ ...prev, [d.key]: Number(e.target.value) }))}
-                className="w-full accent-primary-orange cursor-pointer"
-              />
-            </div>
-          ))}
+          <WeightSliders weights={weights} onChange={setWeights} />
 
           <div className="pt-4 border-t border-primary-border-100 space-y-1.5">
             <div className="flex items-center justify-between text-xs">
@@ -292,9 +250,9 @@ export default function WhatIfStudio() {
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex flex-col gap-0.5">
-                            <span className="font-bold text-primary-black">{c.simulated.recommendation}</span>
+                            <span className="font-bold text-primary-black">{recLabel(c.simulated.recommendation)}</span>
                             <span className="text-[10px] text-primary-slate-500">
-                              {changed ? `sebelumnya ${c.baseline.recommendation} · ` : ''}{c.simulated.rule_applied}
+                              {changed ? `sebelumnya ${recLabel(c.baseline.recommendation)} · ` : ''}{c.simulated.rule_applied}
                             </span>
                           </div>
                         </td>

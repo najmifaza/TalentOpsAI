@@ -1,23 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  KeyRound, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  ShieldCheck, 
-  Briefcase, 
-  Building2, 
-  Calendar, 
+import {
+  Search,
+  KeyRound,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ShieldCheck,
+  Building2,
+  Calendar,
   ArrowLeft,
   Sparkles,
   RefreshCw,
-  ExternalLink,
-  ChevronRight,
-  FileCheck2,
-  Cpu,
-  GitBranch
+  Cpu
 } from 'lucide-react';
+import { recLabel } from '../lib/labels';
+import { formatDateTime } from '../lib/format';
 
 
 export default function ApplicationTracker({ initialToken = '', onBackToPortal }) {
@@ -30,23 +27,26 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
   const fetchStatus = async (tokenToFetch) => {
-    let token = (tokenToFetch || tokenInput).trim();
-    if (!token) {
-      setError('Harap masukkan secret tracking token (UUIDv4) Anda.');
+    const raw = (tokenToFetch || tokenInput).trim();
+    if (!raw) {
+      setError('Harap masukkan Secret Tracking Token yang Anda terima saat melamar.');
       return;
     }
 
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    
-    if (token.length === 37 && token.startsWith('a') && UUID_REGEX.test(token.slice(1))) {
-      token = token.slice(1);
-      setTokenInput(token);
+    // The backend accepts a UUIDv4 only. "#TK-XXXX" is the *display* identifier
+    // shown in the success modal and cannot be looked up, so say that plainly
+    // instead of forwarding it and returning a confusing 404.
+    if (/^#?TK-/i.test(raw)) {
+      setError(
+        `"${raw}" adalah ID tampilan, bukan token pelacakan. Buka kembali halaman token setelah melamar dan salin kode 36 karakter berformat 7c9e6679-7425-40de-944b-e07fc1f90ae7.`
+      );
+      return;
     }
 
-    const isPublicId = token.startsWith('#TK-') || token.startsWith('TK-');
-
-    if (!UUID_REGEX.test(token) && !isPublicId) {
-      setError('Format token tidak valid. Tracking Token wajib berupa 36 karakter UUIDv4 (contoh: 7c9e6679-7425-40de-944b-e07fc1f90ae7).');
+    const token = raw.toLowerCase();
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    if (!UUID_REGEX.test(token)) {
+      setError('Token pelacakan berformat 36 karakter dengan tanda hubung (contoh: 7c9e6679-7425-40de-944b-e07fc1f90ae7).');
       return;
     }
 
@@ -72,22 +72,29 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
         return;
       }
 
+      if (res.status === 404) {
+        setError('Token tidak ditemukan atau berkas lamaran telah dihapus (Right to Erasure).');
+        setLoading(false);
+        return;
+      }
+
+      // Offline copy written by the portal when the submission succeeded. It is a
+      // snapshot from this device, so it must be labelled as such — the old code
+      // rendered it identically to a live server response.
       try {
         const localCached = localStorage.getItem(`talentops_app_${token}`);
         if (localCached) {
           const parsed = JSON.parse(localCached);
-          setTrackingData(parsed);
+          setTrackingData({ ...parsed, source: 'LOCAL_CACHE' });
           setLastChecked(new Date().toLocaleTimeString('id-ID'));
           setLoading(false);
           return;
         }
-      } catch (e) {}
-
-      if (res.status === 404) {
-        setError('Token tidak ditemukan atau berkas lamaran telah dihapus (Right to Erasure).');
-      } else {
-        setError(`Gagal memuat status lamaran: Server merespons ${res.status}`);
+      } catch (e) {
+        console.warn('Cached application snapshot is unreadable:', e);
       }
+
+      setError(`Gagal memuat status lamaran: server merespons ${res.status}.`);
     } catch (err) {
       console.warn('Network error fetching tracking status:', err);
       setError('Koneksi ke server gagal. Pastikan jaringan internet aktif.');
@@ -192,7 +199,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pt-6 pb-16 px-4 sm:px-6 select-none font-jkt">
+    <div className="max-w-4xl mx-auto space-y-6 pt-6 pb-16 px-4 sm:px-6 font-jkt">
       {/* Top Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button
@@ -217,7 +224,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
             <span className="tracking-[0.18em] uppercase text-[11px] font-bold">Kandidat Tracking Portal</span>
           </div>
           <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-primary-black tracking-tight leading-tight">
-            Pantau Status Lamaran Secara <span className="relative inline-block"><span className="relative z-10 italic font-medium">Transparan</span><span aria-hidden="true" className="absolute left-0 right-0 bottom-1 h-3 bg-primary-orange/60 -z-0 -skew-x-6"></span></span>
+            Pantau Status Lamaran Secara <span className="relative inline-block"><span className="relative z-10 italic font-medium">Transparan</span><span aria-hidden="true" className="absolute left-0 right-0 bottom-0 h-2.5 bg-primary-orange/60 -z-0 -skew-x-6"></span></span>
           </h2>
           <p className="text-xs sm:text-sm text-primary-slate-600 mt-2 leading-relaxed">
             Masukkan <strong className="text-primary-black font-bold">Secret Tracking Token</strong> yang Anda peroleh saat mengirimkan lamaran untuk melihat perkembangan analisis agen AI secara real-time.
@@ -244,7 +251,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
                 type="text"
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
-                placeholder="Contoh: 7c9e6679-7425-40de-944b-e07fc1f90ae7 atau #TK-A17C9B"
+                placeholder="7c9e6679-7425-40de-944b-e07fc1f90ae7"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-primary-border-200 bg-primary-slate-50 text-xs font-mono text-primary-black placeholder:text-primary-slate-400 focus:bg-white focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 transition-all"
               />
             </div>
@@ -269,7 +276,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
 
           {/* Preset Demo Tokens for Evaluators */}
           <div className="pt-2 flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-primary-slate-400 font-medium text-[11px]">Coba Token Contoh:</span>
+            <span className="text-primary-slate-400 font-medium text-[11px]">Coba token demo:</span>
             <button
               type="button"
               onClick={() => {
@@ -277,9 +284,9 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
                 setTokenInput(t);
                 fetchStatus(t);
               }}
-              className="px-2.5 py-1 rounded-lg bg-primary-slate-50 hover:bg-white text-[11px] font-mono font-semibold text-primary-black transition-colors border border-primary-border-200 hover:border-primary-orange"
+              className="px-2.5 py-1 rounded-lg bg-primary-slate-50 hover:bg-white text-[11px] font-semibold text-primary-black transition-colors border border-primary-border-200 hover:border-primary-orange whitespace-nowrap"
             >
-              #TK-A17C9B (Budi Santoso - Strong Match)
+              Budi Santoso (Sangat Sesuai)
             </button>
             <button
               type="button"
@@ -288,9 +295,9 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
                 setTokenInput(t);
                 fetchStatus(t);
               }}
-              className="px-2.5 py-1 rounded-lg bg-primary-slate-50 hover:bg-white text-[11px] font-mono font-semibold text-primary-black transition-colors border border-primary-border-200 hover:border-primary-orange"
+              className="px-2.5 py-1 rounded-lg bg-primary-slate-50 hover:bg-white text-[11px] font-semibold text-primary-black transition-colors border border-primary-border-200 hover:border-primary-orange whitespace-nowrap"
             >
-              #TK-B82F10 (Reza Pratama - Overlap)
+              Reza Pratama (Perlu Review)
             </button>
           </div>
 
@@ -314,9 +321,16 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
                 <span className="font-mono text-sm font-extrabold text-primary-black px-2.5 py-0.5 rounded-md bg-primary-slate-50 border border-primary-border-200">
                   {trackingData.masked_identifier}
                 </span>
-                {trackingData.source === 'LIVE_DATABASE' && (
+                {trackingData.source === 'LIVE_DATABASE' ? (
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-semibold border border-emerald-300">
-                    Live VPS Database
+                    Data Server
+                  </span>
+                ) : (
+                  <span
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 font-semibold border border-amber-300"
+                    title="Server tidak dapat dihubungi; ini salinan yang tersimpan di perangkat ini saat Anda melamar."
+                  >
+                    Salinan Lokal — belum tersinkron server
                   </span>
                 )}
               </div>
@@ -331,7 +345,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
                 {trackingData.submitted_at && (
                   <span className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-primary-orange" />
-                    Diajukan: {trackingData.submitted_at}
+                    Diajukan: {formatDateTime(trackingData.submitted_at)}
                   </span>
                 )}
               </div>
@@ -398,7 +412,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
               <div className="text-xs space-y-1">
                 <span className="font-bold text-primary-black">Catatan Evaluasi Agen AI:</span>
                 <p className="text-primary-slate-700">
-                  Kandidat memenuhi kualifikasi dengan rekomendasi <strong>{trackingData.recommendation}</strong>. Tim HR kami akan meninjau hasil evaluasi dan menghubungi Anda melalui saluran resmi.
+                  Kandidat memenuhi kualifikasi dengan rekomendasi <strong>{recLabel(trackingData.recommendation)}</strong>. Tim HR kami akan meninjau hasil evaluasi dan menghubungi Anda melalui saluran resmi.
                 </p>
               </div>
             </div>

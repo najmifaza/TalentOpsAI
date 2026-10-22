@@ -19,6 +19,9 @@ import {
   Eye
 } from 'lucide-react';
 import { CandidateEvidenceGraph } from './EvidenceGraph';
+import { recLabel } from '../lib/labels';
+import { DIMENSIONS } from '../lib/dimensions';
+import { can, roleLabel } from '../lib/roles';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
 
@@ -54,20 +57,20 @@ function DeliveryReport({ notifications }) {
   if (rows.length === 0) return null;
 
   return (
-    <div className="p-3.5 rounded-2xl bg-[#f8f9fc] border border-[#e6e6ea] text-left space-y-2 text-xs">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-[#67677e] block">
+    <div className="p-3.5 rounded-2xl bg-primary-slate-50 border border-primary-border-200 text-left space-y-2 text-xs">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-primary-slate-600 block">
         Status Notifikasi Otomatis
       </span>
       {rows.map((row) => (
-        <div key={row.key} className="flex items-start gap-2 py-1 border-b border-[#e6e6ea] last:border-0">
+        <div key={row.key} className="flex items-start gap-2 py-1 border-b border-primary-border-200 last:border-0">
           {row.ok ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
           ) : (
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           )}
           <div className="min-w-0 flex-1">
-            <p className="font-bold text-[#000000]">{row.label}</p>
-            <p className={`text-[11px] leading-snug break-words ${row.ok ? 'text-[#454554]' : 'text-amber-800'}`}>
+            <p className="font-bold text-primary-slate-900">{row.label}</p>
+            <p className={`text-[11px] leading-snug break-words ${row.ok ? 'text-primary-slate-700' : 'text-amber-800'}`}>
               {row.detail}
             </p>
           </div>
@@ -97,6 +100,8 @@ export default function CandidateDetailPage() {
   const [isUnmaskFormOpen, setIsUnmaskFormOpen] = useState(false);
   const [isUnmasking, setIsUnmasking] = useState(false);
   const [unmaskError, setUnmaskError] = useState(null);
+  const canUnmask = can('unmask');
+  const canReview = can('review');
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeMessage, setAnalyzeMessage] = useState(null);
@@ -161,10 +166,11 @@ export default function CandidateDetailPage() {
           status: dossier.status,
           overall_score: dossier.overall_score,
           recommendation: dossier.recommendation,
-          confidence_level: dossier.confidence_level,
           github_url: dossier.github_url,
           job_title: null,
           scores_4d: null,
+          confidence_level: dossier.confidence_level || null,
+          unresolved_risk: dossier.unresolved_risk || null,
           key_technologies: (json.evidence || [])
             .map((e) => e.target_competency)
             .filter((t, i, arr) => t && arr.indexOf(t) === i),
@@ -176,12 +182,17 @@ export default function CandidateDetailPage() {
           ...row,
           candidate_name_masked: row.masked_identifier,
           verified_github: row.github_url || null,
+          // Straight from dimension_scores. The old shape folded EDUCATION into a
+          // "s_conf" field and dropped EXPERIENCE entirely, so the dossier showed a
+          // different 4D than the weight editor and What-If studio.
           scores_4d: row.overall_score !== null && row.overall_score !== undefined ? {
-            s_comp: dims.SKILL || 0,
-            s_port: dims.PORTFOLIO || 0,
-            s_conf: dims.EDUCATION || (row.confidence_level === 'HIGH' ? 95 : 75),
-            s_risk: row.unresolved_risk === 'HIGH' ? 70 : (row.unresolved_risk === 'MEDIUM' ? 35 : 10),
+            SKILL: dims.SKILL || 0,
+            EXPERIENCE: dims.EXPERIENCE || 0,
+            EDUCATION: dims.EDUCATION || 0,
+            PORTFOLIO: dims.PORTFOLIO || 0,
           } : null,
+          confidence_level: row.confidence_level || null,
+          unresolved_risk: row.unresolved_risk || null,
         };
       }
       setCandidate(row);
@@ -461,7 +472,7 @@ export default function CandidateDetailPage() {
     switch (rec) {
       case 'STRONG_MATCH':
         return {
-          bg: 'bg-[#eaf0ff] text-[#1b55f5] border-[#8ec0ff]',
+          bg: 'bg-primary-info-soft text-primary-info border-primary-info-border',
           icon: CheckCircle2,
           label: 'Sangat Sesuai',
           desc: 'Kompetensi teknis dan portofolio selaras tinggi dengan kualifikasi posisi.'
@@ -482,14 +493,14 @@ export default function CandidateDetailPage() {
         };
       case 'WEAK_FIT':
         return {
-          bg: 'bg-[#f4f4f6] text-[#454554] border-[#e6e6ea]',
+          bg: 'bg-primary-slate-100 text-primary-slate-700 border-primary-border-200',
           icon: Info,
           label: 'Kurang Sesuai',
           desc: 'Keahlian pelamar tidak mencakup persyaratan teknis inti untuk lowongan ini.'
         };
       default:
         return {
-          bg: 'bg-[#f4f4f6] text-[#67677e] border-[#e6e6ea]',
+          bg: 'bg-primary-slate-100 text-primary-slate-600 border-primary-border-200',
           icon: Clock,
           label: rec || 'Menunggu Analisis',
           desc: 'Berkas belum dievaluasi oleh sistem triage AI.'
@@ -666,8 +677,8 @@ export default function CandidateDetailPage() {
 
               {/* Reason-gated unmask: every access is written to pii_access_logs */}
               {isUnmaskFormOpen && !resolvedIdentity.isUnmasked && (
-                <div className="mt-2 p-3 rounded-xl bg-[#f8f9fc] border border-[#e6e6ea] space-y-2">
-                  <p className="text-[11px] text-[#454554]">
+                <div className="mt-2 p-3 rounded-xl bg-primary-slate-50 border border-primary-border-200 space-y-2">
+                  <p className="text-[11px] text-primary-slate-700">
                     Akses PII akan tercatat pada audit log beserta alasan dan identitas reviewer Anda.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -676,13 +687,14 @@ export default function CandidateDetailPage() {
                       value={unmaskReason}
                       onChange={(e) => setUnmaskReason(e.target.value)}
                       placeholder="Alasan akses, mis. verifikasi berkas untuk wawancara"
-                      className="flex-1 bg-white border border-[#e6e6ea] rounded-lg text-xs text-[#000000] px-2.5 py-1.5 focus:outline-none focus:border-[#1b55f5]"
+                      className="flex-1 bg-white border border-primary-border-200 rounded-lg text-xs text-primary-slate-900 px-2.5 py-1.5 focus:outline-none focus:border-primary-info"
                     />
                     <button
                       type="button"
                       onClick={handleUnmask}
-                      disabled={isUnmasking || !unmaskReason.trim()}
-                      className="px-3 py-1.5 bg-[#1b55f5] hover:bg-[#1545c7] disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
+                      disabled={isUnmasking || !unmaskReason.trim() || !canUnmask}
+                      title={canUnmask ? undefined : `Role ${roleLabel()} tidak berwenang membuka identitas`}
+                      className="px-3 py-1.5 bg-primary-info hover:bg-primary-info-dark disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
                     >
                       {isUnmasking ? 'Memproses...' : 'Buka Identitas'}
                     </button>
@@ -787,50 +799,50 @@ export default function CandidateDetailPage() {
             <div className="space-y-6 animate-fade-in">
               
               {/* AI Executive Assessment Narrative Card */}
-              <div className="p-5 rounded-2xl bg-[#f8f9fc] border border-[#e6e6ea] space-y-3.5 shadow-2xs">
-                <div className="flex items-center justify-between pb-2 border-b border-[#e6e6ea]">
+              <div className="p-5 rounded-2xl bg-primary-slate-50 border border-primary-border-200 space-y-3.5 shadow-2xs">
+                <div className="flex items-center justify-between pb-2 border-b border-primary-border-200">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#1b55f5]" />
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#000000]">
+                    <Sparkles className="w-4 h-4 text-primary-info" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary-slate-900">
                       Rasional Evaluasi {aiExplanation.isTemplate ? '(Template Kategori Rekomendasi)' : '(Dari Hasil Triage Backend)'}
                     </h4>
                   </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-[#1b55f5] font-semibold border border-[#8ec0ff]">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-primary-info font-semibold border border-primary-info-border">
                     {aiExplanation.isTemplate ? 'TEMPLATE' : 'BACKEND RATIONALE'}
                   </span>
                 </div>
 
-                <p className="text-xs text-[#000000] leading-relaxed font-medium">
+                <p className="text-xs text-primary-slate-900 leading-relaxed font-medium">
                   {aiExplanation.summary}
                 </p>
 
                 {/* Key Strengths & Risk Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                  <div className="p-3.5 rounded-xl bg-white border border-[#e6e6ea] space-y-1.5">
+                  <div className="p-3.5 rounded-xl bg-white border border-primary-border-200 space-y-1.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                       Kekuatan Utama Terdeteksi
                     </span>
-                    <ul className="text-[11px] text-[#454554] space-y-1 list-disc list-inside">
+                    <ul className="text-[11px] text-primary-slate-700 space-y-1 list-disc list-inside">
                       {aiExplanation.strengths.map((str, idx) => (
                         <li key={idx} className="leading-snug">{str}</li>
                       ))}
                     </ul>
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-white border border-[#e6e6ea] space-y-1.5">
+                  <div className="p-3.5 rounded-xl bg-white border border-primary-border-200 space-y-1.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                       Potensi Risiko / Hal Perlu Diverifikasi
                     </span>
-                    <p className="text-[11px] text-[#454554] leading-snug">
+                    <p className="text-[11px] text-primary-slate-700 leading-snug">
                       {aiExplanation.risks}
                     </p>
                   </div>
                 </div>
 
                 {/* Next Steps for Recruiter */}
-                <div className="p-3 rounded-xl bg-[#eaf0ff] border border-[#8ec0ff] text-xs text-[#1b55f5] flex items-center justify-between gap-2">
+                <div className="p-3 rounded-xl bg-primary-info-soft border border-primary-info-border text-xs text-primary-info flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     <Info className="w-4 h-4 shrink-0" />
                     <span><strong>Rekomendasi Rekruter:</strong> {aiExplanation.recommendation}</span>
@@ -838,7 +850,7 @@ export default function CandidateDetailPage() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('graph')}
-                    className="px-2.5 py-1 bg-[#1b55f5] hover:bg-[#1545c7] text-white rounded-lg text-[10px] font-bold shrink-0 transition-colors flex items-center gap-1"
+                    className="px-2.5 py-1 bg-primary-info hover:bg-primary-info-dark text-white rounded-lg text-[10px] font-bold shrink-0 transition-colors flex items-center gap-1"
                   >
                     <span>Buka Graph Flow</span>
                     <ArrowRight className="w-3 h-3" />
@@ -848,49 +860,67 @@ export default function CandidateDetailPage() {
 
               {/* 4D Objective Scoring Grid */}
               <div>
-                <h4 className="text-xs font-bold text-[#67677e] uppercase tracking-wider mb-2.5">
+                <h4 className="text-xs font-bold text-primary-slate-600 uppercase tracking-wider mb-2.5">
                   4 Dimensi Evaluasi Obyektif (PRD Bab 4.2)
                 </h4>
                 {activeCandidateObj.scores_4d ? (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
-                      <span className="text-[10px] text-[#67677e] uppercase font-semibold">Keahlian Inti</span>
-                      <div className="text-xl font-extrabold text-[#1b55f5] mt-0.5">{activeCandidateObj.scores_4d.s_comp}%</div>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
-                      <span className="text-[10px] text-[#67677e] uppercase font-semibold">Portofolio Kode</span>
-                      <div className="text-xl font-extrabold text-[#10B981] mt-0.5">{activeCandidateObj.scores_4d.s_port}%</div>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
-                      <span className="text-[10px] text-[#67677e] uppercase font-semibold">Keyakinan Bukti</span>
-                      <div className="text-xl font-extrabold text-[#1b55f5] mt-0.5">{activeCandidateObj.scores_4d.s_conf}%</div>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-center">
-                      <span className="text-[10px] text-[#67677e] uppercase font-semibold">Indikator Resiko</span>
-                      <div className="text-xl font-extrabold text-rose-600 mt-0.5">{activeCandidateObj.scores_4d.s_risk}%</div>
-                    </div>
+                    {DIMENSIONS.map((d) => (
+                      <div key={d.key} className="p-3.5 rounded-xl bg-primary-slate-100 border border-primary-border-100 text-center">
+                        <span className="text-[10px] text-primary-slate-600 uppercase font-semibold">{d.label}</span>
+                        <div className={`text-xl font-extrabold mt-0.5 tabular-nums ${d.text}`}>
+                          {Math.round(activeCandidateObj.scores_4d[d.key] ?? 0)}%
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-xs text-[#67677e] text-center">
+                  <div className="p-4 rounded-xl bg-primary-slate-100 border border-primary-border-100 text-xs text-primary-slate-600 text-center">
                     Berkas belum dianalisis oleh AI. Klik tombol <strong>"Jalankan Analisis AI"</strong> di atas untuk memindai berkas ini.
                   </div>
                 )}
               </div>
 
+              {/* Confidence & risk are decision signals, not scoring dimensions —
+                  keeping them inside the 4D grid is what made the numbers look wrong. */}
+              {(activeCandidateObj.confidence_level || activeCandidateObj.unresolved_risk) && (
+                <div>
+                  <h4 className="text-xs font-bold text-primary-slate-600 uppercase tracking-wider mb-2">
+                    Sinyal Keputusan
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3.5 rounded-xl bg-primary-slate-50 border border-primary-border-200 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-primary-slate-600">Keyakinan Bukti</span>
+                      <span className="text-xs font-extrabold text-primary-black">{activeCandidateObj.confidence_level || '—'}</span>
+                    </div>
+                    <div className="p-3.5 rounded-xl bg-primary-slate-50 border border-primary-border-200 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-primary-slate-600">Risiko Tak Terurai</span>
+                      <span className={`text-xs font-extrabold ${
+                        activeCandidateObj.unresolved_risk === 'HIGH' ? 'text-rose-700'
+                        : activeCandidateObj.unresolved_risk === 'MEDIUM' ? 'text-amber-700'
+                        : 'text-emerald-700'
+                      }`}>
+                        {activeCandidateObj.unresolved_risk || '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Technologies Taxonomy */}
               <div>
-                <h4 className="text-xs font-bold text-[#67677e] uppercase tracking-wider mb-2">
+                <h4 className="text-xs font-bold text-primary-slate-600 uppercase tracking-wider mb-2">
                   Taksonomi Teknologi Terverifikasi
                 </h4>
                 <div className="flex flex-wrap gap-1.5">
                   {activeCandidateObj.key_technologies && activeCandidateObj.key_technologies.length > 0 ? (
                     activeCandidateObj.key_technologies.map((tech, idx) => (
-                      <span key={idx} className="text-xs px-3 py-1 rounded-xl bg-[#f4f4f6] text-[#000000] border border-[#e6e6ea] font-medium font-mono">
+                      <span key={idx} className="text-xs px-3 py-1 rounded-xl bg-primary-slate-100 text-primary-slate-900 border border-primary-border-200 font-medium font-mono">
                         {tech}
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-[#67677e]">Belum ada teknologi yang terekstrak.</span>
+                    <span className="text-xs text-primary-slate-600">Belum ada teknologi yang terekstrak.</span>
                   )}
                 </div>
               </div>
@@ -913,25 +943,25 @@ export default function CandidateDetailPage() {
               )}
 
               {/* Quick Actions Footer */}
-              <div className="pt-4 border-t border-[#e6e6ea] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <span className="text-xs text-[#67677e] text-center sm:text-left">
-                  Rekomendasi Keputusan AI: <strong className="text-[#000000]">{activeCandidateObj.recommendation}</strong>
+              <div className="pt-4 border-t border-primary-border-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <span className="text-xs text-primary-slate-600 text-center sm:text-left">
+                  Rekomendasi Keputusan AI: <strong className="text-primary-slate-900">{recLabel(activeCandidateObj.recommendation)}</strong>
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setActiveTab('graph')}
-                    className="px-3.5 py-2.5 bg-[#eaf0ff] hover:bg-[#d8e5ff] text-[#1b55f5] font-semibold text-xs rounded-xl border border-[#8ec0ff] transition-colors flex items-center gap-1.5"
+                    className="px-3.5 py-2.5 bg-primary-info-soft hover:bg-primary-info-border text-primary-info font-semibold text-xs rounded-xl border border-primary-info-border transition-colors flex items-center gap-1.5"
                   >
-                    <GitBranch className="w-3.5 h-3.5 text-[#1b55f5]" />
+                    <GitBranch className="w-3.5 h-3.5 text-primary-info" />
                     <span>Evidence Graph Flow</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab('cv')}
-                    className="px-3.5 py-2.5 bg-white hover:bg-[#f4f4f6] text-[#000000] font-semibold text-xs rounded-xl border border-[#e6e6ea] transition-colors flex items-center gap-1.5"
+                    className="px-3.5 py-2.5 bg-white hover:bg-primary-slate-100 text-primary-slate-900 font-semibold text-xs rounded-xl border border-primary-border-200 transition-colors flex items-center gap-1.5"
                   >
-                    <FileText className="w-3.5 h-3.5 text-[#1b55f5]" />
+                    <FileText className="w-3.5 h-3.5 text-primary-info" />
                     <span>Lihat Dokumen CV</span>
                   </button>
                   <button
@@ -939,7 +969,7 @@ export default function CandidateDetailPage() {
                     onClick={() => setActiveTab('schedule')}
                     disabled={isQuarantined}
                     title={isQuarantined ? 'Kandidat dalam karantina keamanan — tidak dapat dijadwalkan' : undefined}
-                    className="px-4 py-2.5 bg-[#1b55f5] hover:bg-[#1545c7] text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="px-4 py-2.5 bg-primary-info hover:bg-primary-info-dark text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Calendar className="w-3.5 h-3.5 text-white" />
                     <span>Approve &amp; Schedule</span>
@@ -961,11 +991,11 @@ export default function CandidateDetailPage() {
             <div className="space-y-3 animate-fade-in">
               <div className="flex items-center justify-between pb-1">
                 <div>
-                  <h4 className="text-sm font-bold text-[#000000] flex items-center gap-2">
-                    <GitBranch className="w-4 h-4 text-[#1b55f5]" />
+                  <h4 className="text-sm font-bold text-primary-slate-900 flex items-center gap-2">
+                    <GitBranch className="w-4 h-4 text-primary-info" />
                     <span>Interactive Evidence Graph &bull; Grounding Substring Guard</span>
                   </h4>
-                  <p className="text-[11px] text-[#67677e] mt-0.5">
+                  <p className="text-[11px] text-primary-slate-600 mt-0.5">
                     Menghubungkan klaim keahlian kandidat langsung ke kutipan kalimat asli resume di database dan audit portofolio GitHub.
                   </p>
                 </div>
@@ -984,32 +1014,32 @@ export default function CandidateDetailPage() {
           {/* TAB 3: RESUME / CV DOCUMENT VIEWER */}
           {viewState === 'dossier' && activeTab === 'cv' && (
             <div className="space-y-4 animate-fade-in">
-              <div className="flex items-center justify-between pb-2 border-b border-[#e6e6ea]">
+              <div className="flex items-center justify-between pb-2 border-b border-primary-border-200">
                 <div>
-                  <h4 className="text-sm font-bold text-[#000000] flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[#1b55f5]" />
+                  <h4 className="text-sm font-bold text-primary-slate-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary-info" />
                     <span>Dokumen Berkas Resume / CV Pelamar</span>
                   </h4>
-                  <p className="text-[11px] text-[#67677e] mt-0.5">
+                  <p className="text-[11px] text-primary-slate-600 mt-0.5">
                     Teks asli hasil ekstraksi parser PDF/DOCX yang telah disanitasi dari PII sensitif sesuai standar UU PDP No. 27/2022.
                   </p>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded bg-[#eaf0ff] text-[#1b55f5] border border-[#8ec0ff]">
+                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded bg-primary-info-soft text-primary-info border border-primary-info-border">
                   VERBATIM PARSER
                 </span>
               </div>
 
               {/* Document Paper Container */}
-              <div className="p-6 rounded-2xl bg-[#fafafa] border border-[#e6e6ea] shadow-inner font-mono text-xs text-[#2b2d32] space-y-4 max-h-[500px] overflow-y-auto leading-relaxed">
+              <div className="p-6 rounded-2xl bg-primary-slate-50 border border-primary-border-200 shadow-inner font-mono text-xs text-primary-slate-1000 space-y-4 max-h-[500px] overflow-y-auto leading-relaxed">
                 {candidateDetail?.candidate?.sanitized_resume_text ? (
-                  <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-[#2b2d32]">
+                  <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-primary-slate-1000">
                     {candidateDetail.candidate.sanitized_resume_text}
                   </pre>
                 ) : (
-                  <div className="py-12 text-center text-[#67677e]">
+                  <div className="py-12 text-center text-primary-slate-600">
                     <Clock className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                    <p className="font-semibold text-sm text-[#000000]">Teks Resume Belum Tersedia di Cache</p>
-                    <p className="text-xs text-[#67677e] mt-1 max-w-sm mx-auto">
+                    <p className="font-semibold text-sm text-primary-slate-900">Teks Resume Belum Tersedia di Cache</p>
+                    <p className="text-xs text-primary-slate-600 mt-1 max-w-sm mx-auto">
                       Klik tombol <strong>"Jalankan Analisis AI"</strong> di sudut kanan atas untuk mengekstrak dan memverifikasi isi CV pelamar ini.
                     </p>
                   </div>
@@ -1021,27 +1051,27 @@ export default function CandidateDetailPage() {
           {/* TAB 4: SCHEDULE INTERVIEW & CALENDAR ATOMIC LOCK */}
           {viewState === 'dossier' && activeTab === 'schedule' && (
             <div className="space-y-5 animate-fade-in">
-              <div className="p-4 rounded-2xl bg-[#eaf0ff] border border-[#8ec0ff] flex items-start gap-3">
-                <Lock className="w-5 h-5 text-[#1b55f5] shrink-0 mt-0.5" />
+              <div className="p-4 rounded-2xl bg-primary-info-soft border border-primary-info-border flex items-start gap-3">
+                <Lock className="w-5 h-5 text-primary-info shrink-0 mt-0.5" />
                 <div className="text-xs">
-                  <span className="font-bold text-[#000000]">
+                  <span className="font-bold text-primary-slate-900">
                     Atomic Calendar Lock Protocol (`SELECT ... FOR UPDATE`):
                   </span>
-                  <p className="text-[#454554] mt-0.5 leading-relaxed">
+                  <p className="text-primary-slate-700 mt-0.5 leading-relaxed">
                     Menjamin zero double-booking secara ACID pada database MariaDB. Slot yang Anda pilih akan dikunci eksklusif untuk kandidat <strong>{resolvedIdentity.name} ({candidate.masked_identifier})</strong>.
                   </p>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-[#000000] uppercase tracking-wider mb-2.5 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-[#1b55f5]" />
+                <h4 className="text-xs font-bold text-primary-slate-900 uppercase tracking-wider mb-2.5 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-primary-info" />
                   <span>Pilih Slot Wawancara Yang Tersedia</span>
                 </h4>
 
                 <div className="space-y-2.5">
                   {slots.length === 0 ? (
-                    <div className="p-4 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-xs text-[#67677e] text-center">
+                    <div className="p-4 rounded-xl bg-primary-slate-100 border border-primary-border-200 text-xs text-primary-slate-600 text-center">
                       Belum ada slot wawancara tersedia. Hubungi tim rekrutmen untuk membuka slot baru.
                     </div>
                   ) : (
@@ -1054,23 +1084,23 @@ export default function CandidateDetailPage() {
                           onClick={() => isAvailable && setSelectedSlotId(slot.id)}
                           className={`p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between ${
                             !isAvailable
-                              ? 'bg-[#f4f4f6] border-[#e6e6ea] opacity-60 cursor-not-allowed'
+                              ? 'bg-primary-slate-100 border-primary-border-200 opacity-60 cursor-not-allowed'
                               : isSelected
-                                ? 'bg-[#f8f9fc] border-[#1b55f5] shadow-xs cursor-pointer'
-                                : 'bg-white border-[#e6e6ea] hover:border-[#8ec0ff] cursor-pointer'
+                                ? 'bg-primary-slate-50 border-primary-info shadow-xs cursor-pointer'
+                                : 'bg-white border-primary-border-200 hover:border-primary-info-border cursor-pointer'
                           }`}
                         >
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-[#000000]">{slot.date}</span>
-                              <span className="font-mono text-xs text-[#1b55f5] font-bold bg-[#eaf0ff] px-2 py-0.5 rounded-md">
+                              <span className="text-xs font-bold text-primary-slate-900">{slot.date}</span>
+                              <span className="font-mono text-xs text-primary-info font-bold bg-primary-info-soft px-2 py-0.5 rounded-md">
                                 {slot.time}
                               </span>
                             </div>
-                            <p className="text-[11px] text-[#454554]">
+                            <p className="text-[11px] text-primary-slate-700">
                               Pewawancara: <strong>{slot.interviewer}</strong>
                             </p>
-                            <p className="text-[10px] text-[#67677e] font-mono">
+                            <p className="text-[10px] text-primary-slate-600 font-mono">
                               Agenda: {slot.type}
                             </p>
                           </div>
@@ -1079,12 +1109,12 @@ export default function CandidateDetailPage() {
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold border ${
                               isAvailable
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : 'bg-[#e6e6ea] text-[#454554] border-[#d5d5db]'
+                                : 'bg-primary-border-200 text-primary-slate-700 border-primary-slate-300'
                             }`}>
                               {(slot.status || 'available').toUpperCase()}
                             </span>
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                              isSelected ? 'border-[#1b55f5] bg-[#1b55f5]' : 'border-gray-300'
+                              isSelected ? 'border-primary-info bg-primary-info' : 'border-gray-300'
                             }`}>
                               {isSelected && <span className="w-2 h-2 rounded-full bg-white"></span>}
                             </div>
@@ -1098,11 +1128,11 @@ export default function CandidateDetailPage() {
 
               {/* Deterministic Event ID Preview (preview only — the real ID comes from the backend) */}
               {selectedSlot && (
-                <div className="p-3 bg-[#f4f4f6] rounded-xl border border-[#e6e6ea] text-xs space-y-1">
-                  <span className="text-[10px] text-[#67677e] font-mono uppercase font-bold block">
+                <div className="p-3 bg-primary-slate-100 rounded-xl border border-primary-border-200 text-xs space-y-1">
+                  <span className="text-[10px] text-primary-slate-600 font-mono uppercase font-bold block">
                     Deterministic Calendar Event ID Preview:
                   </span>
-                  <code className="text-[#1b55f5] font-mono text-[11px] block truncate font-semibold">
+                  <code className="text-primary-info font-mono text-[11px] block truncate font-semibold">
                     {generateMockEventId(selectedSlot.id, candidateId)}
                   </code>
                 </div>
@@ -1131,9 +1161,9 @@ export default function CandidateDetailPage() {
 
                 <button
                   type="button"
-                  disabled={isSubmitting || !selectedSlot || isQuarantined}
+                  disabled={isSubmitting || !selectedSlot || isQuarantined || !canReview}
                   onClick={handleConfirmSchedule}
-                  title={isQuarantined ? 'Kandidat dalam karantina keamanan' : (!selectedSlot ? 'Pilih slot terlebih dahulu' : undefined)}
+                  title={!canReview ? `Role ${roleLabel()} tidak berwenang menyetujui keputusan` : isQuarantined ? 'Kandidat dalam karantina keamanan' : (!selectedSlot ? 'Pilih slot terlebih dahulu' : undefined)}
                   className="px-6 py-2.5 bg-primary-orange hover:opacity-90 text-white font-bold text-xs rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-center"
                 >
                   {isSubmitting ? (
@@ -1160,30 +1190,30 @@ export default function CandidateDetailPage() {
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-[#000000]">
+                <h3 className="text-lg font-bold text-primary-slate-900">
                   Wawancara Berhasil Dijadwalkan!
                 </h3>
-                <p className="text-xs text-[#67677e] max-w-md mx-auto">
-                  Slot kalender telah dikunci secara atomik pada database dan status kandidat diperbarui menjadi <strong className="text-[#1b55f5]">Approved &amp; Scheduled</strong>.
+                <p className="text-xs text-primary-slate-600 max-w-md mx-auto">
+                  Slot kalender telah dikunci secara atomik pada database dan status kandidat diperbarui menjadi <strong className="text-primary-info">Approved &amp; Scheduled</strong>.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#f8f9fc] border border-[#e6e6ea] max-w-md mx-auto text-left space-y-2 text-xs">
-                <div className="flex justify-between py-1 border-b border-[#e6e6ea]">
-                  <span className="text-[#67677e]">Kandidat:</span>
-                  <span className="font-mono font-bold text-[#000000]">{resolvedIdentity.name} ({candidate.masked_identifier})</span>
+              <div className="p-4 rounded-2xl bg-primary-slate-50 border border-primary-border-200 max-w-md mx-auto text-left space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-primary-border-200">
+                  <span className="text-primary-slate-600">Kandidat:</span>
+                  <span className="font-mono font-bold text-primary-slate-900">{resolvedIdentity.name} ({candidate.masked_identifier})</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-[#e6e6ea]">
-                  <span className="text-[#67677e]">Waktu:</span>
-                  <span className="font-semibold text-[#000000]">{bookedEvent.slot.date} &bull; {bookedEvent.slot.time}</span>
+                <div className="flex justify-between py-1 border-b border-primary-border-200">
+                  <span className="text-primary-slate-600">Waktu:</span>
+                  <span className="font-semibold text-primary-slate-900">{bookedEvent.slot.date} &bull; {bookedEvent.slot.time}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-[#e6e6ea]">
-                  <span className="text-[#67677e]">Pewawancara:</span>
-                  <span className="font-semibold text-[#000000]">{bookedEvent.slot.interviewer}</span>
+                <div className="flex justify-between py-1 border-b border-primary-border-200">
+                  <span className="text-primary-slate-600">Pewawancara:</span>
+                  <span className="font-semibold text-primary-slate-900">{bookedEvent.slot.interviewer}</span>
                 </div>
                 <div className="py-1">
-                  <span className="text-[#67677e] block mb-0.5">Event ID Transaksional:</span>
-                  <code className="text-[#1b55f5] font-mono text-[10px] break-all bg-white p-1 rounded border border-[#e6e6ea] block">
+                  <span className="text-primary-slate-600 block mb-0.5">Event ID Transaksional:</span>
+                  <code className="text-primary-info font-mono text-[10px] break-all bg-white p-1 rounded border border-primary-border-200 block">
                     {bookedEvent.eventId || 'Tidak dilaporkan backend — cek status notifikasi di bawah'}
                   </code>
                 </div>
@@ -1197,7 +1227,7 @@ export default function CandidateDetailPage() {
                 <button
                   type="button"
                   onClick={goBack}
-                  className="px-6 py-2.5 bg-[#1b55f5] hover:bg-[#1545c7] text-white text-xs font-semibold rounded-xl shadow-xs transition-all"
+                  className="px-6 py-2.5 bg-primary-info hover:bg-primary-info-dark text-white text-xs font-semibold rounded-xl shadow-xs transition-all"
                 >
                   Selesai &amp; Kembali ke Daftar
                 </button>
@@ -1220,13 +1250,13 @@ export default function CandidateDetailPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-[#000000] block mb-1.5 uppercase tracking-wider">
+                <label className="text-xs font-bold text-primary-slate-900 block mb-1.5 uppercase tracking-wider">
                   Alasan Penolakan Evaluasi:
                 </label>
                 <select
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full bg-white border border-[#e6e6ea] rounded-xl text-xs text-[#000000] p-3 focus:outline-none focus:border-rose-500 font-medium"
+                  className="w-full bg-white border border-primary-border-200 rounded-xl text-xs text-primary-slate-900 p-3 focus:outline-none focus:border-rose-500 font-medium"
                 >
                   <option value="Skor keahlian di bawah threshold kompetensi posisi">
                     Skor keahlian di bawah threshold kompetensi posisi (&lt; 60.0)
@@ -1243,18 +1273,19 @@ export default function CandidateDetailPage() {
                 </select>
               </div>
 
-              <div className="pt-4 border-t border-[#e6e6ea] flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="pt-4 border-t border-primary-border-200 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => setViewState('dossier')}
-                  className="px-4 py-2.5 rounded-xl bg-[#f4f4f6] hover:bg-[#e6e6ea] text-[#000000] text-xs font-semibold transition-colors text-center"
+                  className="px-4 py-2.5 rounded-xl bg-primary-slate-100 hover:bg-primary-border-200 text-primary-slate-900 text-xs font-semibold transition-colors text-center"
                 >
                   Batal
                 </button>
                 <button
                   type="button"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !canReview}
                   onClick={handleConfirmReject}
+                  title={canReview ? undefined : `Role ${roleLabel()} tidak berwenang menolak kandidat`}
                   className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 text-center"
                 >
                   {isSubmitting ? 'Memproses Penolakan...' : 'Konfirmasi Penolakan Berkas'}
@@ -1280,10 +1311,10 @@ export default function CandidateDetailPage() {
                 <XCircle className="w-8 h-8 text-rose-600" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-base font-bold text-[#000000]">
+                <h3 className="text-base font-bold text-primary-slate-900">
                   Kandidat Telah Ditolak
                 </h3>
-                <p className="text-xs text-[#67677e] max-w-sm mx-auto">
+                <p className="text-xs text-primary-slate-600 max-w-sm mx-auto">
                   Status kandidat {resolvedIdentity.name} ({candidate.masked_identifier}) telah ditandai ditolak. Alasan dicatat dalam audit trail sistem.
                 </p>
               </div>
@@ -1294,7 +1325,7 @@ export default function CandidateDetailPage() {
                 <button
                   type="button"
                   onClick={goBack}
-                  className="px-6 py-2.5 bg-[#2b2d32] hover:bg-[#1f2127] text-white text-xs font-semibold rounded-xl transition-all"
+                  className="px-6 py-2.5 bg-primary-slate-1000 hover:bg-primary-slate-1000 text-white text-xs font-semibold rounded-xl transition-all"
                 >
                   Kembali ke Daftar
                 </button>

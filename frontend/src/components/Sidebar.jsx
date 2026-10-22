@@ -1,8 +1,15 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, ExternalLink, X, FileCheck2, User, ChevronRight, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Briefcase, ExternalLink, X, FileCheck2, ChevronRight, CalendarDays } from 'lucide-react';
+import { getUser } from '../lib/api';
+import { roleLabel } from '../lib/roles';
 
 export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {} }) {
+  // Identity comes from the stored session; the Header already reads it, and a
+  // hardcoded name here made the sidebar disagree with the rest of the shell.
+  const user = getUser();
+  const initials = (user?.username || 'HR').slice(0, 2).toUpperCase();
+
   const menuItems = [
     { path: '/admin/dashboard', label: 'Dashboard & Triage', sublabel: 'Antrean & Evaluasi AI', icon: LayoutDashboard },
     { path: '/admin/jobs', label: 'Kelola Lowongan', sublabel: 'Bobot 4D & Kriteria', icon: Briefcase },
@@ -12,7 +19,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   const handleLinkClick = () => { if (onCloseMobile) onCloseMobile(); };
 
   const navContent = (
-    <div className="flex flex-col h-full bg-primary-black text-white select-none">
+    <div className="flex flex-col h-full bg-primary-black text-white">
       {/* Brand Header */}
       <div className="px-5 py-5 flex items-center justify-between border-b border-white/10 shrink-0">
         <Link to="/admin/dashboard" onClick={handleLinkClick} className="flex flex-col gap-1 min-w-0">
@@ -22,6 +29,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
         <button 
           type="button" 
           onClick={onCloseMobile} 
+          aria-label="Tutup menu navigasi"
           className="lg:hidden p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
         >
           <X className="w-5 h-5" />
@@ -105,11 +113,11 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
       <div className="p-4 border-t border-white/10 shrink-0">
         <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary-orange text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs font-jkt">
-            WN
+            {initials}
           </div>
           <div className="flex-1 min-w-0 font-jkt">
-            <p className="text-xs font-bold text-white truncate">Willy Narendra</p>
-            <p className="text-[10px] text-primary-slate-400 truncate">Frontend Lead</p>
+            <p className="text-xs font-bold text-white truncate">{user?.username || 'Sesi aktif'}</p>
+            <p className="text-[10px] text-primary-slate-400 truncate">{roleLabel(user?.role)}</p>
           </div>
           <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
         </div>

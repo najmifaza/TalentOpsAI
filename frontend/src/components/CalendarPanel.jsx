@@ -136,7 +136,7 @@ export default function CalendarPanel() {
                 connected
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   : configured
-                    ? 'bg-[#f4f4f6] text-[#454554] border-[#e6e6ea]'
+                    ? 'bg-primary-slate-100 text-primary-slate-700 border-primary-border-200'
                     : 'bg-amber-50 text-amber-800 border-amber-200'
               }`}>
                 {connected ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
@@ -150,13 +150,13 @@ export default function CalendarPanel() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea]">
-                <span className="text-[10px] uppercase font-bold text-[#67677e] block">Calendar ID</span>
-                <span className="font-mono text-[11px] text-[#000000] break-all">{status?.calendar_id || '—'}</span>
+              <div className="p-3 rounded-xl bg-primary-slate-100 border border-primary-border-200">
+                <span className="text-[10px] uppercase font-bold text-primary-slate-600 block">Calendar ID</span>
+                <span className="font-mono text-[11px] text-primary-slate-900 break-all">{status?.calendar_id || '—'}</span>
               </div>
-              <div className="p-3 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea]">
-                <span className="text-[10px] uppercase font-bold text-[#67677e] block">Token kedaluwarsa</span>
-                <span className="font-mono text-[11px] text-[#000000] break-all">
+              <div className="p-3 rounded-xl bg-primary-slate-100 border border-primary-border-200">
+                <span className="text-[10px] uppercase font-bold text-primary-slate-600 block">Token kedaluwarsa</span>
+                <span className="font-mono text-[11px] text-primary-slate-900 break-all">
                   {status?.token_expires_at
                     ? new Date(status.token_expires_at).toLocaleString('id-ID')
                     : '—'}
@@ -166,10 +166,10 @@ export default function CalendarPanel() {
 
             {Array.isArray(status?.scopes) && status.scopes.length > 0 && (
               <div className="space-y-1">
-                <span className="text-[10px] uppercase font-bold text-[#67677e]">Scope OAuth</span>
+                <span className="text-[10px] uppercase font-bold text-primary-slate-600">Scope OAuth</span>
                 <div className="flex flex-wrap gap-1.5">
                   {status.scopes.map((scope) => (
-                    <span key={scope} className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#eaf0ff] text-[#1b55f5] border border-[#8ec0ff]">
+                    <span key={scope} className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary-info-soft text-primary-info border border-primary-info-border">
                       {scope}
                     </span>
                   ))}
@@ -200,9 +200,10 @@ export default function CalendarPanel() {
               )}
               <button
                 type="button"
+                aria-label="Muat ulang status kalender"
                 onClick={loadStatus}
                 disabled={isLoading || busy}
-                className="px-4 py-2 rounded-xl bg-white hover:bg-[#f4f4f6] disabled:opacity-50 text-[#000000] text-xs font-semibold border border-[#e6e6ea] transition-colors flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-primary-slate-100 disabled:opacity-50 text-primary-slate-900 text-xs font-semibold border border-primary-border-200 transition-colors flex items-center gap-1.5"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
                 <span>Muat Ulang</span>
@@ -210,8 +211,8 @@ export default function CalendarPanel() {
             </div>
 
             {!configured && (
-              <div className="p-3 rounded-xl bg-[#f4f4f6] border border-[#e6e6ea] text-[11px] text-[#454554] flex items-start gap-2">
-                <Info className="w-4 h-4 text-[#1b55f5] shrink-0 mt-0.5" />
+              <div className="p-3 rounded-xl bg-primary-slate-100 border border-primary-border-200 text-[11px] text-primary-slate-700 flex items-start gap-2">
+                <Info className="w-4 h-4 text-primary-info shrink-0 mt-0.5" />
                 <span>
                   <strong>GOOGLE_CLIENT_ID</strong> dan <strong>GOOGLE_CLIENT_SECRET</strong> belum
                   diisi di <code className="font-mono">backend/.env</code>. Selama kosong, tombol

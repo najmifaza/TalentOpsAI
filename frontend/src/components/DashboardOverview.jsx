@@ -1,23 +1,29 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CandidateTable from './CandidateTable';
+import WeightBar from './WeightBar';
+import WorkflowStrip from './WorkflowStrip';
+import { can } from '../lib/roles';
+import { toPercent } from '../lib/dimensions';
+import { formatDateTime } from '../lib/format';
+import { categorize, isUnscanned } from '../lib/labels';
 import AgentTraceModal from './AgentTraceModal';
 import UploadCandidateModal from './UploadCandidateModal';
-import { 
-  Users, 
-  CheckCircle2, 
-  ShieldCheck, 
-  TrendingUp, 
+import {
+  Users,
+  CheckCircle2,
+  ShieldCheck,
+  TrendingUp,
   Sparkles,
   RefreshCw,
   UploadCloud,
   Clock,
   AlertTriangle,
-  Play,
   Zap,
   Check,
   Sliders,
-  ArrowRight
+  ArrowRight,
+  Info
 } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
@@ -50,14 +56,14 @@ export default function DashboardOverview() {
               tracking_token: c.tracking_token || `tk-${c.id}`,
               job_title: c.job_title || 'Unknown Role',
               department: c.department || null,
-              applied_date: c.created_at ? c.created_at.replace('T', ' ').slice(0, 16) : '-',
+              applied_date: formatDateTime(c.created_at),
               candidate_name_masked: c.masked_identifier,
               overall_score: c.overall_score !== null ? c.overall_score : null,
               scores_4d: c.overall_score !== null ? {
-                s_comp: dims.SKILL || 0,
-                s_port: dims.PORTFOLIO || 0,
-                s_conf: dims.EDUCATION || (c.confidence_level === 'HIGH' ? 95 : 75),
-                s_risk: c.unresolved_risk === 'HIGH' ? 70 : (c.unresolved_risk === 'MEDIUM' ? 35 : 10),
+                SKILL: dims.SKILL || 0,
+                EXPERIENCE: dims.EXPERIENCE || 0,
+                EDUCATION: dims.EDUCATION || 0,
+                PORTFOLIO: dims.PORTFOLIO || 0,
               } : null,
               recommendation: isUnscanned ? 'PENDING_SCAN' : (c.recommendation || 'REVIEW_REQUIRED'),
               status: c.status || (isUnscanned ? 'queued' : 'waiting_approval'),
@@ -83,7 +89,7 @@ export default function DashboardOverview() {
     }
   }, []);
 
-  // Job metadata (weights per opening) — needed by the per-job What-If cards.
+  // Job metadata (weights per opening) — needed by the per-job simulation cards.
   const fetchJobs = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/jobs`);
@@ -126,24 +132,30 @@ export default function DashboardOverview() {
   }, [fetchCandidates, fetchJobs]);
 
   // Derived live pipeline funnel metrics
+  const canUpload = can('upload');
+  const canBatchTriage = can('batchTriage');
+
   const unscannedCandidates = useMemo(() => {
-    return candidates.filter(c => 
-      c.scan_status === 'UNSCANNED' || 
-      c.overall_score === null || 
-      c.overall_score === undefined ||
-      c.recommendation === 'PENDING_SCAN' || 
-      c.status === 'queued'
-    );
+    return candidates.filter(isUnscanned);
   }, [candidates]);
 
   const scannedCandidates = useMemo(() => {
-    return candidates.filter(c => !unscannedCandidates.some(u => u.id === c.id));
-  }, [candidates, unscannedCandidates]);
+    return candidates.filter(c => !isUnscanned(c));
+  }, [candidates]);
 
-  const strongMatches = useMemo(() => candidates.filter(c => c.recommendation === 'STRONG_MATCH').length, [candidates]);
-  const reviewRequired = useMemo(() => candidates.filter(c => c.recommendation === 'REVIEW_REQUIRED').length, [candidates]);
-  const weakFit = useMemo(() => candidates.filter(c => c.recommendation === 'WEAK_FIT').length, [candidates]);
-  const quarantined = useMemo(() => candidates.filter(c => c.recommendation === 'SECURITY_QUARANTINE' || (c.flags && c.flags.length > 0)).length, [candidates]);
+  // Buckets must be exclusive and must sum to the pool size. `categorize` is the
+  // single definition shared with the table badges, the filter dropdown and the
+  // per-job cards, so a candidate can no longer sit in a KPI card while the table
+  // labels it differently.
+  const buckets = useMemo(() => {
+    const acc = { STRONG_MATCH: 0, REVIEW_REQUIRED: 0, WEAK_FIT: 0, SECURITY_QUARANTINE: 0 };
+    scannedCandidates.forEach((c) => { acc[categorize(c)] += 1; });
+    return acc;
+  }, [scannedCandidates]);
+  const strongMatches = buckets.STRONG_MATCH;
+  const reviewRequired = buckets.REVIEW_REQUIRED;
+  const weakFit = buckets.WEAK_FIT;
+  const quarantined = buckets.SECURITY_QUARANTINE;
 
   const avgScore = useMemo(() => {
     if (scannedCandidates.length === 0) return null;
@@ -157,7 +169,7 @@ export default function DashboardOverview() {
     return Math.round((count / scannedCandidates.length) * 100);
   }, [scannedCandidates]);
 
-  // Group the pool per opening: What-If is job-scoped, so each card is its own simulation entry point.
+  // Group the pool per opening: simulation is job-scoped, so each card is its own entry point.
   const jobGroups = useMemo(() => {
     const byId = new Map();
     candidates.forEach(c => {
@@ -173,24 +185,26 @@ export default function DashboardOverview() {
     });
     return Array.from(byId.values()).map(g => {
       const meta = jobs.find(j => j.id === g.job_id);
-      const scanned = g.candidates.filter(c => c.overall_score !== null && c.overall_score !== undefined);
-      const w = meta?.weight_config || {};
+      const scanned = g.candidates.filter(c => !isUnscanned(c));
+      // Counts come from the same `categorize` the KPI cards use, so a card here
+      // can no longer disagree with the dashboard above it.
+      const byCat = scanned.reduce((acc, c) => {
+        const k = categorize(c);
+        acc[k] = (acc[k] || 0) + 1;
+        return acc;
+      }, {});
       return {
         ...g,
         title: meta?.title || g.title,
         department: meta?.department || g.department,
-        weights: {
-          SKILL: Math.round((w.SKILL ?? 0.4) * 100),
-          EXPERIENCE: Math.round((w.EXPERIENCE ?? 0.3) * 100),
-          EDUCATION: Math.round((w.EDUCATION ?? 0.1) * 100),
-          PORTFOLIO: Math.round((w.PORTFOLIO ?? 0.2) * 100),
-        },
+        weights: toPercent(meta?.weight_config),
         total: g.candidates.length,
         scannedCount: scanned.length,
         unscannedCount: g.candidates.length - scanned.length,
-        strong: scanned.filter(c => c.recommendation === 'STRONG_MATCH').length,
-        review: scanned.filter(c => c.recommendation === 'REVIEW_REQUIRED').length,
-        weak: scanned.filter(c => c.recommendation === 'WEAK_FIT').length,
+        strong: byCat.STRONG_MATCH || 0,
+        review: byCat.REVIEW_REQUIRED || 0,
+        weak: byCat.WEAK_FIT || 0,
+        quarantined: byCat.SECURITY_QUARANTINE || 0,
       };
     }).sort((a, b) => b.total - a.total);
   }, [candidates, jobs]);
@@ -239,18 +253,13 @@ export default function DashboardOverview() {
       {/* 1. Header & Workspace Action Bar */}
       <div className="bg-white rounded-2xl p-6 border border-primary-border-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden">
         <div aria-hidden="true" className="absolute inset-0 opacity-[0.03] bg-dot-matrix pointer-events-none"></div>
-        <div className="space-y-1.5 max-w-2xl relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-orange/10 text-primary-black text-xs font-semibold border border-primary-orange/30">
-            <Sparkles className="w-3.5 h-3.5 text-primary-orange" />
-            <span className="font-bold tracking-wider uppercase text-[11px]">Workspace Triage Rekruter</span>
-            <span className="text-primary-slate-400 font-normal">&bull; Gemini 3.8 Flash (T=0.0)</span>
-          </div>
+        <div className="space-y-1 max-w-2xl relative z-10">
           <h2 className="text-xl sm:text-2xl font-extrabold text-primary-black tracking-tight leading-tight">
-            Antrean Evaluasi &amp; Observability Keputusan
+            Antrean Evaluasi Kandidat
           </h2>
           <p className="text-xs sm:text-sm text-primary-slate-600 leading-relaxed font-normal">
-            Evaluasi berkas pelamar berbasis bukti deterministik 4D, audit repositori GitHub terverifikasi, 
-            dan perlindungan identitas pribadi berstandar UU PDP No. 27/2022.
+            Skor deterministik 4D dengan bukti kutipan CV dan audit repositori GitHub.
+            <span className="hidden sm:inline text-primary-slate-400"> Identitas pelamar tersanitasi sesuai UU PDP No. 27/2022.</span>
           </p>
         </div>
 
@@ -258,22 +267,31 @@ export default function DashboardOverview() {
         <div className="flex flex-wrap items-center gap-2.5 shrink-0 relative z-10">
           <button
             onClick={() => setIsUploadModalOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary-orange hover:opacity-90 active:scale-98 text-white text-xs font-bold transition-all shadow-lg shadow-primary-orange/25"
-            title="Upload berkas CV pelamar baru (PDF/DOCX)"
+            disabled={!canUpload}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all ${
+              canUpload
+                ? 'bg-primary-orange hover:opacity-90 active:scale-98 text-white shadow-lg shadow-primary-orange/25'
+                : 'bg-primary-slate-200 text-primary-slate-500 cursor-not-allowed'
+            }`}
+            title={canUpload
+              ? 'Upload berkas CV pelamar baru (PDF/DOCX)'
+              : 'Role Anda tidak berwenang mengunggah berkas'}
           >
-            <UploadCloud className="w-4 h-4 text-white" />
+            <UploadCloud className="w-4 h-4" />
             <span>Upload CV Baru</span>
           </button>
 
           <button
             onClick={handleBatchTriage}
-            disabled={isBatchRunning || unscannedCandidates.length === 0}
+            disabled={isBatchRunning || unscannedCandidates.length === 0 || !canBatchTriage}
+            title={canBatchTriage
+              ? 'Jalankan autonomous agent triage untuk seluruh berkas yang belum di-scan'
+              : 'Role Anda tidak berwenang menjalankan triage massal'}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-xs ${
               unscannedCandidates.length > 0 && !isBatchRunning
                 ? 'bg-primary-black hover:bg-primary-black/90 text-white'
                 : 'bg-primary-slate-100 text-primary-slate-400 border border-primary-border-200 disabled:opacity-60'
             }`}
-            title="Jalankan autonomous agent triage untuk seluruh berkas yang belum di-scan"
           >
             <Zap className={`w-3.5 h-3.5 ${isBatchRunning ? 'animate-spin text-primary-orange' : 'text-primary-orange fill-current'}`} />
             <span>
@@ -294,6 +312,13 @@ export default function DashboardOverview() {
         </div>
       </div>
 
+      {/* 2. Workflow strip: replaces the stacked titles with the actual 3-step order. */}
+      <WorkflowStrip
+        unscannedCount={unscannedCandidates.length}
+        reviewCount={reviewRequired}
+        onUpload={() => setIsUploadModalOpen(true)}
+      />
+
       {/* Dynamic Status / Feedback Alert Banner */}
       {batchMessage && (
         <div className="p-4 rounded-xl bg-primary-blue/10 border border-primary-blue/30 text-xs font-semibold text-primary-black flex items-center justify-between shadow-xs animate-fade-in">
@@ -310,10 +335,11 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      {/* 2. Pipeline Stage Cards (WebEkspor Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. Pipeline Stage Cards (WebEkspor Cards) — lima kategori, satu kartu per
+          kategori supaya jumlahnya bisa dijumlahkan ke total berkas. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Stage 1: Menunggu Triage AI */}
-        <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm hover:border-primary-orange hover:shadow-card-hover transition-all flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-primary-slate-500">
               <span className="uppercase tracking-wider text-[11px]">Menunggu Triage AI</span>
@@ -325,9 +351,11 @@ export default function DashboardOverview() {
               {unscannedCandidates.length}
             </div>
             <p className="text-xs text-primary-slate-600 mt-1 leading-snug font-normal">
-              {unscannedCandidates.length > 0 
-                ? 'Berkas pelamar siap diekstrak AI' 
-                : 'Semua berkas telah dipindai'}
+              {unscannedCandidates.length > 0
+                ? 'Berkas pelamar siap diekstrak AI'
+                : candidates.length === 0
+                  ? 'Belum ada berkas yang diunggah'
+                  : 'Semua berkas telah dipindai'}
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs">
@@ -335,13 +363,17 @@ export default function DashboardOverview() {
             <span className={`font-semibold px-2 py-0.5 rounded-full text-[11px] ${
               unscannedCandidates.length > 0 ? 'bg-primary-orange/10 text-primary-orange font-bold' : 'bg-primary-slate-100 text-primary-slate-600'
             }`}>
-              {unscannedCandidates.length > 0 ? 'Perlu Diproses' : 'Lengkap'}
+              {unscannedCandidates.length > 0
+                ? 'Perlu Diproses'
+                : candidates.length === 0
+                  ? 'Kosong'
+                  : 'Lengkap'}
             </span>
           </div>
         </div>
 
         {/* Stage 2: Siap Ditinjau HR */}
-        <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm hover:border-primary-orange hover:shadow-card-hover transition-all flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-primary-slate-500">
               <span className="uppercase tracking-wider text-[11px]">Siap Ditinjau HR</span>
@@ -353,19 +385,25 @@ export default function DashboardOverview() {
               {reviewRequired}
             </div>
             <p className="text-xs text-primary-slate-600 mt-1 leading-snug font-normal">
-              Perlu klarifikasi kualifikasi atau linimasa
+              {candidates.length === 0
+                ? 'Kandidat dengan bukti yang belum konklusif'
+                : 'Perlu klarifikasi kualifikasi atau linimasa'}
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs">
             <span className="text-primary-slate-400">Kategori</span>
-            <span className="font-semibold bg-primary-blue/10 text-primary-black px-2 py-0.5 rounded-full text-[11px]">
-              Review Required
+            <span className={`font-semibold px-2 py-0.5 rounded-full text-[11px] ${
+              candidates.length === 0
+                ? 'bg-primary-slate-100 text-primary-slate-500'
+                : 'bg-primary-blue/10 text-primary-black'
+            }`}>
+              {candidates.length === 0 ? 'Belum Dinilai' : 'Perlu Review HR'}
             </span>
           </div>
         </div>
 
         {/* Stage 3: Sangat Sesuai (Lolos) */}
-        <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm hover:border-primary-orange hover:shadow-card-hover transition-all flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-primary-slate-500">
               <span className="uppercase tracking-wider text-[11px]">Sangat Sesuai (Lolos)</span>
@@ -377,37 +415,83 @@ export default function DashboardOverview() {
               {strongMatches}
             </div>
             <p className="text-xs text-primary-slate-600 mt-1 leading-snug font-normal">
-              Skor &ge; 85 &bull; Siap kunci jadwal wawancara
+              {candidates.length === 0
+                ? 'Ambang lolos: skor 4D ≥ 85'
+                : 'Skor ≥ 85 • Siap kunci jadwal wawancara'}
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs">
             <span className="text-primary-slate-400">Rekomendasi</span>
-            <span className="font-semibold bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full text-[11px] border border-emerald-300">
-              Strong Match
+            <span className={`font-semibold px-2 py-0.5 rounded-full text-[11px] border ${
+              candidates.length === 0
+                ? 'bg-primary-slate-100 text-primary-slate-500 border-primary-border-200'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+            }`}>
+              {candidates.length === 0 ? 'Belum Dinilai' : 'Sangat Sesuai'}
             </span>
           </div>
         </div>
 
-        {/* Stage 4: Kurang Sesuai / Anomali */}
-        <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm hover:border-primary-orange hover:shadow-card-hover transition-all flex flex-col justify-between">
+        {/* Stage 4: Kurang Sesuai — kartu kelima yang sebelumnya hanya muncul sebagai
+            catatan kaki di kartu "Sangat Sesuai", sehingga keempat kartu tidak pernah
+            menjumlah ke total berkas. */}
+        <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-primary-slate-500">
-              <span className="uppercase tracking-wider text-[11px]">Kurang Sesuai / Anomali</span>
+              <span className="uppercase tracking-wider text-[11px]">Kurang Sesuai</span>
+              <div className="w-7 h-7 rounded-lg bg-primary-slate-100 text-primary-slate-600 flex items-center justify-center">
+                <Info className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="text-3xl font-extrabold text-primary-black mt-2 tabular-nums">
+              {weakFit}
+            </div>
+            <p className="text-xs text-primary-slate-600 mt-1 leading-snug font-normal">
+              {candidates.length === 0
+                ? 'Ambang eliminasi: skor 4D < 60'
+                : 'Skor < 60 • Kualifikasi inti tidak terpenuhi'}
+            </p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs">
+            <span className="text-primary-slate-400">Rekomendasi</span>
+            <span className={`font-semibold px-2 py-0.5 rounded-full text-[11px] border ${
+              candidates.length === 0
+                ? 'bg-primary-slate-100 text-primary-slate-500 border-primary-border-200'
+                : 'bg-primary-slate-100 text-primary-slate-700 border-primary-border-200'
+            }`}>
+              {candidates.length === 0 ? 'Belum Dinilai' : 'Kurang Sesuai'}
+            </span>
+          </div>
+        </div>
+
+        {/* Stage 5: Karantina Keamanan */}
+        <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs font-bold text-primary-slate-500">
+              <span className="uppercase tracking-wider text-[11px]">Karantina Keamanan</span>
               <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
                 <ShieldCheck className="w-4 h-4" />
               </div>
             </div>
             <div className="text-3xl font-extrabold text-primary-black mt-2 tabular-nums">
-              {weakFit + quarantined}
+              {quarantined}
             </div>
             <p className="text-xs text-primary-slate-600 mt-1 leading-snug font-normal">
-              {quarantined > 0 ? `${quarantined} karantina keamanan` : 'Di bawah batas kelayakan'}
+              {quarantined > 0
+              ? 'Berkas ber-flag integritas, wajib audit manual'
+              : candidates.length === 0
+                ? 'Belum ada berkas untuk disaring'
+                : 'Tidak ada berkas ber-flag'}
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs">
             <span className="text-primary-slate-400">Penyaring</span>
-            <span className="font-semibold bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full text-[11px] border border-rose-200">
-              Weak Fit / Anomaly
+            <span className={`font-semibold px-2 py-0.5 rounded-full text-[11px] border ${
+              candidates.length === 0
+                ? 'bg-primary-slate-100 text-primary-slate-500 border-primary-border-200'
+                : 'bg-rose-50 text-rose-700 border-rose-200'
+            }`}>
+              {candidates.length === 0 ? 'Belum Disaring' : 'Karantina Keamanan'}
             </span>
           </div>
         </div>
@@ -470,7 +554,7 @@ export default function DashboardOverview() {
         </div>
       </div>
 
-      {/* 4. Per-Job What-If Entry Cards */}
+      {/* 4. Per-Job Policy Simulation Entry Cards */}
       {jobGroups.length > 0 && (
         <div className="space-y-4 pt-2">
           <div>
@@ -499,14 +583,7 @@ export default function DashboardOverview() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {[['Skill', g.weights.SKILL], ['Exp', g.weights.EXPERIENCE], ['Edu', g.weights.EDUCATION], ['Port', g.weights.PORTFOLIO]].map(([label, val]) => (
-                      <div key={label} className="rounded-lg bg-primary-slate-50 border border-primary-border-100 px-1.5 py-1.5 text-center">
-                        <p className="text-[9px] font-bold uppercase tracking-wider text-primary-slate-500">{label}</p>
-                        <p className="text-xs font-extrabold text-primary-black tabular-nums">{val}%</p>
-                      </div>
-                    ))}
-                  </div>
+                  <WeightBar weights={g.weights} showLegend={false} />
 
                   <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-bold">
                     <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 tabular-nums">
@@ -518,6 +595,11 @@ export default function DashboardOverview() {
                     <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 tabular-nums">
                       {g.weak} Weak
                     </span>
+                    {g.quarantined > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-300 tabular-nums">
+                        {g.quarantined} Karantina
+                      </span>
+                    )}
                     {g.unscannedCount > 0 && (
                       <span className="px-2 py-0.5 rounded-full bg-primary-orange/10 text-primary-orange border border-primary-orange/30 tabular-nums">
                         {g.unscannedCount} belum scan
@@ -529,7 +611,7 @@ export default function DashboardOverview() {
                 <button
                   onClick={() => navigate(`/admin/what-if/${g.job_id}`)}
                   disabled={g.scannedCount === 0}
-                  title={g.scannedCount === 0 ? 'Belum ada kandidat ter-triage untuk disimulasikan' : 'Buka What-If Simulation Studio'}
+                  title={g.scannedCount === 0 ? 'Belum ada kandidat ter-triage untuk disimulasikan' : 'Buka studio simulasi bobot & ambang'}
                   className={`mt-4 w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold transition-all ${
                     g.scannedCount === 0
                       ? 'bg-primary-slate-100 text-primary-slate-400 border border-primary-border-200 cursor-not-allowed'
@@ -537,7 +619,7 @@ export default function DashboardOverview() {
                   }`}
                 >
                   <Sliders className="w-3.5 h-3.5" />
-                  <span>Simulasi What-If</span>
+                  <span>Simulasi Bobot &amp; Ambang</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -573,8 +655,6 @@ export default function DashboardOverview() {
             onSelectCandidate={(cand) => navigate(`/admin/candidates/${cand.id}`)} 
             onStreamCandidate={setTraceCandidate}
             onStartTriage={(cand) => setTraceCandidate(cand)}
-            onBatchTriage={handleBatchTriage}
-            isBatchRunning={isBatchRunning}
           />
         )}
       </div>

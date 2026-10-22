@@ -22,6 +22,7 @@ export default function DpaModal({ isOpen, onClose, onAccept }) {
             </div>
           </div>
           <button 
+            aria-label="Tutup ketentuan DPA"
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"
           >

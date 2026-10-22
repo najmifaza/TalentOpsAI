@@ -89,9 +89,14 @@ def mask_name(name: str) -> str:
     return " ".join(words)[:120]
 
 
+def _storage_path() -> Path:
+    """Storage location without touching the filesystem (safe on read paths)."""
+    return Path(settings.RESUME_STORAGE_DIR or (Path(__file__).resolve().parents[2] / "storage" / "resumes"))
+
+
 def resume_storage_dir() -> Path:
-    """Directory holding original uploads. Created on first use."""
-    base = Path(settings.RESUME_STORAGE_DIR or (Path(__file__).resolve().parents[2] / "storage" / "resumes"))
+    """Directory holding original uploads, created on first write."""
+    base = _storage_path()
     base.mkdir(parents=True, exist_ok=True)
     return base
 
@@ -107,11 +112,19 @@ def save_resume_bytes(content: bytes, file_format: str) -> str:
 
 
 def resolve_resume_file(stored_name: Optional[str]) -> Optional[Path]:
-    """Resolves a stored resume name, rejecting anything outside the storage dir."""
+    """Resolves a stored resume name, rejecting anything outside the storage dir.
+
+    Read-only and never raises: a missing directory or an unreadable one means
+    "no file", not a failed request. This is called on every dossier GET, so an
+    OSError here used to turn the whole page into a 500.
+    """
     if not stored_name:
         return None
-    path = resume_storage_dir() / Path(stored_name).name
-    return path if path.is_file() else None
+    try:
+        path = _storage_path() / Path(stored_name).name
+        return path if path.is_file() else None
+    except OSError:
+        return None
 
 
 def delete_resume_file(stored_name: Optional[str]) -> bool:

@@ -59,11 +59,11 @@ async def test_human_review_lock_hierarchy_success():
 async def test_unified_crypto_shredding_erasure_service():
     """Verifies execute_talentops_erasure logic according to UU PDP No. 27/2022."""
     mock_db = AsyncMock()
-    cand_row = {"id": 10, "masked_identifier": "#TK-A1B2C3", "is_deleted": False}
+    cand_row = {"id": 10, "masked_identifier": "#TK-A1B2C3", "is_deleted": False, "resume_file_path": None}
 
     async def mock_execute(statement, params=None):
         sql = str(statement).upper()
-        if "SELECT ID, MASKED_IDENTIFIER, IS_DELETED FROM CANDIDATES" in sql:
+        if "FROM CANDIDATES" in sql:
             return make_mappings(cand_row)
         return MagicMock()
 
@@ -90,7 +90,7 @@ async def test_unified_crypto_shredding_erasure_service():
 async def test_withdraw_application_via_token():
     """Verifies public portal withdraw_application endpoint."""
     mock_db = AsyncMock()
-    cand_row = {"id": 10, "masked_identifier": "#TK-A1B2C3", "is_deleted": False}
+    cand_row = {"id": 10, "masked_identifier": "#TK-A1B2C3", "is_deleted": False, "resume_file_path": None}
 
     async def mock_execute(statement, params=None):
         sql = str(statement).upper()

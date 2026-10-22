@@ -23,6 +23,9 @@ from app.core.file_parser import (
     extract_text_from_file,
     generate_masked_identifier,
     generate_tracking_token,
+    mask_name,
+    save_resume_bytes,
+    delete_resume_file,
 )
 from app.core.rate_limiter import apply_rate_limiter
 from app.core.erasure import execute_talentops_erasure
@@ -167,18 +170,23 @@ async def submit_application(
     masked_id = generate_masked_identifier()
     tracking_token = generate_tracking_token()
 
+    # Keep the applicant's original document: the dossier renders it, and
+    # erasure deletes it. Stored under an opaque name, not the upload filename.
+    stored_name = save_resume_bytes(file_bytes, file_format)
+    name_hint = mask_name(name)
+
     # 6. Insert Candidate row
     insert_cand_stmt = text("""
         INSERT INTO candidates (
             job_id, encrypted_name, encrypted_email, encrypted_phone, encrypted_dek,
             email_blind_index, masked_identifier, tracking_token, resume_file_path,
             file_hash_sha256, github_url, portfolio_url, sanitized_resume_text,
-            status, is_deleted, version
+            masked_name_hint, status, is_deleted, version
         ) VALUES (
             :job_id, :enc_name, :enc_email, :enc_phone, :enc_dek,
             :email_blind_idx, :masked_id, :tracking_token, :file_name,
             :file_hash, :github_url, :portfolio_url, :sanitized_text,
-            'queued', FALSE, 1
+            :name_hint, 'queued', FALSE, 1
         )
     """)
     res = await db.execute(
@@ -192,11 +200,12 @@ async def submit_application(
             "email_blind_idx": email_blind_idx,
             "masked_id": masked_id,
             "tracking_token": tracking_token,
-            "file_name": resume_file.filename,
+            "file_name": stored_name,
             "file_hash": file_hash,
             "github_url": github_url,
             "portfolio_url": portfolio_url,
             "sanitized_text": sanitized_text,
+            "name_hint": name_hint,
         },
     )
     candidate_id = res.lastrowid
@@ -437,6 +446,12 @@ async def withdraw_application(
         raise HTTPException(status_code=400, detail=erasure_result.get("error", "ERASURE_FAILED"))
 
     await db.commit()
+
+    # After commit only: deleting earlier would strand the file if the commit
+    # failed, leaving a live row pointing at a document that no longer exists.
+    stored_resume_name = erasure_result.pop("stored_resume_name", None)
+    if stored_resume_name:
+        delete_resume_file(stored_resume_name)
 
     # Post-commit confirmation. The recipient was captured before the shred, so
     # this still works after the DEK is destroyed.

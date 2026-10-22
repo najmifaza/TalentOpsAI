@@ -113,6 +113,11 @@ function DashboardLayout() {
 
   const currentTitle = getTitle();
 
+  // The candidate dossier renders full-bleed (its own header, sticky tabs and a
+  // two-column body), so it opts out of the shell's padding instead of fighting
+  // it with negative margins that silently break whenever this padding changes.
+  const isFullBleed = location.pathname.startsWith('/admin/candidates/');
+
   return (
     <div className="flex min-h-screen bg-primary-slate-50 text-primary-slate-900 font-jkt antialiased selection:bg-primary-orange selection:text-white relative">
       {/* Accessibility Skip Link */}
@@ -145,7 +150,7 @@ function DashboardLayout() {
           onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)} 
         />
 
-        <main id="main-content" tabIndex="-1" className="flex-1 px-4 sm:px-8 py-6 max-w-7xl w-full mx-auto animate-fade-in focus:outline-none">
+        <main id="main-content" tabIndex="-1" className={`flex-1 w-full animate-fade-in focus:outline-none ${isFullBleed ? '' : 'px-4 sm:px-8 py-6 max-w-7xl mx-auto'}`}>
           <ErrorBoundary>
             <Suspense fallback={<ComponentLoader label="Menginisialisasi modul tampilan..." />}>
               <Routes>

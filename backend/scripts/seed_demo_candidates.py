@@ -10,6 +10,7 @@ sys.path.insert(0, str(backend_dir))
 
 from app.core.config import settings
 from app.core.crypto import generate_dek, encrypt_dek, encrypt_pii, compute_blind_index
+from app.core.file_parser import save_resume_bytes, mask_name
 from app.core.llm_adapter import compute_file_hash
 from app.core.scoring import DeterministicScoringEngine
 
@@ -153,6 +154,11 @@ def seed_candidates():
                     raw_text = f.read()
 
             file_hash = compute_file_hash(raw_text)
+            # The dossier advertises `resume_file_available` from this column, so the
+            # bytes must actually exist under storage/resumes — otherwise the UI
+            # offers a download button that 404s for the judging dataset.
+            stored_resume = save_resume_bytes(raw_text.encode("utf-8"), "txt") if raw_text else None
+            name_hint = mask_name(p["name"])
             dek = generate_dek()
             enc_dek = encrypt_dek(dek)
             enc_name = encrypt_pii(p["name"], dek)
@@ -173,17 +179,19 @@ def seed_candidates():
                 INSERT INTO candidates (
                     id, job_id, encrypted_name, encrypted_email, encrypted_phone, encrypted_dek,
                     email_blind_index, masked_identifier, tracking_token, resume_file_path,
-                    file_hash_sha256, sanitized_resume_text, dimension_scores, overall_score,
+                    file_hash_sha256, sanitized_resume_text, masked_name_hint, dimension_scores, overall_score,
                     confidence_level, unresolved_risk, recommendation, triage_priority,
                     github_url, status, is_deleted, version
                 ) VALUES (
                     :id, :job_id, :enc_name, :enc_email, :enc_phone, :enc_dek,
                     :blind_idx, :masked_id, :token, :filename,
-                    :file_hash, :raw_text, :dims, :overall,
+                    :file_hash, :raw_text, :name_hint, :dims, :overall,
                     :conf, :risk, :rec, :prio,
                     :github_url, 'waiting_approval', FALSE, 1
                 )
                 ON DUPLICATE KEY UPDATE
+                    resume_file_path = VALUES(resume_file_path),
+                    masked_name_hint = VALUES(masked_name_hint),
                     dimension_scores = VALUES(dimension_scores),
                     overall_score = VALUES(overall_score),
                     confidence_level = VALUES(confidence_level),
@@ -204,9 +212,10 @@ def seed_candidates():
                 "blind_idx": blind_idx,
                 "masked_id": p["masked_id"],
                 "token": p["token"],
-                "filename": p["filename"],
+                "filename": stored_resume,
                 "file_hash": file_hash,
                 "raw_text": raw_text,
+                "name_hint": name_hint,
                 "dims": json.dumps(assessment["dimension_scores"]),
                 "overall": assessment["overall_score"],
                 "conf": assessment["confidence_level"],

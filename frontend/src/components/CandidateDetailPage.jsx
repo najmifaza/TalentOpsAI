@@ -16,7 +16,8 @@ import {
   RefreshCw,
   Mail,
   Phone,
-  Eye
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { CandidateEvidenceGraph } from './EvidenceGraph';
 import { recLabel } from '../lib/labels';
@@ -103,6 +104,11 @@ export default function CandidateDetailPage() {
   const canUnmask = can('unmask');
   const canReview = can('review');
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [isLoadingResumeFile, setIsLoadingResumeFile] = useState(false);
+  const [resumeFileError, setResumeFileError] = useState(null);
+  // A failed file fetch belongs to the CV tab; leaving it must clear the error
+  // instead of letting it follow the reviewer to every other tab.
+  useEffect(() => { setResumeFileError(null); }, [activeTab]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeMessage, setAnalyzeMessage] = useState(null);
   // Decision submission failure. Never render a success receipt off a failed POST.
@@ -318,16 +324,44 @@ export default function CandidateDetailPage() {
   }, [candidate, candidateDetail]);
 
   // Identity is only ever unmasked through the explicit reviewer action above.
-  // Until then show a neutral placeholder, never a plausible-looking fake value.
+  // Until then show the blind-review hint (`B**i S*****o`) computed at ingest;
+  // rows uploaded before migration 004 fall back to the masked identifier.
   const resolvedIdentity = useMemo(() => {
     const unmasked = unmaskedIdentity || {};
+    const hint = candidateDetail?.candidate?.masked_name_hint || candidate?.masked_name_hint || null;
     return {
-      name: unmasked.name || candidate?.candidate_name_masked || 'Identitas disembunyikan',
+      name: unmasked.name || hint || candidate?.masked_identifier || 'Kandidat',
       email: unmasked.email || 'Disembunyikan',
       phone: unmasked.phone || 'Disembunyikan',
       isUnmasked: Boolean(unmasked.name || unmasked.email || unmasked.phone),
     };
-  }, [candidate, unmaskedIdentity]);
+  }, [candidate, candidateDetail, unmaskedIdentity]);
+
+  // The original PDF/DOCX is served by an authenticated endpoint, so a plain
+  // <a href> would arrive without the Bearer token. Fetch it as a blob instead.
+  const handleOpenResumeFile = useCallback(async () => {
+    if (!candidateId) return;
+    setResumeFileError(null);
+    setIsLoadingResumeFile(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}/resume-file`);
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        setResumeFileError(payload.detail || `Gagal membuka berkas asli (${res.status})`);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+      // Revoke late: the new tab needs the URL to stay alive while it renders.
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      setResumeFileError('Gagal menghubungi backend untuk membuka berkas asli.');
+      console.warn('Resume file fetch failed:', err);
+    } finally {
+      setIsLoadingResumeFile(false);
+    }
+  }, [candidateId]);
 
   // Trigger live AI triage
   const scheduleMessageClear = (delay) => {
@@ -613,14 +647,14 @@ export default function CandidateDetailPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto bg-white border border-primary-border-200 rounded-2xl shadow-sm overflow-hidden font-jkt">
+    <div className="font-jkt">
       
         {/* PAGE HEADER: CANDIDATE IDENTITY & ACTIONS */}
-        <div className="p-5 sm:p-6 pb-4 border-b border-primary-border-100 bg-white">
+        <div className="px-4 sm:px-8 pt-6 pb-0 border-b border-primary-border-100 bg-white">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             
             {/* Identity Info Block */}
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <button
                   type="button"
@@ -630,9 +664,29 @@ export default function CandidateDetailPage() {
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
-                <h3 className="text-xl font-extrabold text-primary-black tracking-tight">
+                <h3 className="text-2xl font-extrabold text-primary-black tracking-tight">
                   {resolvedIdentity.name}
                 </h3>
+                {!resolvedIdentity.isUnmasked && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsUnmaskFormOpen(v => !v); setUnmaskError(null); }}
+                    aria-label="Buka identitas kandidat"
+                    aria-expanded={isUnmaskFormOpen}
+                    title={canUnmask
+                      ? 'Buka identitas — akses dicatat ke audit log UU PDP beserta alasannya'
+                      : `Role ${roleLabel()} tidak berwenang membuka identitas`}
+                    className="p-1.5 rounded-full text-primary-slate-500 hover:text-primary-info hover:bg-primary-info-soft border border-primary-border-200 transition-colors disabled:opacity-40"
+                    disabled={!canUnmask}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                )}
+                {resolvedIdentity.isUnmasked && (
+                  <span className="p-1.5 rounded-full text-emerald-600 bg-emerald-50 border border-emerald-200" title="Identitas terbuka — tercatat di audit log">
+                    <EyeOff className="w-4 h-4" />
+                  </span>
+                )}
                 <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-primary-slate-100 text-primary-black font-extrabold border border-primary-border-200">
                   {candidate.masked_identifier}
                 </span>
@@ -662,17 +716,6 @@ export default function CandidateDetailPage() {
                   <Phone className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{resolvedIdentity.phone}</span>
                 </span>
-                {!resolvedIdentity.isUnmasked && (
-                  <button
-                    type="button"
-                    onClick={() => { setIsUnmaskFormOpen(v => !v); setUnmaskError(null); }}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-slate-100 hover:bg-primary-slate-200 text-primary-black font-semibold border border-primary-border-200 transition-colors"
-                    title="Membuka PII dicatat ke audit log (UU PDP) beserta alasannya"
-                  >
-                    <Eye className="w-3 h-3" />
-                    <span>Tampilkan identitas</span>
-                  </button>
-                )}
               </div>
 
               {/* Reason-gated unmask: every access is written to pii_access_logs */}
@@ -731,72 +774,44 @@ export default function CandidateDetailPage() {
           )}
 
           {/* TAB NAVIGATION BAR */}
-          <div className="mt-4 flex items-center gap-1 border-b border-primary-border-100 -mb-4 pt-1 overflow-x-auto scrollbar-none">
-            <button
-              type="button"
-              onClick={() => { setViewState('dossier'); setActiveTab('summary'); }}
-              className={`pb-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
-                viewState === 'dossier' && activeTab === 'summary'
-                  ? 'border-primary-orange text-primary-orange font-bold'
-                  : 'border-transparent text-primary-slate-500 hover:text-primary-black'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Penjelasan &amp; Evaluasi AI</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setViewState('dossier'); setActiveTab('graph'); }}
-              className={`pb-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
-                viewState === 'dossier' && activeTab === 'graph'
-                  ? 'border-primary-orange text-primary-orange font-bold'
-                  : 'border-transparent text-primary-slate-500 hover:text-primary-black'
-              }`}
-            >
-              <GitBranch className="w-3.5 h-3.5" />
-              <span>Evidence Graph Flow</span>
-              {candidateDetail?.evidence && candidateDetail.evidence.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-primary-orange/10 text-primary-orange font-mono font-bold">
-                  {candidateDetail.evidence.length}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setViewState('dossier'); setActiveTab('cv'); }}
-              className={`pb-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
-                viewState === 'dossier' && activeTab === 'cv'
-                  ? 'border-primary-orange text-primary-orange font-bold'
-                  : 'border-transparent text-primary-slate-500 hover:text-primary-black'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Dokumen CV / Resume</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setViewState('dossier'); setActiveTab('schedule'); }}
-              className={`pb-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
-                viewState === 'dossier' && activeTab === 'schedule'
-                  ? 'border-primary-orange text-primary-orange font-bold'
-                  : 'border-transparent text-primary-slate-500 hover:text-primary-black'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Jadwalkan Wawancara</span>
-            </button>
+          <div className="mt-4 flex items-center gap-1 border-b border-primary-border-100 pt-1 overflow-x-auto scrollbar-none sticky top-16 z-20 bg-white">
+            {[
+              { key: 'summary', Icon: Sparkles, label: 'Penjelasan & Evaluasi AI' },
+              { key: 'graph', Icon: GitBranch, label: 'Evidence Graph Flow' },
+              { key: 'cv', Icon: FileText, label: 'Dokumen CV / Resume' },
+              { key: 'schedule', Icon: Calendar, label: 'Jadwalkan Wawancara' },
+            ].map(({ key, Icon, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => { setViewState('dossier'); setActiveTab(key); }}
+                className={`pb-3 px-3.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
+                  viewState === 'dossier' && activeTab === key
+                    ? 'border-primary-orange text-primary-orange font-bold'
+                    : 'border-transparent text-primary-slate-500 hover:text-primary-black'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{label}</span>
+                {key === 'graph' && candidateDetail?.evidence?.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-primary-orange/10 text-primary-orange font-mono font-bold">
+                    {candidateDetail.evidence.length}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* PAGE BODY */}
-        <div className="p-5 sm:p-7 bg-white">
-          
+        <div className="px-4 sm:px-8 py-6 bg-white">
+          <div className="max-w-7xl mx-auto">
           {/* TAB 1: SUMMARY & AI EXPLANATION */}
           {viewState === 'dossier' && activeTab === 'summary' && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start animate-fade-in">
+
+              {/* LEFT: narrative, objective scores, decision signals */}
+              <div className="space-y-6 min-w-0">
               
               {/* AI Executive Assessment Narrative Card */}
               <div className="p-5 rounded-2xl bg-primary-slate-50 border border-primary-border-200 space-y-3.5 shadow-2xs">
@@ -983,6 +998,82 @@ export default function CandidateDetailPage() {
                   </button>
                 </div>
               </div>
+              </div>{/* /left column */}
+
+              {/* RIGHT RAIL: portfolio summary, sticky on desktop */}
+              <aside className="space-y-3 lg:sticky lg:top-4">
+                <div className="p-4 rounded-2xl bg-primary-slate-50 border border-primary-border-200 space-y-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-primary-slate-600 block">
+                    Ringkasan Portofolio
+                  </span>
+
+                  <div className="flex items-end justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] uppercase font-semibold text-primary-slate-600 block">Skor Total</span>
+                      <span className="text-3xl font-extrabold text-primary-black tabular-nums leading-none">
+                        {typeof activeCandidateObj.overall_score === 'number'
+                          ? activeCandidateObj.overall_score.toFixed(1)
+                          : '—'}
+                      </span>
+                      <span className="text-[10px] text-primary-slate-500 font-mono"> /100</span>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold border ${recBadge.bg}`}>
+                      <recBadge.icon className="w-3 h-3" />
+                      <span>{recBadge.label}</span>
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 pt-2 border-t border-primary-border-200 text-[11px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-primary-slate-600">Status</span>
+                      <span className="font-mono font-bold text-primary-slate-900 uppercase">{activeCandidateObj.status || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-primary-slate-600">Posisi</span>
+                      <span className="font-semibold text-primary-slate-900 text-right truncate">{candidate.job_title || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-primary-slate-600">Keyakinan</span>
+                      <span className="font-bold text-primary-slate-900">{activeCandidateObj.confidence_level || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-primary-slate-600">Terdaftar</span>
+                      <span className="font-semibold text-primary-slate-900">
+                        {candidateDetail?.candidate?.created_at
+                          ? new Date(candidateDetail.candidate.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                          : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {(activeCandidateObj.github_url || activeCandidateObj.portfolio_url) && (
+                    <div className="pt-2 border-t border-primary-border-200 space-y-1">
+                      {activeCandidateObj.github_url && (
+                        <a
+                          href={activeCandidateObj.github_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-[11px] font-semibold text-primary-info hover:underline min-w-0"
+                        >
+                          <GitBranch className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{activeCandidateObj.github_url.replace(/^https?:\/\//, '')}</span>
+                        </a>
+                      )}
+                      {activeCandidateObj.portfolio_url && (
+                        <a
+                          href={activeCandidateObj.portfolio_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-[11px] font-semibold text-primary-info hover:underline min-w-0"
+                        >
+                          <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{activeCandidateObj.portfolio_url.replace(/^https?:\/\//, '')}</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </aside>
             </div>
           )}
 
@@ -1024,10 +1115,28 @@ export default function CandidateDetailPage() {
                     Teks asli hasil ekstraksi parser PDF/DOCX yang telah disanitasi dari PII sensitif sesuai standar UU PDP No. 27/2022.
                   </p>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded bg-primary-info-soft text-primary-info border border-primary-info-border">
-                  VERBATIM PARSER
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded bg-primary-info-soft text-primary-info border border-primary-info-border">
+                    VERBATIM PARSER
+                  </span>
+                  {candidateDetail?.candidate?.resume_file_available && (
+                    <button
+                      type="button"
+                      onClick={handleOpenResumeFile}
+                      disabled={isLoadingResumeFile}
+                      title="Buka berkas PDF/DOCX asli yang diunggah pelamar — akses dicatat ke audit log"
+                      className="text-[10px] font-bold px-2.5 py-1 rounded bg-white text-primary-slate-900 border border-primary-border-200 hover:border-primary-info transition-colors flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <FileText className="w-3 h-3" />
+                      <span>{isLoadingResumeFile ? 'Membuka...' : `Berkas Asli (${(candidateDetail.candidate.resume_file_format || '').toUpperCase()})`}</span>
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {resumeFileError && (
+                <p className="text-[11px] text-rose-700 font-medium">{resumeFileError}</p>
+              )}
 
               {/* Document Paper Container */}
               <div className="p-6 rounded-2xl bg-primary-slate-50 border border-primary-border-200 shadow-inner font-mono text-xs text-primary-slate-1000 space-y-4 max-h-[500px] overflow-y-auto leading-relaxed">
@@ -1333,6 +1442,7 @@ export default function CandidateDetailPage() {
             </div>
           )}
 
+          </div>
         </div>
     </div>
   );

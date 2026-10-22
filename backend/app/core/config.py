@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     TRIAGE_CONCURRENCY_LIMIT: int = 3
     SSE_HISTORY_MAX_EVENTS: int = 200
 
+    # Original resume uploads (PDF/DOCX). Empty => backend/storage/resumes.
+    # Stored bytes are the applicant's own document, so erasure must delete them.
+    RESUME_STORAGE_DIR: str = ""
+
     # --- Google Calendar OAuth2 (live two-way sync) -------------------------
     # Left empty => adapter stays in sandbox mode and no outbound call is made.
     GOOGLE_CLIENT_ID: str = ""

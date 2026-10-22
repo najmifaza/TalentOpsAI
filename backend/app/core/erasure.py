@@ -23,9 +23,13 @@ async def execute_talentops_erasure(
     6. Purges relational artifacts: candidate_evidence and candidate_assessments.
     7. Frees any tentative interview slot held by candidate.
     8. Records immutable audit record in pii_access_logs.
+
+    The stored original file is NOT deleted here: the caller must commit first, then
+    call `delete_resume_file(result["stored_resume_name"])`. Deleting before commit
+    would lose the document while the row still points at it if the commit fails.
     """
     cand_res = await db.execute(
-        text("SELECT id, masked_identifier, is_deleted FROM candidates WHERE id = :id"),
+        text("SELECT id, masked_identifier, resume_file_path, is_deleted FROM candidates WHERE id = :id"),
         {"id": candidate_id},
     )
     cand = cand_res.mappings().first()
@@ -40,6 +44,10 @@ async def execute_talentops_erasure(
     tombstone = generate_tombstone_hash()
     dead_dek = b"\x00" * 32
 
+    # The original upload is a plain file on disk; the DB update below cannot
+    # reach it. Hand the name back so the caller deletes it AFTER commit.
+    stored_resume = cand.get("resume_file_path") if hasattr(cand, "get") else None
+
     # 1. Soft-delete and shred candidate table
     await db.execute(
         text("""
@@ -51,6 +59,7 @@ async def execute_talentops_erasure(
                 email_blind_index = :tombstone,
                 file_hash_sha256 = NULL,
                 sanitized_resume_text = NULL,
+                masked_name_hint = NULL,
                 resume_file_path = NULL,
                 github_url = NULL,
                 portfolio_url = NULL,
@@ -101,5 +110,7 @@ async def execute_talentops_erasure(
         "candidate_id": candidate_id,
         "masked_identifier": masked_id,
         "is_deleted": True,
+        # Caller deletes this file after commit; never inside the transaction.
+        "stored_resume_name": stored_resume,
         "message": "Candidate crypto-shredded successfully under UU PDP No. 27/2022.",
     }

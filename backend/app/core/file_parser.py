@@ -2,8 +2,10 @@ import io
 import re
 import uuid
 import secrets
+from pathlib import Path
 from typing import Optional, Tuple
 from fastapi import UploadFile, HTTPException
+from app.core.config import settings
 
 MAGIC_PDF = b"%PDF-"
 MAGIC_ZIP_DOCX = b"PK\x03\x04"
@@ -68,3 +70,57 @@ def generate_masked_identifier() -> str:
 def generate_tracking_token() -> str:
     """Generates secure high-entropy UUIDv4 string for candidate tracking."""
     return str(uuid.uuid4())
+
+
+def mask_name(name: str) -> str:
+    """Blind-review display hint: keeps the outer letters of every word.
+
+    `Budi Santoso` -> `B**i S*****o`. Derived once at ingest and stored, so the
+    dossier can show a readable placeholder without decrypting PII on every GET.
+    """
+    words = []
+    for word in (name or "").split():
+        if len(word) <= 1:
+            words.append("*")
+        elif len(word) == 2:
+            words.append(f"{word[0]}*")
+        else:
+            words.append(f"{word[0]}{'*' * (len(word) - 2)}{word[-1]}")
+    return " ".join(words)[:120]
+
+
+def resume_storage_dir() -> Path:
+    """Directory holding original uploads. Created on first use."""
+    base = Path(settings.RESUME_STORAGE_DIR or (Path(__file__).resolve().parents[2] / "storage" / "resumes"))
+    base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def save_resume_bytes(content: bytes, file_format: str) -> str:
+    """Writes the original upload under a random name and returns that name.
+
+    The name is opaque so a directory listing leaks nothing about the applicant.
+    """
+    stored_name = f"{uuid.uuid4().hex}.{file_format}"
+    (resume_storage_dir() / stored_name).write_bytes(content)
+    return stored_name
+
+
+def resolve_resume_file(stored_name: Optional[str]) -> Optional[Path]:
+    """Resolves a stored resume name, rejecting anything outside the storage dir."""
+    if not stored_name:
+        return None
+    path = resume_storage_dir() / Path(stored_name).name
+    return path if path.is_file() else None
+
+
+def delete_resume_file(stored_name: Optional[str]) -> bool:
+    """Removes the stored original (UU PDP right to erasure)."""
+    path = resolve_resume_file(stored_name)
+    if not path:
+        return False
+    try:
+        path.unlink()
+        return True
+    except OSError:
+        return False

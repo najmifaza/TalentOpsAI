@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, BackgroundTasks, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import text, bindparam
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +29,10 @@ from app.core.file_parser import (
     extract_text_from_file,
     generate_masked_identifier,
     generate_tracking_token,
+    mask_name,
+    save_resume_bytes,
+    resolve_resume_file,
+    delete_resume_file,
 )
 from app.core.erasure import execute_talentops_erasure
 from app.core.broadcaster import sse_broadcaster
@@ -324,6 +328,9 @@ async def get_candidate_dossier(
             "recommendation": cand["recommendation"],
             "github_url": cand["github_url"],
             "portfolio_url": cand["portfolio_url"],
+            "masked_name_hint": cand.get("masked_name_hint"),
+            "resume_file_available": bool(resolve_resume_file(cand["resume_file_path"])),
+            "resume_file_format": ((cand["resume_file_path"] or "").rsplit(".", 1)[-1].lower() or None),
             "sanitized_resume_text": cand["sanitized_resume_text"],
             "created_at": cand["created_at"].isoformat() if cand["created_at"] else None,
         },
@@ -441,17 +448,18 @@ async def hr_direct_upload(
 
         masked_id = generate_masked_identifier()
         tracking_token = generate_tracking_token()
+        stored_name = save_resume_bytes(file_bytes, file_format)
 
         res = await db.execute(
             text("""
                 INSERT INTO candidates (
                     job_id, encrypted_name, encrypted_email, encrypted_phone, encrypted_dek,
                     email_blind_index, masked_identifier, tracking_token, resume_file_path,
-                    file_hash_sha256, sanitized_resume_text, status, is_deleted, version
+                    file_hash_sha256, sanitized_resume_text, masked_name_hint, status, is_deleted, version
                 ) VALUES (
                     :job_id, :enc_name, :enc_email, NULL, :enc_dek,
                     :email_blind_idx, :masked_id, :tracking_token, :file_name,
-                    :file_hash, :sanitized_text, 'queued', FALSE, 1
+                    :file_hash, :sanitized_text, :name_hint, 'queued', FALSE, 1
                 )
             """),
             {
@@ -462,9 +470,10 @@ async def hr_direct_upload(
                 "email_blind_idx": email_blind_idx,
                 "masked_id": masked_id,
                 "tracking_token": tracking_token,
-                "file_name": file.filename,
+                "file_name": stored_name,
                 "file_hash": file_hash,
                 "sanitized_text": sanitized_text,
+                "name_hint": mask_name(meta["name"]) if meta else None,
             },
         )
         cand_id = res.lastrowid
@@ -721,6 +730,13 @@ async def right_to_erasure_candidate(
         raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_ALREADY_DELETED")
 
     await db.commit()
+
+    # Only after the row is committed: deleting earlier would strand the file if
+    # the commit failed, leaving a live row pointing at a missing document.
+    stored_resume_name = result.pop("stored_resume_name", None)
+    if stored_resume_name:
+        delete_resume_file(stored_resume_name)
+
     return result
 
 
@@ -1141,4 +1157,69 @@ async def unmask_candidate_pii(
             "logged_to_audit_trail": True,
         },
     }
+
+
+RESUME_MEDIA_TYPES = {
+    ".pdf": "application/pdf",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".txt": "text/plain; charset=utf-8",
+}
+
+
+def _resume_media_type(suffix: str) -> str:
+    """Explicit map: guessing served .txt as DOCX, which browsers then refuse."""
+    return RESUME_MEDIA_TYPES.get((suffix or "").lower(), "application/octet-stream")
+
+
+@router.get("/{candidate_id}/resume-file")
+async def download_candidate_resume(
+    candidate_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
+):
+    """Serves the applicant's original PDF/DOCX.
+
+    The file is the raw document, so every fetch is written to pii_access_logs —
+    same governance trail as unmasking, minus the blind-review block (the file is
+    already sanitized in `sanitized_resume_text`, and this is the artefact the
+    reviewer is evaluating).
+    """
+    cand_res = await db.execute(
+        text("SELECT id, masked_identifier, resume_file_path, is_deleted FROM candidates WHERE id = :id"),
+        {"id": candidate_id},
+    )
+    cand = cand_res.mappings().first()
+    if not cand or cand["is_deleted"]:
+        raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_DELETED")
+
+    path = resolve_resume_file(cand["resume_file_path"])
+    if not path:
+        raise HTTPException(status_code=404, detail="RESUME_FILE_NOT_STORED")
+
+    reviewer_id = int(current_user.get("id") or 1) if isinstance(current_user, dict) else 1
+    reviewer_role = current_user.get("role", "recruiter") if isinstance(current_user, dict) else "recruiter"
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "127.0.0.1")
+
+    await db.execute(
+        text("""
+            INSERT INTO pii_access_logs (
+                user_id, candidate_id, masked_identifier, reason, ip_address
+            ) VALUES (:uid, :cid, :mid, :reason, :ip)
+        """),
+        {
+            "uid": reviewer_id,
+            "cid": candidate_id,
+            "mid": cand["masked_identifier"],
+            "reason": f"[{reviewer_role.upper()}] RESUME_FILE_DOWNLOAD",
+            "ip": client_ip,
+        },
+    )
+    await db.commit()
+
+    return FileResponse(
+        path,
+        media_type=_resume_media_type(path.suffix),
+        filename=f"{cand['masked_identifier'].lstrip('#')}{path.suffix}",
+    )
 

@@ -34,12 +34,16 @@ def init_database():
             with open(sql_file, "r", encoding="utf-8") as f:
                 sql_content = f.read()
 
-            raw_statements = sql_content.split(";")
+            # Strip full-line comments BEFORE splitting on ";" — a semicolon inside
+            # a comment used to cut the statement in half and leave the remainder
+            # to run as SQL.
+            without_comments = "\n".join(
+                line for line in sql_content.splitlines() if not line.strip().startswith("--")
+            )
+            raw_statements = without_comments.split(";")
             file_executed = 0
             for stmt in raw_statements:
                 clean_stmt = stmt.strip()
-                lines = [line for line in clean_stmt.splitlines() if not line.strip().startswith("--")]
-                clean_stmt = "\n".join(lines).strip()
                 if clean_stmt:
                     conn.execute(text(clean_stmt))
                     file_executed += 1

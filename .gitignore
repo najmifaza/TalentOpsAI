@@ -30,6 +30,9 @@ dist-ssr/
 *.crt
 *.pfx
 
+# Applicant resume uploads (PII — never commit)
+backend/storage/
+
 # System files
 .DS_Store
 Thumbs.db

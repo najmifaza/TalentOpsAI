@@ -5,6 +5,40 @@ Tanggung Jawab: React 18 SPA + Vite, Tailwind CSS Modern Natural Pine & Sage The
 
 ---
 
+### 2026-10-22 - Willy - Portal Karier Publik, Istilah Penyaringan, Label Enum & Format Skor Seragam
+
+> Dikerjakan dan di-commit oleh Najmi atas nama Willy; folder `frontend/` adalah kepemilikan Willy sesuai matriks RACI. Dipicu permintaan meniru struktur portal karier Astra, lalu keluhan bahwa istilah "triage" tidak dipahami.
+
+- **Branch:** `feat/backend-career-public-profile`
+- **Komponen / File:**
+  - `frontend/src/components/careers/PublicLayout.jsx`, `JobBoardPage.jsx`, `JobDetailPage.jsx` (3 berkas baru)
+  - `frontend/src/App.jsx` (rute `/lowongan`, `/lowongan/:id`, judul header)
+  - `frontend/src/components/CareerPortal.jsx` (navigasi + copy antrean)
+  - `frontend/src/components/ApplicationTracker.jsx` (panel Rincian Penilaian 4 Dimensi)
+  - `frontend/src/components/JobManagement.jsx` (seksi Profil Publik Lowongan, 12 field)
+  - `frontend/src/lib/labels.js` (`statusLabel`, `confidenceLabel`, `riskLabel`, `slotStatusLabel`, `formatScore`)
+  - `frontend/src/components/{CandidateDetailPage,CandidateTable,DashboardOverview,EvidenceGraph,WhatIfStudio,AgentTraceModal,DpaModal,Header,Sidebar,WorkflowStrip}.jsx`
+  - `frontend/scripts/check-labels.mjs` (berkas baru, self-check)
+- **Catatan:** Portal pelamar sebelumnya satu berkas `CareerPortal.jsx` berisi hero, daftar lowongan, form lamaran, dan footer sekaligus — tanpa halaman detail, tanpa filter, dan kartu tidak bisa diklik. Saat membandingkan dengan Astra, muncul dua cacat lain: dossier kandidat mencetak enum mentah backend, dan satu angka skor yang sama tampil dalam tiga format berbeda.
+- **Yang Dikerjakan:**
+  - **Portal publik.** `/lowongan` (hero, search + 3 dropdown dari `filters` API, counter, toggle grid/list, kartu dengan inisial logo + metadata + deadline + Lihat Detail/Lamar) dan `/lowongan/:id` (breadcrumb, badge meta, Lamar/Bagikan, Deskripsi & Persyaratan bernomor, sidebar Tentang Perusahaan, badge inklusivitas). `/` dialihkan ke `/lowongan`, `/apply/:id` dan `/track` tetap. Filter dikirim ke API, bukan disaring di browser.
+  - **Search bar sengaja blok statis di bawah hero, bukan `absolute` mengapung.** Posisi absolut menutupi headline setiap kali tinggi hero berubah — temuan dari screenshot headless, bukan dari membaca source.
+  - **Sidebar perusahaan menyembunyikan baris kosong,** tidak mencetak label tanpa nilai. `description_text`/`requirements_text` dinomori di frontend karena admin menulis satu butir per baris.
+  - **Form admin profil publik (`JobManagement.jsx`).** 9 input teks/tanggal, textarea Tentang Perusahaan, Deskripsi, dan Persyaratan. String kosong dikirim `null` (bukan `''`) supaya portal menyembunyikan barisnya; `deadline` ISO dipotong ke `YYYY-MM-DD` karena `<input type="date">` menolak nilai lain.
+  - **Istilah `triage` → `penyaringan`** pada seluruh teks yang dilihat user: "Dashboard & Triage" → "Dashboard & Antrean Berkas", "Triage AI" → "Penyaringan AI", "Batch Triage" → "Penyaringan Massal", "Lolos Triage" → "Lolos Penyaringan". Endpoint `/api/candidates/{id}/triage`, event `triage_initiated`/`triage_completed`, prop `onStartTriage`, dan `console.warn` **tidak** diubah — itu kontrak kode, bukan teks user.
+  - **Copy yang tadinya menjanjikan hal yang tidak terjadi.** `CareerPortal.jsx` menulis "Hasil triage deterministik keluar dalam hitungan detik setelah berkas terenkripsi", padahal `POST /api/careers/{id}/apply` hanya memasukkan berkas ke status `queued` dan triage dijalankan manual oleh HR. Diganti: berkas masuk antrean, hasil muncul di halaman Lacak Status setelah HR menjalankannya.
+  - **Enum mentah di dossier.** Sidebar Ringkasan Portofolio mencetak `WAITING_APPROVAL`, `HIGH`, `LOW`, dan slot `AVAILABLE`. `labels.js` sudah ada justru untuk mencegah ini; halaman dossier melewatinya. Sekarang `statusLabel`/`confidenceLabel`/`riskLabel`/`slotStatusLabel` dipakai, dan enum asing tetap tampil apa adanya supaya state backend baru terlihat, bukan jadi sel kosong.
+  - **Format skor.** Satu angka yang sama tampil tiga gaya: chip header `88.7`, teks rasional `88,7`, sidebar `88,67`. `formatScore()` di `labels.js` sekarang dipakai di dossier, tabel kandidat, rata-rata dashboard, What-If Studio, dan tooltip evidence graph — dua desimal, koma.
+- **Status & Verifikasi:** Selesai. `npm run build` lulus (Vite, 4 berkas chunk baru: `JobBoardPage`, `JobDetailPage`, `PublicLayout`). `node frontend/scripts/check-labels.mjs` → `labels ok` (mengunci tiap labeler tidak memantulkan enum mentah, dan `formatScore` tidak pernah menghasilkan titik desimal). Diverifikasi lewat screenshot headless Edge pada 5 halaman, bukan hanya membaca source: `/lowongan` (kartu tampil, nol "triage"), `/lowongan/1` (deskripsi 5 poin, persyaratan 6 poin, sidebar lengkap), `/track/:token` (panel 4 dimensi + bobot, dasar keputusan jadi kalimat biasa), `/admin/dashboard` (rata-rata `57,67`, kolom `8,00/70,80/88,67/42,90/77,97`, nol "triage"), `/admin/candidates/1` (nol enum uppercase, `88,67` di tiga tempat), dan modal edit `/admin/jobs` (12 field profil terisi dari API, bukan kosong).
+- **Keterbatasan yang belum tertutup:** Dua ketidakcocokan teks di dashboard ditemukan saat verifikasi dan **belum diperbaiki**: kartu "RATA-RATA SKOR" menulis "Dihitung dari 5 berkas terverifikasi" padahal 2 dari 5 baris berlabel "Belum Terverifikasi" di kolom Audit GitHub; dan chip karantina memakai label "Penyaring" yang seharusnya "Penyaringan" atau "Kategori". Keduanya label, bukan salah hitung.
+- **Catatan untuk Rekan Tim (Najmi & Fardizza):**
+  - **Najmi:** `formatScore()` dan keempat labeler ada di `frontend/src/lib/labels.js`. Setiap enum baru yang mau ditampilkan di JSX wajib lewat situ — menambah satu field enum dan mencetaknya langsung akan mengulang bug `WAITING_APPROVAL`.
+  - **Najmi:** `GET /api/jobs` dipakai modal edit `JobManagement`; kalau kolom profil dikeluarkan dari payload list, menyimpan form akan mengosongkan profil yang sudah ada.
+  - **Fardizza:** panel 4 dimensi di halaman lacak menampilkan bobot lowongan (`× 40% / × 30% / × 10% / × 20%`) beserta catatan bahwa total adalah rata-rata berbobot, bukan rata-rata biasa. Tanpa bobot, pelamar yang menghitung rata-rata keempat bar sendiri mendapat angka berbeda (85,42 vs 88,67) dan menyimpulkan skornya salah.
+- **Rencana Selanjutnya:** Perbaiki dua label dashboard di atas, lalu uji responsivitas `/lowongan` di 390px dan 768px.
+
+---
+
 ### 2026-10-22 - Willy - Satu Definisi Kategori Kandidat untuk KPI, Tabel, Filter & Kartu Lowongan
 
 > Dikerjakan dan di-commit oleh Najmi atas nama Willy; folder `frontend/` adalah kepemilikan Willy sesuai matriks RACI. Audit dipicu keluhan "UI /admin/candidates/ membingungkan".

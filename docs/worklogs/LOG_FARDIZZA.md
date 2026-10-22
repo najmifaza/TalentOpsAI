@@ -5,6 +5,28 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 
 ---
 
+### 2026-10-22 - Fardizza - Skor Inklusivitas Lowongan Dijadikan Satu Fungsi Bersama
+
+> Dikerjakan dan di-commit oleh Najmi atas nama Fardizza; `backend/app/core/scoring.py` adalah kepemilikan Fardizza sesuai matriks RACI.
+
+- **Branch:** `feat/backend-career-public-profile`
+- **Komponen / File:**
+  - `backend/app/core/scoring.py` (`inclusivity_from_findings`)
+  - `backend/app/api/jobs.py` (`analyze-bias` memakai fungsi ini; penghitung penalti duplikat dihapus)
+  - `backend/app/api/careers.py` (`bias_audit` pada detail lowongan publik)
+- **Catatan:** Portal karier publik perlu menampilkan skor inklusivitas lowongan. Rumus penalti sebelumnya hanya hidup di dalam endpoint `analyze-bias`, jadi portal publik harus menyalinnya — dan dua salinan rumus yang sama cepat atau lambat berbeda.
+- **Yang Dikerjakan:**
+  - `inclusivity_from_findings(findings) -> (score, rating)` diekstrak ke level modul di `scoring.py`: penalti `HIGH -15`, `MEDIUM -8`, `LOW -4`, skor minimum 0, rating `EXCELLENT ≥ 90` / `GOOD ≥ 75` / `NEEDS_REVISION` di bawahnya.
+  - `analyze-bias` di `jobs.py` memanggilnya; variabel `penalty_points` yang tidak lagi dipakai dihapus.
+  - Detail lowongan publik memakai fungsi yang sama, sehingga skor yang tersimpan di `flagged_ambiguities` dan yang tampil ke pelamar tidak mungkin berbeda.
+  - **`flagged_ambiguities` NULL berarti "belum diaudit", bukan "lulus dengan 100".** Endpoint publik mengembalikan `bias_audit: null` untuk kondisi itu. Seed menulis `None`, bukan `[]`, supaya lowongan tidak tampil seolah sudah diaudit.
+- **Status & Verifikasi:** Selesai. `pytest tests/` → **283 passed**. Verifikasi live: lowongan dengan 1 temuan HIGH + 1 LOW menghasilkan skor **81 / GOOD** (100 − 15 − 4), konsisten antara `analyze-bias` dan payload portal publik.
+- **Keterbatasan yang belum tertutup:** `analyze-bias` masih berbasis regex, bukan LLM — daftar pola bias yang dikenali terbatas pada yang tertulis di `scoring.py`.
+- **Catatan untuk Rekan Tim (Najmi):** Jangan menambahkan perhitungan penalti bias di tempat lain. Kalau perlu kategori severity baru, tambahkan di `inclusivity_from_findings` supaya `analyze-bias` dan portal publik ikut berubah bersamaan.
+- **Rencana Selanjutnya:** Perluas daftar pola bias dan tambahkan tes untuk rating `NEEDS_REVISION`.
+
+---
+
 ### 2026-10-21 - Fardizza - Normalisasi Semua Field Enum pada Skema Ekstraksi
 - **Komponen / File:**
   - `backend/app/schemas/extraction.py`

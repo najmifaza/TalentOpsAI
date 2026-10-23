@@ -15,6 +15,9 @@ const LoginPage = lazy(() => import('./components/LoginPage'));
 const CalendarPanel = lazy(() => import('./components/CalendarPanel'));
 const CandidateDetailPage = lazy(() => import('./components/CandidateDetailPage'));
 const WhatIfStudio = lazy(() => import('./components/WhatIfStudio'));
+const BlogFeedPage = lazy(() => import('./components/blog/BlogFeedPage'));
+const BlogDetailPage = lazy(() => import('./components/blog/BlogDetailPage'));
+const AdminBlogPage = lazy(() => import('./components/blog/AdminBlogPage'));
 
 import { WifiOff, Sparkles } from 'lucide-react';
 
@@ -105,6 +108,7 @@ function DashboardLayout() {
     '/admin/jobs': 'Kelola Lowongan & Konfigurasi Bobot 4D',
     '/admin/what-if': 'Kelola Lowongan & Konfigurasi Bobot 4D',
     '/admin/calendar': 'Integrasi Google Calendar',
+    '/admin/blog': 'Manajemen Artikel & Blog (CMS)',
   };
 
   const getTitle = () => {
@@ -160,6 +164,7 @@ function DashboardLayout() {
                 <Route path="dashboard" element={<DashboardOverview />} />
                 <Route path="jobs" element={<JobManagement />} />
                 <Route path="calendar" element={<CalendarPanel />} />
+                <Route path="blog" element={<AdminBlogPage />} />
                 <Route path="candidates/:id" element={<CandidateDetailPage />} />
                 <Route path="what-if/:jobId" element={<WhatIfStudio />} />
                 <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
@@ -207,6 +212,8 @@ export default function App() {
           <Route path="/" element={<Navigate to="/lowongan" replace />} />
           <Route path="/lowongan" element={<JobBoardPage />} />
           <Route path="/lowongan/:id" element={<JobDetailPage />} />
+          <Route path="/blog" element={<BlogFeedPage />} />
+          <Route path="/blog/:slug" element={<BlogDetailPage />} />
           <Route path="/apply" element={<CareerPortal initialTab="apply" />} />
           <Route path="/track" element={<CareerPortal initialTab="track" />} />
           <Route path="/track/:token" element={<CareerPortal initialTab="track" />} />

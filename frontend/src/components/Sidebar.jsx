@@ -1,8 +1,8 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, ExternalLink, X, FileCheck2, ChevronRight, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Briefcase, ExternalLink, X, FileCheck2, ChevronRight, CalendarDays, Newspaper } from 'lucide-react';
 import { getUser } from '../lib/api';
-import { roleLabel } from '../lib/roles';
+import { roleLabel, can } from '../lib/roles';
 
 export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {} }) {
   // Identity comes from the stored session; the Header already reads it, and a
@@ -14,6 +14,9 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
     { path: '/admin/dashboard', label: 'Dashboard & Antrean Berkas', sublabel: 'Antrean & Evaluasi AI', icon: LayoutDashboard },
     { path: '/admin/jobs', label: 'Kelola Lowongan', sublabel: 'Bobot 4D & Kriteria', icon: Briefcase },
     { path: '/admin/calendar', label: 'Kalender', sublabel: 'Google Calendar OAuth', icon: CalendarDays },
+    ...(can('manageBlog')
+      ? [{ path: '/admin/blog', label: 'Kelola Blog (CMS)', sublabel: 'Artikel & Publikasi', icon: Newspaper }]
+      : []),
   ];
 
   const handleLinkClick = () => { if (onCloseMobile) onCloseMobile(); };
@@ -88,6 +91,20 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
               <div className="flex items-center gap-3">
                 <Briefcase className="w-4 h-4 text-white/60 group-hover:text-white" />
                 <span>Portal Pelamar (Publik)</span>
+              </div>
+              <ExternalLink className="w-3 h-3 text-white/60 group-hover:text-white" />
+            </a>
+
+            <a
+              href="/blog"
+              target="_blank"
+              rel="noreferrer"
+              onClick={handleLinkClick}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium text-white/75 hover:text-white hover:bg-white/10 transition-all group font-jkt"
+            >
+              <div className="flex items-center gap-3">
+                <Newspaper className="w-4 h-4 text-white/60 group-hover:text-white" />
+                <span>Blog & Wawasan</span>
               </div>
               <ExternalLink className="w-3 h-3 text-white/60 group-hover:text-white" />
             </a>

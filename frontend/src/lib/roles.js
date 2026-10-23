@@ -17,6 +17,7 @@ const ALLOWED = {
   review: ['admin', 'recruiter', 'hiring_manager'],
   unmask: ['admin', 'recruiter', 'hiring_manager', 'compliance_officer'],
   deleteCandidate: ['admin', 'compliance_officer', 'recruiter'],
+  manageBlog: ['admin'],
 };
 
 export const currentRole = () => getUser()?.role || 'recruiter';

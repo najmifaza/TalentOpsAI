@@ -12,6 +12,7 @@ from .api.jobs import router as jobs_router
 from .api.slots import router as slots_router
 from .api.audit import router as audit_router
 from .api.calendar_oauth import router as calendar_oauth_router
+from .api.blog import router as blog_router
 
 tags_metadata = [
     {
@@ -37,6 +38,10 @@ tags_metadata = [
     {
         "name": "Compliance & Audit Trail",
         "description": "Jejak audit append-only yang tidak dapat dimodifikasi (tamper-evident) untuk kepatuhan UU No. 27/2022 (UU PDP) dan ISO 27001.",
+    },
+    {
+        "name": "Public & Admin Blog",
+        "description": "Portal publik artikel blog dan CMS admin untuk publikasi rilis, panduan, dan wawasan talent acquisition.",
     },
     {
         "name": "Health",
@@ -113,6 +118,7 @@ app.include_router(jobs_router, prefix="/api")
 app.include_router(slots_router, prefix="/api")
 app.include_router(calendar_oauth_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
+app.include_router(blog_router, prefix="/api")
 
 
 @app.get("/", tags=["Root"])

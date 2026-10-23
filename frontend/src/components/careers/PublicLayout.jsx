@@ -11,6 +11,7 @@ export default function PublicLayout({ children }) {
 
   const navItems = [
     { label: 'Lowongan', to: '/lowongan', match: /^\/lowongan/ },
+    { label: 'Blog', to: '/blog', match: /^\/blog/ },
     { label: 'Lacak Berkas', to: '/track', match: /^\/track/ },
   ];
 

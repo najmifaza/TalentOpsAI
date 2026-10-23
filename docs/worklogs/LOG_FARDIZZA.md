@@ -5,7 +5,27 @@ Tanggung Jawab: Model Adapter Layer 9router (Gemini 3.8), Skema Validasi Pydanti
 
 ---
 
-### 2026-10-22 - Fardizza - Skor Inklusivitas Lowongan Dijadikan Satu Fungsi Bersama
+### 2026-10-23 - Fardizza - Fitur Portal Blog Publik & CMS Admin (Inspirasi Google Blog & Rumio)
+- **Komponen / File:**
+  - `backend/migrations/006_blog_posts.sql` (skema tabel `blog_posts` + indexing)
+  - `backend/app/api/blog.py` (API publik feed/detail, admin CRUD dengan guard `require_roles('admin')`, auto-slug, hitung read-time)
+  - `backend/app/main.py` (registrasi router dan metadata tag blog)
+  - `backend/tests/test_blog_api.py` (unit test validator, slugify, dan kalkulasi waktu baca)
+  - `frontend/src/lib/roles.js` (rule RBAC `manageBlog: ['admin']`)
+  - `frontend/src/components/blog/BlogFeedPage.jsx` (halaman publik feed card grid bergaya blog.google + rumio.id, filter chip kategori, pencarian, paginasi)
+  - `frontend/src/components/blog/BlogDetailPage.jsx` (reader artikel, cover image, lead summary, share link, CTA karir)
+  - `frontend/src/components/blog/AdminBlogPage.jsx` (CMS admin: tabel artikel, toggle status publikasi, modal create/edit)
+  - `frontend/src/components/Sidebar.jsx` (menu CMS Blog untuk admin, tautan publik blog)
+  - `frontend/src/components/careers/PublicLayout.jsx` (navigasi Blog publik)
+  - `frontend/src/App.jsx` (rute `/blog`, `/blog/:slug`, dan `/admin/blog`)
+- **Yang Dikerjakan:**
+  - Merancang dan mengimplementasikan modul blog lengkap.
+  - Penegakan otorisasi ketat: hanya user dengan role `admin` yang dapat membuat, mengubah, menghapus, atau mengakses dashboard editor CMS blog (backend 403 Forbidden + frontend UI guard).
+  - Tampilan publik mengadopsi estetika clean Google Blog dan Rumio.id (hero banner, badge kategori, estimasi bacaan, layout kartu responsif).
+- **Status & Verifikasi:**
+  - Backend tests: `backend/tests/test_blog_api.py` (3/3 passed), `backend/tests/test_migration_parsing.py` (5/5 passed).
+  - Frontend: `node frontend/scripts/check-labels.mjs` passed.
+
 
 > Dikerjakan dan di-commit oleh Najmi atas nama Fardizza; `backend/app/core/scoring.py` adalah kepemilikan Fardizza sesuai matriks RACI.
 

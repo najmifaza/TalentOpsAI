@@ -188,7 +188,7 @@ export default function JobDetailPage() {
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               <button
-                onClick={() => navigate(`/apply?job=${job.id}`)}
+                onClick={() => navigate(`/lowongan/${job.id}/lamar`)}
                 disabled={deadlinePassed}
                 title={deadlinePassed ? 'Lowongan sudah melewati batas lamar' : undefined}
                 className="flex-1 sm:flex-none px-8 py-3 rounded-full bg-primary-orange text-white text-xs font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-orange/25 transition-all"

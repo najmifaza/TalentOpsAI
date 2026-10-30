@@ -11,6 +11,7 @@ const JobManagement = lazy(() => import('./components/JobManagement'));
 const CareerPortal = lazy(() => import('./components/CareerPortal'));
 const JobBoardPage = lazy(() => import('./components/careers/JobBoardPage'));
 const JobDetailPage = lazy(() => import('./components/careers/JobDetailPage'));
+const JobApplyPage = lazy(() => import('./components/careers/JobApplyPage'));
 const LoginPage = lazy(() => import('./components/LoginPage'));
 const CalendarPanel = lazy(() => import('./components/CalendarPanel'));
 const CandidateDetailPage = lazy(() => import('./components/CandidateDetailPage'));
@@ -212,15 +213,17 @@ export default function App() {
           <Route path="/" element={<Navigate to="/lowongan" replace />} />
           <Route path="/lowongan" element={<JobBoardPage />} />
           <Route path="/lowongan/:id" element={<JobDetailPage />} />
+          <Route path="/lowongan/:id/lamar" element={<JobApplyPage />} />
+          <Route path="/lowongan/:id/apply" element={<JobApplyPage />} />
           <Route path="/blog" element={<BlogFeedPage />} />
           <Route path="/blog/:slug" element={<BlogDetailPage />} />
-          <Route path="/apply" element={<CareerPortal initialTab="apply" />} />
+          <Route path="/apply" element={<Navigate to="/lowongan" replace />} />
           <Route path="/track" element={<CareerPortal initialTab="track" />} />
           <Route path="/track/:token" element={<CareerPortal initialTab="track" />} />
 
           {/* Legacy Career Portal Routes */}
           <Route path="/careers" element={<Navigate to="/lowongan" replace />} />
-          <Route path="/careers/apply" element={<CareerPortal initialTab="apply" />} />
+          <Route path="/careers/apply" element={<Navigate to="/lowongan" replace />} />
           <Route path="/careers/track" element={<CareerPortal initialTab="track" />} />
           <Route path="/careers/track/:token" element={<CareerPortal initialTab="track" />} />
 

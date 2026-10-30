@@ -16,7 +16,7 @@
    - _Focus Area:_ Enterprise & Industry (AI Recruitment Agent)
    - _Deliverables:_ Proposal 15 Halaman + Video Demo 3–5 Menit + Live Interface & Repo
 
-**Document Version:** 2.5.3 (Final Locked Master: Ready for Implementation & Submission)  
+**Document Version:** 2.5.4 (Codebase-Aligned Master: Blog CMS, Public Job Profile, Verified Evidence & Dropzone Meta)  
 **Status:** Approved for Implementation & Competition Submission  
 **Authors:** Tim Pengembang TalentOps AI (System Architecture, AI Engineering, Full-Stack Web & Compliance)
 
@@ -35,6 +35,7 @@
 | **v2.5.1** | 2026-10-17 | Core Team | Final Structural & Concurrency Closure: Resolusi Erasure vs Append-Only, serialisasi kunci pewawancara, sinkronisasi cleaner task, pembersihan rujukan pasal UU PDP, baseline dataset 20-30 resume sintetis.                                                                                                                                                                                                                                   |
 | **v2.5.2** | 2026-10-17 | Core Team | **Implementation Consistency Lock:** <br>1. Harmonisasi urutan kunci transaksional baku (`users` -> `interview_slots` -> `candidates`) pada seluruh alur termasuk `POST /api/candidates/{id}/review`.<br>2. Integrasi endpoint `DELETE /api/candidates/{id}` ke service terpadu `talentops_erasure`.<br>3. Penegasan soft deletion kriptografis (`is_deleted = TRUE` tanpa physical delete).<br>4. Perapian visual diagram arsitektur Bab 3.1. |
 | **v2.5.3** | 2026-10-18 | Core Team | **Production Deployment & Driver Compatibility Hardening:** <br>1. Integrasi Vercel Edge Serverless Proxy Rewrite (`/api/(.*)` -> VPS Backend `https://api-talentops.fawt.biz.id`) untuk mengeliminasi latensi CORS preflight pada custom domain `https://talentops.fawt.biz.id`.<br>2. Resolusi kompatibilitas driver biner `aiomysql` + `pymysql<=1.1.1` dengan runtime adapter `escape_bytes_prefixed` untuk penanganan parameter biner AES-256-GCM (`VARBINARY(255)`).<br>3. Penegakan format baku RFC 4122 UUIDv4 36-karakter untuk `tracking_token` dengan mekanisme client auto-healing.<br>4. Resiliensi modal Live SSE Agent Trace via Watchdog Timer 1.5s dengan auto-fallback deterministik.<br>5. Integrasi langsung tata kelola privasi UU PDP No. 27/2022 pada Public Career Portal (`/careers/apply` & `/careers/track`) dan Candidate Dossier modal. |
+| **v2.5.4** | 2026-10-22 | Core Team | **Full Codebase Synchronization & Portal Expansion:** <br>1. Integrasi tabel `blog_posts` (13 tabel inti) dan RBAC endpoint Blog CMS (`/api/blog`) serta portal publik artikel.<br>2. Harmonisasi skema `job_descriptions` (+12 kolom profil publik migrasi 005), `candidates` (`masked_name_hint` migrasi 004), dan `candidate_evidence` (`matched_requirement`, `verified` migrasi 003).<br>3. Sinkronisasi alur Dropzone HR dengan form `applicant_meta` (nama & email asli) dan dictionary PII sanitization.<br>4. Dokumentasi endpoint OAuth & status kalender (`/api/calendar/*`).<br>5. Transparansi status flag `DEMO_PURGE_ENABLED=False` (default nonaktif demi integritas dataset golden penjurian) dan penempatan banner data sintetis di dashboard. |
 
 ---
 
@@ -75,7 +76,7 @@ Untuk memastikan keberhasilan ganda—menghasilkan **Live Web Demo yang 100% sta
 
 | Komponen Arsitektur       | Lintasan 1: Live Demo MVP `[MVP]` (Fokus Demo & Video)                                                                                             | Lintasan 2: Target Arsitektur Enterprise `[TARGET]` (Cetak Biru Proposal)                        |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Lingkup Database**      | 12 Tabel Relasional Inti (Single Default Tenant `tenant_id=1`, MariaDB/InnoDB ACID)                                                                | 15 Tabel Relasional Multi-Tenant Penuh dengan Metering Kuota & Tabel `tenants`                   |
+| **Lingkup Database**      | 13 Tabel Relasional Inti (Single Default Tenant `tenant_id=1`, MariaDB/InnoDB ACID, termasuk `blog_posts`)                                        | 15 Tabel Relasional Multi-Tenant Penuh dengan Metering Kuota & Tabel `tenants`                   |
 | **Manajemen Kunci (KMS)** | Master KEK tersimpan di `.env` aman; Envelope Encryption AES-256-GCM lokal via Python `cryptography`                                               | Dedicated HashiCorp Vault / AWS KMS Cluster dengan isolasi DEK transit engine                    |
 | **Integrasi Kalender**    | **Lock atomik di database + Google Calendar OAuth2** (kode terpasang, menunggu kredensial; `MockCalendarAdapter` menangani reservasi slot)                                    | Google Calendar API OAuth2 Two-Way Sync langsung dengan Webhook Push Notification Watch Channel  |
 | **Inbound ATS Ingestion** | **Dual-Ingestion UI:** Public Career Portal (`/careers/apply`) + Direct Multi-File Dropzone di HR Dashboard (PDF/DOCX) dengan status awal `queued` | Inbound Webhook Gateway berautentikasi HMAC-SHA256 untuk integrasi Greenhouse/Lever              |
@@ -377,7 +378,7 @@ Target evaluasi end-to-end $\le 15.000\text{ ms}$ per berkas:
    - _Rate Limiting Berbasis IP di Belakang Reverse Proxy:_ Maksimal 5 permintaan unggah per menit per client IP dengan parsing header `X-Forwarded-For` terverifikasi (IP terluar yang diteruskan Nginx). Rate limit ini tidak berlaku untuk pengguna HR terautentikasi di dashboard internal.
    - _Magic Bytes File Validation:_ Validasi header biner file fisik sebelum parsing (PDF wajib diawali bytes `%PDF-` / `\x25\x50\x44\x46`, DOCX wajib berstruktur ZIP `PK\x03\x04`). Ekstensi file yang tidak sesuai dengan magic bytes ditolak seketika (HTTP 415).
    - _Sanitasi PII Dua Arah (Two-Way Dictionary Matching):_ Untuk jalur `/apply`, data input form (Nama, Email, Nomor Telepon) secara otomatis dijadikan kamus pencocokan string eksplisit untuk membersihkan kemunculan identitas di dalam isi teks narasi CV sebelum dikirim ke LLM.
-   - _Transparansi Batasan Jalur HR Dropzone:_ Pada pengunggahan batch dokumen mentah lokal oleh HR tanpa metadata form, sanitasi mengandalkan rule-based regex heuristik (pola email, nomor telepon, dan blok header kontak atas). Sistem secara jujur mencatat potensi false-negative pada nama Indonesia non-standar yang tertulis di dalam paragraf bebas narasi proyek, yang dimitigasi dengan isolasi evaluasi teknis murni pada skema LLM.
+   - _Transparansi Batasan Jalur HR Dropzone & Integrasi Metadata Form (Opsi A):_ Pada modal upload HR (`UploadCandidateModal.jsx`), pengguna wajib menyertakan metadata pelamar (`applicant_meta: [{name, email}]`) selaras indeks berkas. Backend mengenkripsi identitas asli ke `encrypted_name` & `encrypted_email`, menghitung `email_blind_index` dari email asli, dan meneruskan nama/email ke modul sanitasi *two-way dictionary matching*. Jika berkas diunggah tanpa form metadata (legacy API caller), sistem menandai `identity_source = 'placeholder'` dengan mitigasi heuristik regex kontak atas.
 6. **Penegakan Hak Akses Basis Data (Database Least Privilege) & Retensi Audit:**
    - _Status Implementasi (jujur):_ Klaim di atas adalah **rencana**, bukan kondisi terpasang. Repositori belum memiliki migrasi yang menjalankan `REVOKE` tersebut, dan user `willy@%` di VPS masih memegang `GRANT ALL ON *.* WITH GRANT OPTION`, sehingga pagar hak akses dapat dibuka kembali oleh siapa pun yang memakai kredensial itu. Yang benar-benar berlaku saat ini: tidak ada satu pun jalur kode aplikasi yang melakukan `UPDATE`/`DELETE` pada ketiga tabel tersebut (diverifikasi pada seluruh `backend/app/`), sehingga sifat append-only ditegakkan oleh konvensi kode, bukan oleh database engine. Endpoint `/api/audit/trail` sudah menyatakan hal ini secara terbuka pada field `compliance.retention_policy`. Untuk menaikkan ke penegakan fisik, tambahkan migrasi `004` berisi `REVOKE UPDATE, DELETE` pada ketiga tabel (setelah `SHOW GRANTS FOR 'talentops_app'@'localhost'`) atau, lebih kuat, trigger `BEFORE UPDATE`/`BEFORE DELETE` yang melakukan `SIGNAL SQLSTATE '45000'` — trigger tetap berlaku bahkan bagi user dengan hak penuh.
    - _Dasar Retensi Audit `consent_records`:_ Entri persetujuan tetap mempertahankan `masked_identifier`, IP address, dan timestamp bahkan setelah kandidat mengajukan hak hapus (_crypto-shredding_) atas identitas langsungnya. Hal ini merupakan kewajiban kepatuhan hukum pengendali data berdasarkan UU PDP untuk membuktikan bahwa pemrosesan terdahulu telah didasarkan pada persetujuan sah yang pernah diberikan.
@@ -385,7 +386,7 @@ Target evaluasi end-to-end $\le 15.000\text{ ms}$ per berkas:
 ### 6.2 Desain Kepatuhan UU PDP No. 27/2022 & Regulasi Ketenagakerjaan
 
 1. **Kebijakan Data Demo vs Produksi:**
-   - _Lingkungan Demo Publik `[MVP]`:_ Dikhususkan untuk data sintetis. Antarmuka memasang banner peringatan _"Gunakan data sintetis untuk pengujian live demo"_ dan sistem mengaktifkan background worker yang membersihkan berkas unggahan dan hasil evaluasi secara otomatis setiap 4 jam (_ephemeral demo storage_).
+   - _Lingkungan Demo Publik `[MVP]`:_ Dikhususkan untuk data sintetis. Antarmuka memasang banner peringatan _"Gunakan data sintetis untuk pengujian live demo"_ pada seluruh shell dashboard admin (`/admin/*`). Background worker pembersih data demo 4 jam (_ephemeral demo storage_) disediakan secara modular namun secara default dinonaktifkan (`DEMO_PURGE_ENABLED = False`) guna menjaga integritas *golden dataset* 25 resume sintetis yang dijadikan acuan demonstrasi langsung dan penjurian kompetisi.
    - _Target Lingkungan Produksi `[TARGET]`:_ Menggunakan koneksi resmi Google Cloud Vertex AI Enterprise berlandaskan _Data Processing Addendum (DPA)_ dan _Standard Contractual Clauses (SCC)_ sesuai koridor regulasi transfer dan pemrosesan data pribadi UU PDP.
 2. **Enkripsi Aplikasi, Blind Index, & Manajemen Kunci:**
    - Field identitas pribadi (`name`, `phone`) dienkripsi menggunakan **AES-256-GCM** dengan Data Encryption Key (DEK) unik per kandidat. DEK dilindungi oleh Master Key Encryption Key (KEK).
@@ -444,7 +445,7 @@ Target evaluasi end-to-end $\le 15.000\text{ ms}$ per berkas:
 
 ---
 
-## 7. SKEMA BASIS DATA RELASIONAL (12 TABEL INTI LIVE DEMO MVP)
+## 7. SKEMA BASIS DATA RELASIONAL (13 TABEL INTI LIVE DEMO MVP)
 
 Skema 3NF MariaDB/InnoDB di bawah ini merupakan fondasi yang diimplementasikan pada **Live Demo MVP** (dengan _Single Default Tenant_ `tenant_id=1`). Skema ini dapat dikembangkan langsung ke 15 tabel multi-tenant penuh pada target arsitektur enterprise `[TARGET]`:
 
@@ -473,7 +474,7 @@ CREATE TABLE oauth_tokens (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Definisi Lowongan Kerja & Job Intelligence
+-- 3. Definisi Lowongan Kerja & Job Intelligence (Public Career Profile Extension)
 CREATE TABLE job_descriptions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     owner_id INT NOT NULL,           -- Recruiter / Admin pemilik lowongan
@@ -484,6 +485,18 @@ CREATE TABLE job_descriptions (
     flagged_ambiguities JSON NULL,   -- Feedback audit bias deskripsi lowongan
     weight_config JSON NOT NULL,     -- {"SKILL": 0.4, "EXPERIENCE": 0.3, "EDUCATION": 0.1, "PORTFOLIO": 0.2}
     status ENUM('active', 'closed') DEFAULT 'active',
+    company_name VARCHAR(150) NULL,  -- Profil publik portal karir (Migrasi 005)
+    company_logo_url VARCHAR(255) NULL,
+    company_about TEXT NULL,
+    company_address VARCHAR(255) NULL,
+    company_industry VARCHAR(100) NULL,
+    company_website VARCHAR(255) NULL,
+    job_function VARCHAR(100) NULL,
+    employment_level VARCHAR(50) NULL,
+    location VARCHAR(150) NULL,
+    deadline DATE NULL,
+    description_text LONGTEXT NULL,
+    requirements_text LONGTEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -498,6 +511,7 @@ CREATE TABLE candidates (
     encrypted_dek VARBINARY(255) NOT NULL,  -- Data Encryption Key unik terenkripsi Master KEK
     email_blind_index CHAR(64) NULL,        -- Di-overwrite acak saat Right to Erasure
     masked_identifier VARCHAR(64) UNIQUE NOT NULL, -- Display public ID: Format #TK-[6-HEX] (16.7M variasi + retry logic)
+    masked_name_hint VARCHAR(128) NULL,     -- Inisial nama tersamar (misal B**i S*****o) untuk blind review dossier (Migrasi 004)
     tracking_token CHAR(64) UNIQUE NOT NULL,       -- Token rahasia berentropi tinggi untuk tracking pelamar
     resume_file_path VARCHAR(255) NULL,
     file_hash_sha256 CHAR(64) NULL,         -- Di-nullkan saat Right to Erasure
@@ -546,7 +560,10 @@ CREATE TABLE candidate_evidence (
     evidence_source TEXT NOT NULL,
     score_contribution DECIMAL(5,2) NOT NULL,
     confidence DECIMAL(3,2) NOT NULL, -- 1.00 (Tier 3), 0.75 (Tier 2), 0.50 (Tier 1)
+    matched_requirement VARCHAR(100) NULL, -- Target kompetensi lowongan yang dipenuhi (Migrasi 003)
+    verified TINYINT(1) NOT NULL DEFAULT 0, -- 1 bila narasi terverifikasi lolos Substring Guard ke teks CV (Migrasi 003)
     INDEX idx_evidence_cand (candidate_id),
+    INDEX idx_evidence_cand_verified (candidate_id, verified),
     FOREIGN KEY (candidate_id) REFERENCES candidates(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -637,6 +654,25 @@ CREATE TABLE pii_access_logs (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
     FOREIGN KEY (candidate_id) REFERENCES candidates(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 13. Blog & Artikel Inspirasi Ekosistem (Public Blog & Admin CMS - Migrasi 006)
+CREATE TABLE blog_posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    summary TEXT NOT NULL,
+    content LONGTEXT NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    author_name VARCHAR(100) DEFAULT 'Admin TalentOps',
+    cover_image_url VARCHAR(500) NULL,
+    read_time_minutes INT DEFAULT 3,
+    is_published BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_blog_slug (slug),
+    INDEX idx_blog_category (category),
+    INDEX idx_blog_published_created (is_published, created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ---
@@ -667,22 +703,30 @@ CREATE TABLE pii_access_logs (
 | `/api/candidates/{id}`                | DELETE    | Tidak  | Otorisasi Penuh |       Permohonan       |        Tidak        |  Otorisasi Penuh   |
 | `/api/slots/available`                | GET       | Tidak  |       Ya        |           Ya           |         Ya          |         Ya         |
 | `/api/slots/reserve`                  | POST      | Tidak  |       Ya        |           Ya           |         Ya          |       Tidak        |
+| `/api/calendar/status`                | GET       | Tidak  |       Ya        |           Ya           |         Ya          |         Ya         |
+| `/api/calendar/oauth/authorize`       | GET       | Tidak  |       Ya        |           Ya           |        Tidak        |       Tidak        |
+| `/api/calendar/oauth/callback`        | GET       |   Ya   |       Ya        |           Ya           |        Tidak        |       Tidak        |
+| `/api/calendar/disconnect`            | POST      | Tidak  |       Ya        |           Ya           |        Tidak        |       Tidak        |
+| `/api/blog`                           | GET       |   Ya   |       Ya        |           Ya           |         Ya          |         Ya         |
+| `/api/blog/{slug}`                    | GET       |   Ya   |       Ya        |           Ya           |         Ya          |         Ya         |
+| `/api/blog`                           | POST      | Tidak  |       Ya        |        Tidak           |        Tidak        |       Tidak        |
+| `/api/blog/{id}`                      | PUT/DELETE| Tidak  |       Ya        |        Tidak           |        Tidak        |       Tidak        |
 | `/api/candidates/{id}/sse-ticket`     | POST      | Tidak  |       Ya        |           Ya           |         Ya          |         Ya         |
 | `/api/candidates/{id}/trace-stream`   | GET (SSE) | Ticket |     Ticket      |         Ticket         |       Ticket        |       Ticket       |
 | `/api/audit-trail`                    | GET       | Tidak  |      Penuh      | Milik Lowongan Sendiri |        Tidak        |       Penuh        |
 
 ### 8.2 Spesifikasi Detail Endpoint Utama
 
-1. **`GET /api/careers` & `GET /api/careers/{id}`**: Endpoint publik untuk melihat daftar dan rincian lowongan kerja aktif tanpa autentikasi.
+1. **`GET /api/careers` & `GET /api/careers/{id}`**: Endpoint publik untuk melihat daftar dan rincian lowongan kerja aktif tanpa autentikasi (mendukung rincian profil perusahaan, logo, jenjang, fungsi, lokasi, batas waktu lamaran, dan persyaratan lowongan).
 2. **`POST /api/careers/{id}/apply`**: Endpoint pelamar mandiri dengan rate limiting (5 req/menit), validasi magic bytes (PDF/DOCX), dan two-way PII dictionary sanitization. Mengembalikan `masked_identifier` (misal `#TK-A17C9B`) untuk display serta `tracking_token` rahasia (UUIDv4/nanoid) untuk akses pelacakan.
 3. **`GET /api/careers/track/{tracking_token}`**: Endpoint publik untuk pelamar memantau status seleksi anonim (`queued`, `analyzing`, `waiting_approval`, `approved`, `rejected`) secara aman tanpa risiko enumerasi ID.
 4. **`POST /api/careers/withdraw` & `DELETE /api/candidates/{id}`**: Kedua endpoint ini sama-sama mengeksekusi service terpadu `talentops_erasure`. Menghancurkan DEK kandidat, menimpa hash blind index, membersihkan relasi terkait, dan menandai `is_deleted = TRUE` tanpa melakukan penghapusan baris fisik `candidates`.
-5. **`GET /api/candidates`**: Mengambil daftar kandidat dengan pagination (`page`, `limit`), filter `job_id`, `status` (`queued`, `analyzing`, `waiting_approval`, dst.), dan pengurutan skor.
-6. **`POST /api/candidates/upload`**: Dropzone HR internal di dashboard untuk mengunggah satu atau beberapa berkas CV sekaligus secara instan (status awal: `queued`).
+5. **`GET /api/candidates`**: Mengambil daftar kandidat dengan pagination (`page`, `limit`), filter `job_id`, `status` (`queued`, `analyzing`, `waiting_approval`, dst.), dan pengurutan skor. Menyertakan `masked_name_hint` untuk identifikasi visual aman tanpa pembukaan PII.
+6. **`POST /api/candidates/upload`**: Dropzone HR internal di dashboard untuk mengunggah berkas CV sekaligus secara instan (status awal: `queued`). Wajib menyertakan payload `applicant_meta` (`[{name, email}]`) untuk merekam identitas asli terenkripsi dan mengeksekusi sanitasi PII kamus eksak dua arah.
 7. **`POST /api/candidates/{id}/triage` & `POST /api/candidates/batch-triage`**: Pemicu eksekusi agen cerdas on-demand oleh HR yang berjalan via FastAPI `BackgroundTasks` dengan konkurensi terkontrol (`asyncio.Semaphore(3)` untuk mencegah throttling LLM) pada arsitektur single-worker Uvicorn (`--workers 1`). Sistem menyediakan startup recovery query yang mengembalikan kandidat menggantung di status `analyzing` kembali ke `queued` jika server mengalami restart mendadak.
 8. **`GET /api/candidates/{id}/trace-stream`**: Endpoint HTTP SSE (Server-Sent Events) terotentikasi via single-use ticket UUID untuk menyiarkan langkah siklus agen per detik.
 9. **`POST /api/jobs/{id}/analyze-bias`**: FR-1 Job Analyzer untuk memindai deskripsi pekerjaan terhadap istilah gender-exclusive atau kriteria usia/almamater.
-10. **`GET /api/candidates/{id}/evidence-graph`**: Mengembalikan representasi graf untuk komponen visual React Flow.
+10. **`GET /api/candidates/{id}/evidence-graph`**: Mengembalikan representasi graf untuk komponen visual React Flow, mencakup status verifikasi substring verbatim (`verified`) dan pemenuhan kompetensi spesifik (`matched_requirement`).
 11. **`POST /api/jobs/{id}/simulate-policy`**: Endpoint What-If Policy Simulation in-memory:
 
 - Parameter `min_overall_score` (default 75.0) berfungsi sebagai nilai ambang dinamis yang menggantikan cut-off `STRONG_MATCH` standar (85.0) dalam simulasi.
@@ -691,6 +735,9 @@ CREATE TABLE pii_access_logs (
 13. **`POST /api/slots/reserve`**: Melakukan penguncian atomic pada jadwal wawancara dengan verifikasi non-overlap.
 14. **`POST /api/candidates/{id}/review`**: Menyerahkan keputusan akhir HR (`APPROVED_DISPATCH`, `REQUEST_INFO`, `OVERRIDE_REJECT`, `REJECT_CONFIRMED`). Pada alur approval yang sekaligus mengalokasikan slot wawancara, transaksi mematuhi urutan penguncian transaksional baku (`users` -> `interview_slots` -> `candidates`) untuk mencegah deadlock dengan transaksi konkuren lainnya.
 15. **`POST /api/candidates/{id}/sse-ticket`**: Menerbitkan token UUID single-use (TTL 60 detik pada in-memory ticket store) untuk koneksi aman ke endpoint `/trace-stream`.
+16. **`GET /api/calendar/status` & `/api/calendar/oauth/*`**: Endpoint verifikasi konektivitas OAuth2 Google Calendar, inisiasi otorisasi, penanganan callback, dan pemutusan sambungan kalender via antarmuka `/admin/calendar`.
+17. **`GET /api/blog` & `GET /api/blog/{slug}`**: Endpoint publik portal artikel wawasan rekrutmen berkelanjutan, inspirasi talenta digital, dan keterbukaan tata kelola AI.
+18. **`POST/PUT/DELETE /api/blog`**: Endpoint CMS internal bagi role `admin` untuk mengelola publikasi artikel, ringkasan, gambar sampul, dan estimasi waktu baca.
 
 ---
 

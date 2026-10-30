@@ -161,7 +161,7 @@ export default function JobBoardPage() {
   }, [jobs, q, company, jobFunction, level]);
 
   const goDetail = (id) => navigate(`/lowongan/${id}`);
-  const goApply = (id) => navigate(`/apply?job=${id}`);
+  const goApply = (id) => navigate(`/lowongan/${id}/lamar`);
 
   return (
     <PublicLayout>

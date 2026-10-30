@@ -260,7 +260,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
         {activeTab === 'track' ? (
           <ApplicationTracker 
             initialToken={urlToken || trackerInitialToken} 
-            onBackToPortal={() => navigate('/apply')} 
+            onBackToPortal={() => navigate('/lowongan')} 
           />
         ) : (
           <div>

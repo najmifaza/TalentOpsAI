@@ -14,7 +14,6 @@ export default function PublicLayout({ children }) {
 
   const navItems = [
     { label: 'Lowongan', to: '/lowongan', match: /^\/lowongan/ },
-    { label: 'Kirim Lamaran', to: '/apply', match: /^\/(apply|careers\/apply)/ },
     { label: 'Lacak Berkas', to: '/track', match: /^\/(track|careers\/track)/ },
     { label: 'Blog', to: '/blog', match: /^\/blog/ },
   ];
@@ -137,7 +136,7 @@ export default function PublicLayout({ children }) {
                 <h4 className="text-white font-bold text-xs uppercase tracking-wider mb-4 font-jkt">Fitur Utama</h4>
                 <ul className="space-y-2 text-xs text-primary-slate-400 font-jkt">
                   <li><Link to="/lowongan" className="hover:text-white transition-colors">Penyaringan Otomatis Deterministik</Link></li>
-                  <li><Link to="/apply" className="hover:text-white transition-colors">Sanitasi PII In-Memory</Link></li>
+                  <li><Link to="/lowongan" className="hover:text-white transition-colors">Sanitasi PII In-Memory</Link></li>
                   <li><Link to="/lowongan" className="hover:text-white transition-colors">Audit Portofolio 0 Halusinasi</Link></li>
                   <li><Link to="/lowongan" className="hover:text-white transition-colors">Skoring 4 Dimensi</Link></li>
                 </ul>

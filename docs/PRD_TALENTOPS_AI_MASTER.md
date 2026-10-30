@@ -701,12 +701,9 @@ CREATE TABLE blog_posts (
 | `/api/candidates/{id}/unmask`         | POST      | Tidak  |   Audit Only    |  Hanya Pasca-Approve   | Hanya Pasca-Approve |  Otorisasi Audit   |
 | `/api/candidates/{id}/review`         | POST      | Tidak  |       Ya        |           Ya           |         Ya          |       Tidak        |
 | `/api/candidates/{id}`                | DELETE    | Tidak  | Otorisasi Penuh |       Permohonan       |        Tidak        |  Otorisasi Penuh   |
+| `/api/slots`                          | GET       | Tidak  |       Ya        |           Ya           |         Ya          |         Ya         |
 | `/api/slots/available`                | GET       | Tidak  |       Ya        |           Ya           |         Ya          |         Ya         |
 | `/api/slots/reserve`                  | POST      | Tidak  |       Ya        |           Ya           |         Ya          |       Tidak        |
-| `/api/calendar/status`                | GET       | Tidak  |       Ya        |           Ya           |         Ya          |         Ya         |
-| `/api/calendar/oauth/authorize`       | GET       | Tidak  |       Ya        |           Ya           |        Tidak        |       Tidak        |
-| `/api/calendar/oauth/callback`        | GET       |   Ya   |       Ya        |           Ya           |        Tidak        |       Tidak        |
-| `/api/calendar/disconnect`            | POST      | Tidak  |       Ya        |           Ya           |        Tidak        |       Tidak        |
 | `/api/blog`                           | GET       |   Ya   |       Ya        |           Ya           |         Ya          |         Ya         |
 | `/api/blog/{slug}`                    | GET       |   Ya   |       Ya        |           Ya           |         Ya          |         Ya         |
 | `/api/blog`                           | POST      | Tidak  |       Ya        |        Tidak           |        Tidak        |       Tidak        |
@@ -735,7 +732,7 @@ CREATE TABLE blog_posts (
 13. **`POST /api/slots/reserve`**: Melakukan penguncian atomic pada jadwal wawancara dengan verifikasi non-overlap.
 14. **`POST /api/candidates/{id}/review`**: Menyerahkan keputusan akhir HR (`APPROVED_DISPATCH`, `REQUEST_INFO`, `OVERRIDE_REJECT`, `REJECT_CONFIRMED`). Pada alur approval yang sekaligus mengalokasikan slot wawancara, transaksi mematuhi urutan penguncian transaksional baku (`users` -> `interview_slots` -> `candidates`) untuk mencegah deadlock dengan transaksi konkuren lainnya.
 15. **`POST /api/candidates/{id}/sse-ticket`**: Menerbitkan token UUID single-use (TTL 60 detik pada in-memory ticket store) untuk koneksi aman ke endpoint `/trace-stream`.
-16. **`GET /api/calendar/status` & `/api/calendar/oauth/*`**: Endpoint verifikasi konektivitas OAuth2 Google Calendar, inisiasi otorisasi, penanganan callback, dan pemutusan sambungan kalender via antarmuka `/admin/calendar`.
+16. **`GET /api/slots`**: Endpoint pengambilan daftar slot wawancara terpusat (tersedia, dipesan, tentatif) dilengkapi tautan template URL ekspor 1-klik ke Google Calendar pribadi tanpa memerlukan otorisasi OAuth server-side (zero-credential).
 17. **`GET /api/blog` & `GET /api/blog/{slug}`**: Endpoint publik portal artikel wawasan rekrutmen berkelanjutan, inspirasi talenta digital, dan keterbukaan tata kelola AI.
 18. **`POST/PUT/DELETE /api/blog`**: Endpoint CMS internal bagi role `admin` untuk mengelola publikasi artikel, ringkasan, gambar sampul, dan estimasi waktu baca.
 

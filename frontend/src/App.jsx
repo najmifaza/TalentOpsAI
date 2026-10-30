@@ -85,14 +85,6 @@ function DashboardLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Google redirects back to /admin/dashboard?calendar=<result>; hand the result
-  // to the calendar panel instead of dropping it.
-  useEffect(() => {
-    if (new URLSearchParams(location.search).has('calendar')) {
-      navigate(`/admin/calendar${location.search}`, { replace: true });
-    }
-  }, [location.search, navigate]);
-
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -109,7 +101,7 @@ function DashboardLayout() {
     '/admin/dashboard': 'Dashboard & Antrean Berkas',
     '/admin/jobs': 'Kelola Lowongan & Konfigurasi Bobot 4D',
     '/admin/what-if': 'Kelola Lowongan & Konfigurasi Bobot 4D',
-    '/admin/calendar': 'Integrasi Google Calendar',
+    '/admin/calendar': 'Jadwal Wawancara & Ekspor Kalender',
     '/admin/blog': 'Manajemen Artikel & Blog (CMS)',
   };
 

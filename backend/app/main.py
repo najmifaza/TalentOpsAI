@@ -11,7 +11,6 @@ from .api.candidates import router as candidates_router
 from .api.jobs import router as jobs_router
 from .api.slots import router as slots_router
 from .api.audit import router as audit_router
-from .api.calendar_oauth import router as calendar_oauth_router
 from .api.blog import router as blog_router
 
 tags_metadata = [
@@ -116,7 +115,6 @@ app.include_router(careers_router, prefix="/api")
 app.include_router(candidates_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(slots_router, prefix="/api")
-app.include_router(calendar_oauth_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(blog_router, prefix="/api")
 

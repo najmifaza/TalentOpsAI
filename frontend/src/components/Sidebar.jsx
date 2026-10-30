@@ -13,7 +13,7 @@ export default function Sidebar({ isOpenMobile = false, onCloseMobile = () => {}
   const menuItems = [
     { path: '/admin/dashboard', label: 'Dashboard & Antrean Berkas', sublabel: 'Antrean & Evaluasi AI', icon: LayoutDashboard },
     { path: '/admin/jobs', label: 'Kelola Lowongan', sublabel: 'Bobot 4D & Kriteria', icon: Briefcase },
-    { path: '/admin/calendar', label: 'Kalender', sublabel: 'Google Calendar OAuth', icon: CalendarDays },
+    { path: '/admin/calendar', label: 'Jadwal Wawancara', sublabel: 'Ekspor Google Calendar', icon: CalendarDays },
     ...(can('manageBlog')
       ? [{ path: '/admin/blog', label: 'Kelola Blog (CMS)', sublabel: 'Artikel & Publikasi', icon: Newspaper }]
       : []),

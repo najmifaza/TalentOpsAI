@@ -64,23 +64,6 @@ class Settings(BaseSettings):
     # Stored bytes are the applicant's own document, so erasure must delete them.
     RESUME_STORAGE_DIR: str = ""
 
-    # --- Google Calendar OAuth2 (live two-way sync) -------------------------
-    # Left empty => adapter stays in sandbox mode and no outbound call is made.
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/calendar/oauth/callback"
-    GOOGLE_CALENDAR_ID: str = "primary"
-    GOOGLE_CALENDAR_SCOPES: List[str] = [
-        "https://www.googleapis.com/auth/calendar.events",
-        "https://www.googleapis.com/auth/calendar.readonly",
-    ]
-    GOOGLE_OAUTH_AUTH_URL: str = "https://accounts.google.com/o/oauth2/v2/auth"
-    GOOGLE_OAUTH_TOKEN_URL: str = "https://oauth2.googleapis.com/token"
-    GOOGLE_CALENDAR_API_BASE: str = "https://www.googleapis.com/calendar/v3"
-    GOOGLE_HTTP_TIMEOUT: float = 15.0
-    # Frontend page the OAuth callback redirects back to (no tokens in the URL).
-    OAUTH_SUCCESS_REDIRECT: str = "https://talentops.ai.id/admin/dashboard"
-
     # --- Transactional email (Resend) --------------------------------------
     # provider: "resend_api" (HTTPS) | "resend_smtp" (SMTP relay) | "" (disabled)
     EMAIL_PROVIDER: str = ""

@@ -39,7 +39,6 @@ from app.core.broadcaster import sse_broadcaster
 from app.core.email import email_service
 from app.core.email_templates import interview_scheduled, application_status_update
 from app.adapters.calendar import mock_calendar_adapter
-from app.adapters.google_calendar import google_calendar_adapter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/candidates", tags=["HR Recruiter Candidate Management"])
@@ -61,15 +60,9 @@ async def _sync_calendar_booking(
     job_title: str,
 ) -> dict:
     """
-    Pushes the booked interview to Google Calendar when the reviewer has connected
-    an account; otherwise reports that the sandbox adapter remains in use.
-
-    Never raises: the DB booking is already committed at this point, so a calendar
-    outage must not surface as a failed review.
+    Menghasilkan metadata jadwal wawancara terkonfirmasi beserta URL ekspor instan
+    ke Google Calendar pribadi (1-click template URL tanpa OAuth).
     """
-    if not google_calendar_adapter.configured:
-        return {"synced": False, "reason": "GOOGLE_CALENDAR_NOT_CONFIGURED", "adapter": "mock"}
-
     try:
         slot_res = await db.execute(
             text("SELECT start_time, end_time, interviewer_id FROM interview_slots WHERE id = :sid"),
@@ -77,7 +70,7 @@ async def _sync_calendar_booking(
         )
         slot = slot_res.mappings().first()
         if not slot:
-            return {"synced": False, "reason": "SLOT_NOT_FOUND", "adapter": "google_calendar"}
+            return {"synced": False, "reason": "SLOT_NOT_FOUND", "adapter": "sovereign_calendar"}
 
         interviewer_name = ""
         try:
@@ -98,31 +91,34 @@ async def _sync_calendar_booking(
         if isinstance(end_time, str):
             end_time = datetime.fromisoformat(end_time)
 
-        result = await google_calendar_adapter.create_event(
-            db=db,
-            user_id=reviewer_id,
-            slot_id=slot_id,
-            candidate_id=candidate_id,
+        cand_id_str = candidate.get("masked_identifier", f"#{candidate_id}")
+        summary = f"Wawancara {job_title} - {cand_id_str}"
+        description = (
+            f"Kandidat: {cand_id_str}\n"
+            f"Posisi: {job_title}\n"
+            f"Pewawancara: {interviewer_name or '-'}\n"
+            f"Slot ID: {slot_id}\n"
+            "Diselenggarakan melalui TalentOps AI."
+        )
+
+        google_url = mock_calendar_adapter.generate_google_calendar_url(
+            summary=summary,
             start_time=start_time,
             end_time=end_time,
-            summary=f"Wawancara {job_title} - {candidate['masked_identifier']}",
-            description=(
-                f"Kandidat: {candidate['masked_identifier']}\n"
-                f"Posisi: {job_title}\n"
-                f"Pewawancara: {interviewer_name or '-'}\n"
-                "Dibuat otomatis oleh TalentOps AI."
-            ),
+            description=description,
         )
+        event_id = mock_calendar_adapter.generate_event_id(slot_id, candidate_id)
+
         return {
-            "synced": bool(result.get("success")),
-            "adapter": "google_calendar",
-            "event_id": result.get("event_id"),
-            "already_existed": result.get("already_existed", False),
-            "reason": result.get("reason"),
+            "synced": True,
+            "adapter": "sovereign_calendar",
+            "event_id": event_id,
+            "export_google_url": google_url,
+            "reason": None,
         }
     except Exception as exc:
         logger.warning("Calendar sync failed for slot %s: %s", slot_id, type(exc).__name__)
-        return {"synced": False, "adapter": "google_calendar", "reason": "CALENDAR_SYNC_ERROR"}
+        return {"synced": False, "adapter": "sovereign_calendar", "reason": "CALENDAR_SYNC_ERROR"}
 
 
 async def _notify_candidate_decision(

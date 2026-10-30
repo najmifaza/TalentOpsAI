@@ -36,11 +36,12 @@ function DeliveryReport({ notifications }) {
   if (cal) {
     rows.push({
       key: 'calendar',
-      label: 'Google Calendar',
+      label: 'Jadwal Wawancara (Kalender Mandiri)',
       ok: Boolean(cal.synced),
       detail: cal.synced
-        ? `Event ${cal.event_id || '(id tidak dilaporkan)'}${cal.already_existed ? ' — sudah ada sebelumnya' : ''}`
+        ? `Terkunci di database lokal (Event ID: ${cal.event_id || 'terkonfirmasi'})`
         : `Tidak tersinkron: ${cal.reason || 'alasan tidak dilaporkan'}`,
+      exportUrl: cal.export_google_url,
     });
   }
   const email = notifications.email;
@@ -74,6 +75,17 @@ function DeliveryReport({ notifications }) {
             <p className={`text-[11px] leading-snug break-words ${row.ok ? 'text-primary-slate-700' : 'text-amber-800'}`}>
               {row.detail}
             </p>
+            {row.exportUrl && (
+              <a
+                href={row.exportUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary-black text-white hover:bg-primary-blue text-[11px] font-bold transition-colors"
+              >
+                <span>Buka di Google Calendar Pribadi</span>
+                <ExternalLink className="w-3 h-3 text-primary-orange" />
+              </a>
+            )}
           </div>
         </div>
       ))}

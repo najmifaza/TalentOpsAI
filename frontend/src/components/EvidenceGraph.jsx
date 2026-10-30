@@ -57,7 +57,8 @@ function CandidateNode({ data }) {
 
   return (
     <div className="p-4 rounded-xl bg-primary-slate-1000 text-white border-2 border-primary-info shadow-xl w-64 select-none">
-      <Handle type="source" position={Position.Right} className="!bg-primary-info !w-3 !h-3" />
+      <Handle id="root-out" type="source" position={Position.Right} className="!bg-primary-info !w-3 !h-3" />
+      <Handle id="root-top-git" type="source" position={Position.Top} className="!bg-primary-info !w-3 !h-3" />
       <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#2d3139]">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -91,19 +92,23 @@ function CompetencyNode({ data }) {
   const isMatched = data.matchedRequirement !== null && data.matchedRequirement !== undefined;
 
   return (
-    <div className={`p-3.5 rounded-xl bg-white border-2 shadow-md w-60 select-none transition-all ${
+    <div className={`p-3.5 rounded-xl bg-white border-2 shadow-md w-72 select-none transition-all ${
       isSecurity 
-        ? 'border-rose-400 hover:border-rose-500' 
+        ? 'border-rose-400 hover:border-rose-500 shadow-rose-100/50' 
         : 'border-primary-border-200 hover:border-primary-info'
     }`}>
       <Handle 
+        id="comp-in"
         type="target" 
         position={Position.Left} 
+        style={{ top: 22 }}
         className={`!w-3 !h-3 ${isSecurity ? '!bg-rose-500' : '!bg-primary-info'}`} 
       />
       <Handle 
+        id="comp-out"
         type="source" 
         position={Position.Right} 
+        style={{ top: 22 }}
         className={`!w-3 !h-3 ${isSecurity ? '!bg-rose-400' : '!bg-primary-info-border'}`} 
       />
       <div className="flex items-center justify-between pb-1.5 border-b border-primary-slate-100">
@@ -112,19 +117,19 @@ function CompetencyNode({ data }) {
         }`}>
           {isSecurity ? 'Anomali Terdeteksi' : 'Keahlian di CV'}
         </span>
-        <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
+        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
           isSecurity 
-            ? 'bg-rose-50 text-rose-700' 
+            ? 'bg-rose-50 text-rose-700 border border-rose-200' 
             : 'bg-primary-info-soft text-primary-info'
         }`}>
           {isSecurity ? `${data.severityLabel}` : `${data.confidence}% Conf`}
         </span>
       </div>
       <div className="mt-2">
-        <h5 className="text-xs font-bold text-primary-slate-900 truncate">{data.skill}</h5>
-        <p className="text-[10px] text-primary-slate-600 mt-0.5 leading-snug line-clamp-3">{data.description}</p>
+        <h5 className="text-xs font-bold text-primary-slate-900 leading-snug line-clamp-2">{data.skill}</h5>
+        <p className="text-[10px] text-primary-slate-600 mt-1 leading-relaxed line-clamp-3">{data.description}</p>
         {!isSecurity && (
-          <span className={`inline-block mt-1.5 text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+          <span className={`inline-block mt-2 text-[9px] font-mono px-1.5 py-0.5 rounded border ${
             isMatched
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
               : 'bg-primary-slate-100 text-primary-slate-600 border-primary-border-200'
@@ -143,37 +148,41 @@ function EvidenceNode({ data }) {
   const isVerified = !isSecurity && Boolean(data.verified) && Boolean(data.quote);
 
   return (
-    <div className={`p-3.5 rounded-xl bg-white border-2 shadow-md w-64 select-none transition-all ${
+    <div className={`p-4 rounded-xl bg-white border-2 shadow-md w-80 sm:w-96 select-none transition-all ${
       isSecurity 
-        ? 'border-rose-400 hover:border-rose-500' 
+        ? 'border-rose-400 hover:border-rose-500 shadow-rose-100/50' 
         : isVerified
           ? 'border-primary-info-border hover:border-primary-info'
           : 'border-primary-border-200 hover:border-primary-info-border'
     }`}>
       <Handle 
+        id="ev-in"
         type="target" 
         position={Position.Left} 
+        style={{ top: 22 }}
         className={`!w-3 !h-3 ${isSecurity ? '!bg-rose-500' : '!bg-primary-info-border'}`} 
       />
       <Handle 
+        id="ev-out"
         type="source" 
         position={Position.Right} 
+        style={{ top: 22 }}
         className={`!w-3 !h-3 ${isSecurity ? '!bg-rose-500' : '!bg-primary-info'}`} 
       />
-      <div className="flex items-center justify-between pb-1.5 border-b border-primary-border-200">
-        <div className="flex items-center gap-1 text-[10px] font-bold text-primary-slate-900">
+      <div className="flex items-center justify-between pb-2 border-b border-primary-border-200">
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary-slate-900">
           {isSecurity ? (
-            <AlertTriangle className="w-3 h-3 text-rose-600" />
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
           ) : (
-            <Quote className="w-3 h-3 text-primary-info" />
+            <Quote className="w-3.5 h-3.5 text-primary-info shrink-0" />
           )}
           <span>
-            {isSecurity ? 'Penjelasan Temuan' : (isVerified ? 'Kutipan Asli CV' : 'Sebutan di CV')}
+            {isSecurity ? 'Penjelasan Temuan Anomali' : (isVerified ? 'Kutipan Asli CV' : 'Sebutan di CV')}
           </span>
         </div>
-        <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold border ${
+        <span className={`text-[9px] px-2 py-0.5 rounded font-semibold border ${
           isSecurity 
-            ? 'bg-rose-50 text-rose-700 border-rose-200' 
+            ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold' 
             : isVerified
               ? 'bg-primary-info-soft text-primary-info border-blue-200'
               : 'bg-primary-slate-100 text-primary-slate-600 border-primary-border-200'
@@ -183,30 +192,32 @@ function EvidenceNode({ data }) {
       </div>
 
       {isSecurity ? (
-        <>
-          <p className="mt-2 text-[11px] leading-snug text-rose-900 font-medium">
+        <div className="mt-2.5 space-y-2">
+          <p className="text-[11px] leading-relaxed text-rose-950 font-medium">
             {data.quote}
           </p>
           {data.verification && (
-            <div className="mt-2 pt-1.5 border-t border-rose-200">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-rose-700 block">Yang perlu dilakukan</span>
-              <p className="text-[10px] text-rose-800 leading-snug mt-0.5">{data.verification}</p>
+            <div className="p-2.5 rounded-lg bg-rose-50/80 border border-rose-200 text-rose-900">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-rose-700 block mb-1">
+                Yang perlu diklarifikasi:
+              </span>
+              <p className="text-[10px] leading-relaxed">{data.verification}</p>
             </div>
           )}
-        </>
+        </div>
       ) : isVerified ? (
-        <p className="mt-2 text-[11px] italic leading-snug line-clamp-4 text-primary-slate-700">
+        <p className="mt-2.5 text-[11px] italic leading-relaxed text-primary-slate-800 bg-primary-slate-50 p-2.5 rounded-lg border border-primary-border-100">
           "{data.quote}"
         </p>
       ) : (
-        <p className="mt-2 text-[11px] leading-snug text-primary-slate-600">
+        <p className="mt-2.5 text-[11px] leading-relaxed text-primary-slate-600">
           Teknologi ini disebut di CV, tetapi tidak ada kalimat pendukung yang lolos verifikasi
           teks asli. Anggap sebagai klaim yang belum terbukti.
         </p>
       )}
 
-      <div className="mt-2 pt-1 border-t border-primary-border-200 flex items-center justify-between gap-2 text-[9px] text-primary-slate-600">
-        <span className="truncate max-w-[150px] font-medium">
+      <div className="mt-3 pt-2 border-t border-primary-border-200 flex items-center justify-between gap-2 text-[10px] text-primary-slate-600">
+        <span className="truncate max-w-[220px] font-medium">
           {isSecurity ? `Tingkat: ${data.severity || 'MEDIUM'}` : `Sumber: ${data.source}`}
         </span>
         {data.score !== undefined && data.score !== null && Number(data.score) > 0 && (
@@ -231,8 +242,10 @@ function GithubNode({ data }) {
           : 'bg-primary-slate-100 border-primary-border-200 text-primary-slate-600'
     }`}>
       <Handle 
+        id="git-target-left"
         type="target" 
         position={Position.Left} 
+        style={{ top: 22 }}
         className={`!w-3 !h-3 ${isFailed ? '!bg-rose-500' : (isProvided ? '!bg-primary-info' : '!bg-gray-400')}`} 
       />
       
@@ -303,11 +316,35 @@ const nodeTypes = {
 
 // 4 Canonical Horizontal Layers for Quick Navigation
 const GRAPH_LAYERS = [
-  { id: 'root', label: '1. Root Kandidat', x: 180, y: 260, zoom: 0.9 },
-  { id: 'comp', label: '2. Klaim Keahlian', x: 500, y: 260, zoom: 0.85 },
-  { id: 'ev', label: '3. Kutipan Asli CV', x: 840, y: 260, zoom: 0.85 },
-  { id: 'git', label: '4. Audit GitHub', x: 1180, y: 260, zoom: 0.85 },
+  { id: 'root', label: '1. Root Kandidat', x: 170, zoom: 0.9 },
+  { id: 'comp', label: '2. Klaim Keahlian', x: 540, zoom: 0.85 },
+  { id: 'ev', label: '3. Kutipan Asli CV', x: 970, zoom: 0.8 },
+  { id: 'git', label: '4. Audit GitHub', x: 1380, zoom: 0.85 },
 ];
+
+function estimateRowHeight(item) {
+  // Competency height estimation (w-72 = ~288px)
+  const compDescLen = (item.desc || '').length;
+  const compLines = Math.min(3, Math.ceil(compDescLen / 36));
+  const compHeight = 90 + compLines * 16 + (!item.isSecurity ? 28 : 0);
+
+  // Evidence height estimation (w-80 sm:w-96 = ~360px -> ~44 chars per line)
+  const quoteLen = (item.quote || '').length;
+  let evHeight = 90;
+  if (item.isSecurity) {
+    const descLines = Math.ceil(quoteLen / 42);
+    const verifLen = (item.verification || '').length;
+    const verifLines = verifLen ? Math.ceil(verifLen / 40) : 0;
+    evHeight = 90 + descLines * 18 + (verifLines ? (45 + verifLines * 16) : 0) + 36;
+  } else {
+    const quoteLines = Math.min(4, Math.ceil(quoteLen / 44));
+    evHeight = 90 + quoteLines * 18 + 36;
+  }
+
+  const rawMax = Math.max(compHeight, evHeight);
+  const minRequired = item.isSecurity ? (item.verification ? 290 : 220) : 175;
+  return Math.max(minRequired, rawMax);
+}
 
 // Pure function to build nodes and edges DIRECTLY from real database records
 function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []) {
@@ -406,16 +443,30 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
     });
   }
 
-  // Calculate vertical center positioning
-  const count = Math.max(1, items.length);
-  const midY = Math.max(160, ((count - 1) * 150) / 2);
+  // Calculate dynamic non-overlapping row positions
+  let currentY = 50;
+  const ROW_GAP = 36;
+
+  const rowLayouts = items.map((item, idx) => {
+    // Add extra lane separation gap when transitioning from skills to anomalies
+    if (idx > 0 && item.isSecurity && !items[idx - 1].isSecurity) {
+      currentY += 45;
+    }
+    const rowHeight = estimateRowHeight(item);
+    const y = currentY;
+    currentY += rowHeight + ROW_GAP;
+    return { y, rowHeight };
+  });
+
+  const totalGraphHeight = currentY;
+  const midY = Math.max(180, totalGraphHeight / 2);
 
   const nodes = [
     // Layer 1: Root Candidate
     {
       id: 'root-candidate',
       type: 'candidate',
-      position: { x: 50, y: midY },
+      position: { x: 40, y: Math.max(50, midY - 60) },
       data: {
         maskedId: candidate.masked_identifier,
         jobTitle: candidate.job_title || 'Pelamar Rekrutmen',
@@ -430,7 +481,7 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
 
   // Layer 2 & 3: Competencies and Verbatim Quotes
   items.forEach((item, idx) => {
-    const yPos = 40 + idx * 150;
+    const { y: yPos } = rowLayouts[idx];
     const compNodeId = `comp-${item.id}`;
     const evNodeId = `ev-${item.id}`;
 
@@ -453,7 +504,7 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
     nodes.push({
       id: evNodeId,
       type: 'evidence',
-      position: { x: 730, y: yPos },
+      position: { x: 770, y: yPos },
       data: {
         quote: item.quote,
         source: item.source,
@@ -470,23 +521,28 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
     edges.push({
       id: `e-root-${compNodeId}`,
       source: 'root-candidate',
+      sourceHandle: 'root-out',
       target: compNodeId,
-      animated: true,
+      targetHandle: 'comp-in',
+      animated: item.isSecurity,
       style: {
         stroke: item.isSecurity ? '#E11D48' : '#1b55f5',
-        strokeWidth: item.isSecurity ? 3 : 2,
+        strokeWidth: item.isSecurity ? 2.5 : 2,
       },
     });
 
-    // Competency -> Evidence Edge
+    // Competency -> Evidence Edge (Horizontal alignment via header handles)
     edges.push({
       id: `e-${compNodeId}-${evNodeId}`,
       source: compNodeId,
+      sourceHandle: 'comp-out',
       target: evNodeId,
+      targetHandle: 'ev-in',
       animated: item.isSecurity,
       style: {
         stroke: item.isSecurity ? '#E11D48' : '#8ec0ff',
         strokeWidth: 2,
+        strokeDasharray: item.isSecurity ? '5 5' : undefined,
       },
     });
   });
@@ -498,7 +554,7 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
   nodes.push({
     id: gitNodeId,
     type: 'github',
-    position: { x: 1080, y: midY },
+    position: { x: 1250, y: 50 },
     data: {
       status: isSecurity ? 'FAILED_AUDIT' : (hasRepo ? 'VERIFIED' : 'NOT_APPLICABLE'),
       repoName: hasRepo ? resolvedGithubUrl.replace('https://github.com/', '') : (isSecurity ? 'Audit Kredensial Gagal' : 'Tidak Ada Repositori Publik'),
@@ -506,18 +562,18 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
     },
   });
 
-  // The GitHub audit is a property of the candidate, not of a single skill claim, so it
-  // hangs off the root. Previously only evidence[0] and [1] were wired to it, which left
-  // every other claim dangling and made an anomaly look like it implicated the repo.
   edges.push({
     id: `e-root-${gitNodeId}`,
     source: 'root-candidate',
+    sourceHandle: 'root-top-git',
     target: gitNodeId,
+    targetHandle: 'git-target-left',
+    type: 'smoothstep',
     animated: hasRepo,
     style: { stroke: isSecurity ? '#E11D48' : (hasRepo ? '#1b55f5' : '#9CA3AF'), strokeWidth: 2 },
   });
 
-  return { nodes, edges };
+  return { nodes, edges, midY, totalGraphHeight };
 }
 
 // Inner Canvas Component utilizing useReactFlow hook
@@ -613,7 +669,8 @@ function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false, i
     setActiveLayerIdx(idx);
     const target = GRAPH_LAYERS[idx];
     if (target) {
-      setCenter(target.x, target.y, { zoom: target.zoom, duration: 600 });
+      const targetY = idx === 3 ? 150 : (graphElements.midY || 260);
+      setCenter(target.x, targetY, { zoom: target.zoom, duration: 600 });
     }
   };
 

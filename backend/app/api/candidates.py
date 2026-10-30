@@ -319,6 +319,7 @@ async def get_candidate_dossier(
             "status": cand["status"],
             "triage_priority": cand["triage_priority"],
             "overall_score": float(cand["overall_score"]) if cand["overall_score"] is not None else None,
+            "dimension_scores": cand["dimension_scores"] if isinstance(cand["dimension_scores"], dict) else json.loads(cand["dimension_scores"] or "{}") if isinstance(cand["dimension_scores"], str) else {},
             "confidence_level": cand["confidence_level"],
             "unresolved_risk": cand["unresolved_risk"],
             "recommendation": cand["recommendation"],

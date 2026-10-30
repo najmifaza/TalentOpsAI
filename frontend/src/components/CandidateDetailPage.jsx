@@ -17,7 +17,10 @@ import {
   Mail,
   Phone,
   Eye,
-  EyeOff
+  EyeOff,
+  HelpCircle,
+  ShieldAlert,
+  ExternalLink
 } from 'lucide-react';
 import { CandidateEvidenceGraph } from './EvidenceGraph';
 import { recLabel, statusLabel, confidenceLabel, riskLabel, slotStatusLabel, formatScore } from '../lib/labels';
@@ -25,6 +28,55 @@ import { DIMENSIONS } from '../lib/dimensions';
 import { can, roleLabel, unmaskBlockedReason } from '../lib/roles';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+
+const safeUrl = (u) => {
+  if (!u || typeof u !== 'string') return null;
+  try {
+    const parsed = new URL(u);
+    return ['http:', 'https:'].includes(parsed.protocol) ? u : null;
+  } catch {
+    return null;
+  }
+};
+
+const ANOMALY_DICTIONARY = {
+  CONCURRENT_FULLTIME_OVERLAP: {
+    title: 'Tumpang Tindih Pekerjaan Purnawaktu (Concurrent Overlap)',
+    severity: 'HIGH',
+    defaultDesc: 'Kandidat tercatat memegang lebih dari satu posisi pekerjaan purnawaktu (full-time) secara bersamaan dalam periode waktu yang sama (> 3 bulan).',
+    defaultAction: 'Klarifikasi pada sesi wawancara apakah salah satu peran sebenarnya paruh waktu, freelance, atau terjadi komitmen waktu ganda.',
+  },
+  PROMPT_INJECTION: {
+    title: 'Indikasi Manipulasi Teks / Prompt Injection',
+    severity: 'HIGH',
+    defaultDesc: 'Terdeteksi instruksi manipulatif atau teks tersembunyi (font 0pt/putih) yang mencoba memanipulasi evaluasi kecerdasan buatan.',
+    defaultAction: 'Lakukan audit manual pada berkas CV fisik mentah. Batalkan proses jika terbukti memuat manipulasi format.',
+  },
+  SECURITY_INSPECTION_FAILED: {
+    title: 'Karantina Keamanan Berkas (Security Quarantine)',
+    severity: 'HIGH',
+    defaultDesc: 'Struktur biner atau konten berkas terindikasi abnormal, korup, atau tidak lolos inspeksi keamanan dokumen.',
+    defaultAction: 'Minta pelamar mengunggah ulang dokumen dalam format PDF atau DOCX standar.',
+  },
+  TITLE_INFLATION: {
+    title: 'Lonjakan Jabatan Ekstrem (Title Inflation)',
+    severity: 'MEDIUM',
+    defaultDesc: 'Kenaikan jenjang jabatan terjadi secara instan (< 6 bulan) dari level awal/magang langsung ke level pimpinan/arsitek tanpa masa transisi wajar.',
+    defaultAction: 'Uji kedalaman tanggung jawab teknis dan manajerial kandidat melalui studi kasus arsitektur sistem.',
+  },
+  TITLE_INFLATION_DETECTED: {
+    title: 'Lonjakan Jabatan Ekstrem (Title Inflation)',
+    severity: 'MEDIUM',
+    defaultDesc: 'Kenaikan jenjang jabatan terjadi secara instan (< 6 bulan) dari level awal/magang langsung ke level pimpinan/arsitek tanpa masa transisi wajar.',
+    defaultAction: 'Uji kedalaman tanggung jawab teknis dan manajerial kandidat melalui studi kasus arsitektur sistem.',
+  },
+  CAREER_BREAK_FLAG: {
+    title: 'Jeda Riwayat Karier (Career Break)',
+    severity: 'LOW',
+    defaultDesc: 'Terdeteksi kesenjangan waktu tanpa riwayat kerja aktif lebih dari 12 bulan.',
+    defaultAction: 'Tanyakan secara santun aktivitas pengembangan kompetensi, studi lanjutan, atau proyek independen selama masa jeda tersebut.',
+  },
+};
 
 // Post-commit delivery report for a review decision. Each channel is best-effort
 // on the backend, so a `reason` here is the only place a silent failure surfaces.
@@ -75,9 +127,9 @@ function DeliveryReport({ notifications }) {
             <p className={`text-[11px] leading-snug break-words ${row.ok ? 'text-primary-slate-700' : 'text-amber-800'}`}>
               {row.detail}
             </p>
-            {row.exportUrl && (
+            {safeUrl(row.exportUrl) && (
               <a
-                href={row.exportUrl}
+                href={safeUrl(row.exportUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary-black text-white hover:bg-primary-blue text-[11px] font-bold transition-colors"
@@ -138,9 +190,26 @@ export default function CandidateDetailPage() {
   const messageTimeoutRef = useRef(null);
 
   const goBack = () => {
-    if (window.history.length > 1) navigate(-1);
+    if (window.history.length > 1 && window.location.key !== 'default') navigate(-1);
     else navigate('/admin/dashboard');
   };
+
+  // Reset all state when navigating to another candidate ID to prevent PII leakage
+  useEffect(() => {
+    setCandidate(null);
+    setCandidateDetail(null);
+    setUnmaskedIdentity(null);
+    setUnmaskReason('');
+    setIsUnmaskFormOpen(false);
+    setIsUnmasking(false);
+    setUnmaskError(null);
+    setBookedEvent(null);
+    setNotifications(null);
+    setSubmitError(null);
+    setViewState('dossier');
+    setActiveTab('summary');
+    setLoadError(null);
+  }, [candidateId]);
 
   // Load dossier detail + the matching list row for this candidate
   const loadCandidateDetail = useCallback(async (signal) => {
@@ -151,10 +220,9 @@ export default function CandidateDetailPage() {
     }
     setIsLoadingDetail(true);
     try {
-      const [detailRes, listRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/candidates/${candidateId}`, { signal }),
-        fetch(`${API_BASE_URL}/api/candidates?limit=200`, { signal }),
-      ]);
+      const detailPromise = fetch(`${API_BASE_URL}/api/candidates/${candidateId}`, { signal });
+      const listPromise = fetch(`${API_BASE_URL}/api/candidates?limit=200`, { signal }).catch(() => null);
+      const [detailRes, listRes] = await Promise.all([detailPromise, listPromise]);
 
       if (!detailRes.ok) {
         setLoadError(
@@ -170,12 +238,13 @@ export default function CandidateDetailPage() {
       setLoadError(null);
 
       let row = null;
-      if (listRes.ok) {
+      if (listRes && listRes.ok) {
         const list = await listRes.json().catch(() => ({}));
         row = (list.data || []).find((c) => c.id === candidateId) || null;
       }
 
       const dossier = json.candidate || {};
+      const dims = (row && row.dimension_scores) || dossier.dimension_scores || {};
       if (!row) {
         // Row missing from the list page: derive what the dossier alone can supply.
         row = {
@@ -185,8 +254,14 @@ export default function CandidateDetailPage() {
           overall_score: dossier.overall_score,
           recommendation: dossier.recommendation,
           github_url: dossier.github_url,
+          portfolio_url: dossier.portfolio_url,
           job_title: null,
-          scores_4d: null,
+          scores_4d: dossier.overall_score !== null && dossier.overall_score !== undefined ? {
+            SKILL: dims.SKILL || 0,
+            EXPERIENCE: dims.EXPERIENCE || 0,
+            EDUCATION: dims.EDUCATION || 0,
+            PORTFOLIO: dims.PORTFOLIO || 0,
+          } : null,
           confidence_level: dossier.confidence_level || null,
           unresolved_risk: dossier.unresolved_risk || null,
           key_technologies: (json.evidence || [])
@@ -195,14 +270,10 @@ export default function CandidateDetailPage() {
           flags: (json.anomalies || []).map((a) => a.anomaly_type).filter(Boolean),
         };
       } else {
-        const dims = row.dimension_scores || {};
         row = {
           ...row,
           candidate_name_masked: row.masked_identifier,
           verified_github: row.github_url || null,
-          // Straight from dimension_scores. The old shape folded EDUCATION into a
-          // "s_conf" field and dropped EXPERIENCE entirely, so the dossier showed a
-          // different 4D than the weight editor and What-If studio.
           scores_4d: row.overall_score !== null && row.overall_score !== undefined ? {
             SKILL: dims.SKILL || 0,
             EXPERIENCE: dims.EXPERIENCE || 0,
@@ -220,6 +291,7 @@ export default function CandidateDetailPage() {
         setLoadError('Gagal menghubungi backend untuk memuat dossier kandidat.');
       }
     } finally {
+      if (signal?.aborted) return;
       setIsLoadingDetail(false);
       setIsLoadingCandidate(false);
     }
@@ -264,46 +336,54 @@ export default function CandidateDetailPage() {
   }, [candidateId, unmaskReason]);
 
   // Fetch live available slots from backend
-  useEffect(() => {
-    const controller = new AbortController();
-    async function fetchSlots() {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/slots/available`, { signal: controller.signal });
-        if (res && res.ok) {
-          const json = await res.json();
-          if (json.data && json.data.length > 0) {
-            const formatted = json.data.map(s => {
-              const start = new Date(s.start_time);
-              const end = new Date(s.end_time);
-              const dateStr = start.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-              const timeStr = `${start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
-              return {
-                id: s.id,
-                date: dateStr,
-                time: timeStr,
-                interviewer: s.interviewer_name || 'Interviewer belum ditentukan',
-                type: 'Technical System Architecture Interview',
-                status: s.status,
-              };
+  const fetchSlots = useCallback(async (signal) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/slots/available`, { signal });
+      if (res && res.ok) {
+        const json = await res.json();
+        if (json.data && json.data.length > 0) {
+          const formatted = json.data.map(s => {
+            const start = new Date(s.start_time);
+            const end = new Date(s.end_time);
+            const dateStr = start.toLocaleDateString('id-ID', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'Asia/Jakarta',
             });
-            setSlots(formatted);
-            setSelectedSlotId(formatted[0].id);
-          } else {
-            setSlots([]);
-            setSelectedSlotId(null);
-          }
-        }
-      } catch (err) {
-        if (err?.name !== 'AbortError') {
-          console.warn('Available slot fetch failed:', err);
+            const timeStr = `${start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} - ${end.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB`;
+            return {
+              id: s.id,
+              date: dateStr,
+              time: timeStr,
+              interviewer: s.interviewer_name || 'Interviewer belum ditentukan',
+              type: 'Technical System Architecture Interview',
+              status: s.status,
+            };
+          });
+          setSlots(formatted);
+          const firstAvail = formatted.find(s => !s.status || s.status === 'available');
+          setSelectedSlotId(firstAvail ? firstAvail.id : null);
+        } else {
           setSlots([]);
           setSelectedSlotId(null);
         }
       }
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        console.warn('Available slot fetch failed:', err);
+        setSlots([]);
+        setSelectedSlotId(null);
+      }
     }
-    fetchSlots();
-    return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchSlots(controller.signal);
+    return () => controller.abort();
+  }, [fetchSlots]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -353,6 +433,56 @@ export default function CandidateDetailPage() {
       isUnmasked: Boolean(unmasked.name || unmasked.email || unmasked.phone),
     };
   }, [candidate, candidateDetail, unmaskedIdentity]);
+
+  const resolvedAnomalies = useMemo(() => {
+    const raw = candidateDetail?.anomalies;
+    if (Array.isArray(raw) && raw.length > 0) {
+      const seen = new Set();
+      const list = [];
+      for (const a of raw) {
+        const typeKey = (a.anomaly_type || '').replace(/_\d+_MONTHS$/, '');
+        const meta = ANOMALY_DICTIONARY[typeKey] || ANOMALY_DICTIONARY[a.anomaly_type] || {};
+        const desc = a.description || meta.defaultDesc || 'Terdeteksi anomali pada riwayat atau format berkas.';
+        const key = `${a.anomaly_type}_${desc}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          list.push({
+            id: a.id || `anom-${list.length}`,
+            type: a.anomaly_type || 'ANOMALI_BERKAS',
+            title: meta.title || a.anomaly_type || 'Peringatan Integritas Berkas',
+            severity: a.severity || meta.severity || 'MEDIUM',
+            description: desc,
+            suggestedVerification: a.suggested_verification || meta.defaultAction || 'Lakukan konfirmasi kualitatif pada sesi wawancara.',
+          });
+        }
+      }
+      return list;
+    }
+
+    const flags = activeCandidateObj.flags || [];
+    if (flags.length > 0) {
+      const seen = new Set();
+      const list = [];
+      for (const flag of flags) {
+        if (!seen.has(flag)) {
+          seen.add(flag);
+          const typeKey = flag.replace(/_\d+_MONTHS$/, '');
+          const meta = ANOMALY_DICTIONARY[typeKey] || ANOMALY_DICTIONARY[flag] || {};
+          list.push({
+            id: `flag-${list.length}`,
+            type: flag,
+            title: meta.title || flag,
+            severity: meta.severity || (flag.includes('SECURITY') || flag.includes('OVERLAP') ? 'HIGH' : 'MEDIUM'),
+            description: meta.defaultDesc || 'Terdeteksi anomali pada evaluasi otomatis riwayat karier.',
+            suggestedVerification: meta.defaultAction || 'Lakukan klarifikasi langsung ke kandidat saat sesi wawancara teknis.',
+          });
+        }
+      }
+      return list;
+    }
+
+    return [];
+  }, [candidateDetail?.anomalies, activeCandidateObj.flags]);
 
   // The original PDF/DOCX is served by an authenticated endpoint, so a plain
   // <a href> would arrive without the Bearer token. Fetch it as a blob instead.
@@ -434,7 +564,9 @@ export default function CandidateDetailPage() {
     }
   };
 
-  const selectedSlot = slots.find(s => s.id === selectedSlotId) || slots[0] || null;
+  const isDecisionFinal = ['approved', 'rejected'].includes((activeCandidateObj.status || '').toLowerCase());
+
+  const selectedSlot = slots.find(s => s.id === selectedSlotId && (!s.status || s.status === 'available')) || null;
 
   const generateMockEventId = (slotId, candId) => {
     return `talentops_slot${slotId}_cand${candId}_${btoa(`ev_${slotId}`).replace(/=/g, '').toLowerCase()}`;
@@ -464,6 +596,7 @@ export default function CandidateDetailPage() {
         const err = await res.json().catch(() => ({}));
         setSubmitError(err.detail || `Gagal menyimpan keputusan (${res.status})`);
         loadCandidateDetail();
+        fetchSlots();
         return; // stay on the schedule tab: the slot was NOT locked
       }
 
@@ -474,10 +607,11 @@ export default function CandidateDetailPage() {
       setBookedEvent({
         eventId,
         slot: selectedSlot,
-        timestamp: new Date().toLocaleString('id-ID'),
+        timestamp: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
       });
       setViewState('scheduled_done');
       loadCandidateDetail();
+      fetchSlots();
     } catch (err) {
       setSubmitError('Gagal menghubungi backend. Jadwal belum terkunci.');
       console.warn('Review submit failed:', err);
@@ -642,7 +776,7 @@ export default function CandidateDetailPage() {
     );
   }
 
-  if (loadError || !candidate) {
+  if (!candidate) {
     return (
       <div className="max-w-lg mx-auto p-8 text-center space-y-4 font-jkt">
         <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto text-rose-600 font-bold">
@@ -665,129 +799,145 @@ export default function CandidateDetailPage() {
 
   return (
     <div className="font-jkt">
-      
-        {/* PAGE HEADER: CANDIDATE IDENTITY & ACTIONS */}
-        <div className="px-4 sm:px-8 pt-6 pb-0 border-b border-primary-border-100 bg-white">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            
-            {/* Identity Info Block */}
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
+      {/* Inline non-blocking load error banner */}
+      {loadError && (
+        <div className="mx-4 sm:mx-8 mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2" role="alert">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>Gagal menyinkronkan data terbaru: {loadError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLoadError(null)}
+            className="text-amber-800 hover:text-amber-950 font-bold text-[11px]"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
+
+      {/* PAGE HEADER: CANDIDATE IDENTITY & ACTIONS */}
+      <div className="px-4 sm:px-8 pt-6 pb-0 border-b border-primary-border-100 bg-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          
+          {/* Identity Info Block */}
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                type="button"
+                onClick={goBack}
+                className="p-1.5 rounded-full text-primary-slate-500 hover:text-primary-black hover:bg-primary-slate-100 transition-colors"
+                title="Kembali ke daftar kandidat"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <h3 className="text-2xl font-extrabold text-primary-black tracking-tight">
+                {resolvedIdentity.name}
+              </h3>
+              {!resolvedIdentity.isUnmasked && canUnmask && (
                 <button
                   type="button"
-                  onClick={goBack}
-                  className="p-1.5 rounded-full text-primary-slate-500 hover:text-primary-black hover:bg-primary-slate-100 transition-colors"
-                  title="Kembali ke daftar kandidat"
+                  onClick={() => { setIsUnmaskFormOpen(v => !v); setUnmaskError(null); }}
+                  aria-label="Buka identitas kandidat"
+                  aria-expanded={isUnmaskFormOpen}
+                  title={unmaskBlock || 'Buka identitas — akses dicatat ke audit log UU PDP beserta alasannya'}
+                  className="p-1.5 rounded-full text-primary-slate-500 hover:text-primary-info hover:bg-primary-info-soft border border-primary-border-200 transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <Eye className="w-4 h-4" />
                 </button>
-                <h3 className="text-2xl font-extrabold text-primary-black tracking-tight">
-                  {resolvedIdentity.name}
-                </h3>
-                {!resolvedIdentity.isUnmasked && (
-                  <button
-                    type="button"
-                    onClick={() => { setIsUnmaskFormOpen(v => !v); setUnmaskError(null); }}
-                    aria-label="Buka identitas kandidat"
-                    aria-expanded={isUnmaskFormOpen}
-                    title={unmaskBlock || 'Buka identitas — akses dicatat ke audit log UU PDP beserta alasannya'}
-                    className="p-1.5 rounded-full text-primary-slate-500 hover:text-primary-info hover:bg-primary-info-soft border border-primary-border-200 transition-colors"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                )}
-                {resolvedIdentity.isUnmasked && (
-                  <span className="p-1.5 rounded-full text-emerald-600 bg-emerald-50 border border-emerald-200" title="Identitas terbuka — tercatat di audit log">
-                    <EyeOff className="w-4 h-4" />
-                  </span>
-                )}
-                <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-primary-slate-100 text-primary-black font-extrabold border border-primary-border-200">
-                  {candidate.masked_identifier}
+              )}
+              {resolvedIdentity.isUnmasked && (
+                <span className="p-1.5 rounded-full text-emerald-600 bg-emerald-50 border border-emerald-200" title="Identitas terbuka — tercatat di audit log">
+                  <EyeOff className="w-4 h-4" />
                 </span>
-                <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${recBadge.bg}`}>
-                  <recBadge.icon className="w-3 h-3" />
-                  <span>{recBadge.label}</span>
+              )}
+              <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-primary-slate-100 text-primary-black font-extrabold border border-primary-border-200">
+                {candidate.masked_identifier}
+              </span>
+              <span className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${recBadge.bg}`}>
+                <recBadge.icon className="w-3 h-3" />
+                <span>{recBadge.label}</span>
+              </span>
+              {activeCandidateObj.overall_score !== null && activeCandidateObj.overall_score !== undefined && (
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary-orange text-white font-mono font-bold shadow-xs">
+                  Skor: {formatScore(activeCandidateObj.overall_score)}
                 </span>
-                {activeCandidateObj.overall_score !== null && activeCandidateObj.overall_score !== undefined && (
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary-orange text-white font-mono font-bold shadow-xs">
-                    Skor: {formatScore(activeCandidateObj.overall_score)}
-                  </span>
-                )}
-              </div>
-
-              {/* Subtitle & Contact Badges */}
-              <div className="flex items-center gap-3 text-xs text-primary-slate-500 flex-wrap pt-0.5">
-                <span className="font-semibold text-primary-black">
-                  {candidate.job_title || 'Posisi tidak dilaporkan'}
-                </span>
-                <span>&bull;</span>
-                <span className="flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5 text-primary-blue" />
-                  <span>{resolvedIdentity.email}</span>
-                </span>
-                <span>&bull;</span>
-                <span className="flex items-center gap-1">
-                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{resolvedIdentity.phone}</span>
-                </span>
-              </div>
-
-              {/* Reason-gated unmask: every access is written to pii_access_logs.
-                  When the backend would refuse (blind review), say so here instead
-                  of offering a form whose submit button cannot work. */}
-              {isUnmaskFormOpen && !resolvedIdentity.isUnmasked && (
-                <div className="mt-2 p-3 rounded-xl bg-primary-slate-50 border border-primary-border-200 space-y-2">
-                  {unmaskBlock ? (
-                    <div className="flex items-start gap-2 text-[11px] text-amber-900">
-                      <Lock className="w-3.5 h-3.5 shrink-0 mt-px text-amber-600" />
-                      <span>{unmaskBlock}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-[11px] text-primary-slate-700">
-                        Akses PII akan tercatat pada audit log beserta alasan dan identitas reviewer Anda.
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          type="text"
-                          value={unmaskReason}
-                          onChange={(e) => setUnmaskReason(e.target.value)}
-                          placeholder="Alasan akses, mis. verifikasi berkas untuk wawancara"
-                          className="flex-1 bg-white border border-primary-border-200 rounded-lg text-xs text-primary-slate-900 px-2.5 py-1.5 focus:outline-none focus:border-primary-info"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleUnmask}
-                          disabled={isUnmasking || !unmaskReason.trim()}
-                          className="px-3 py-1.5 bg-primary-info hover:bg-primary-info-dark disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
-                        >
-                          {isUnmasking ? 'Memproses...' : 'Buka Identitas'}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                  {unmaskError && (
-                    <p className="text-[11px] text-rose-700 font-medium">{unmaskError}</p>
-                  )}
-                </div>
               )}
             </div>
 
-            {/* Action Buttons: Run AI Triage + Close */}
-            <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-              <button
-                type="button"
-                onClick={handleRunAIAnalysis}
-                disabled={isAnalyzing}
-                className="px-4 py-2 bg-primary-orange hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center gap-1.5"
-                title="Picu penyaringan AI untuk memindai berkas dan memperbarui skor 4D di database"
-              >
-                <Sparkles className={`w-3.5 h-3.5 text-white ${isAnalyzing ? 'animate-spin' : ''}`} />
-                <span>{isAnalyzing ? 'Menganalisis Berkas CV...' : 'Jalankan Analisis AI'}</span>
-              </button>
-
+            {/* Subtitle & Contact Badges */}
+            <div className="flex items-center gap-3 text-xs text-primary-slate-500 flex-wrap pt-0.5">
+              <span className="font-semibold text-primary-black">
+                {candidate.job_title || 'Posisi tidak dilaporkan'}
+              </span>
+              <span>&bull;</span>
+              <span className="flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5 text-primary-blue" />
+                <span>{resolvedIdentity.email}</span>
+              </span>
+              <span>&bull;</span>
+              <span className="flex items-center gap-1">
+                <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{resolvedIdentity.phone}</span>
+              </span>
             </div>
+
+            {/* Reason-gated unmask: every access is written to pii_access_logs.
+                When the backend would refuse (blind review), say so here instead
+                of offering a form whose submit button cannot work. */}
+            {isUnmaskFormOpen && !resolvedIdentity.isUnmasked && canUnmask && (
+              <div className="mt-2 p-3 rounded-xl bg-primary-slate-50 border border-primary-border-200 space-y-2">
+                {unmaskBlock ? (
+                  <div className="flex items-start gap-2 text-[11px] text-amber-900">
+                    <Lock className="w-3.5 h-3.5 shrink-0 mt-px text-amber-600" />
+                    <span>{unmaskBlock}</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-primary-slate-700">
+                      Akses PII akan tercatat pada audit log beserta alasan dan identitas reviewer Anda.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={unmaskReason}
+                        onChange={(e) => setUnmaskReason(e.target.value)}
+                        placeholder="Alasan akses (min. 10 karakter), mis. verifikasi berkas untuk wawancara"
+                        className="flex-1 bg-white border border-primary-border-200 rounded-lg text-xs text-primary-slate-900 px-2.5 py-1.5 focus:outline-none focus:border-primary-info"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleUnmask}
+                        disabled={isUnmasking || unmaskReason.trim().length < 10}
+                        className="px-3 py-1.5 bg-primary-info hover:bg-primary-info-dark disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
+                      >
+                        {isUnmasking ? 'Memproses...' : 'Buka Identitas'}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {unmaskError && (
+                  <p className="text-[11px] text-rose-700 font-medium">{unmaskError}</p>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Action Buttons: Run AI Triage + Close */}
+          <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+            <button
+              type="button"
+              onClick={handleRunAIAnalysis}
+              disabled={isAnalyzing || !can('batchTriage')}
+              className="px-4 py-2 bg-primary-orange hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center gap-1.5"
+              title={!can('batchTriage') ? 'Peran Anda tidak berwenang menjalankan AI Triage' : 'Picu penyaringan AI untuk memindai berkas dan memperbarui skor 4D di database'}
+            >
+              <Sparkles className={`w-3.5 h-3.5 text-white ${isAnalyzing ? 'animate-spin' : ''}`} />
+              <span>{isAnalyzing ? 'Menganalisis Berkas CV...' : 'Jalankan Analisis AI'}</span>
+            </button>
+
+          </div>
+        </div>
 
           {/* Real-time Triage Status Notification */}
           {analyzeMessage && (
@@ -964,19 +1114,82 @@ export default function CandidateDetailPage() {
                 </div>
               </div>
 
-              {/* Anomaly & Risk Flags */}
-              {activeCandidateObj.flags && activeCandidateObj.flags.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-bold text-rose-700 uppercase tracking-wider mb-2">
-                    Peringatan Anomali &amp; Manipulasi Dokumen
-                  </h4>
-                  <div className="space-y-1.5">
-                    {activeCandidateObj.flags.map((flag, idx) => (
-                      <div key={idx} className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                        <span className="font-mono font-medium">{flag}</span>
-                      </div>
-                    ))}
+              {/* Anomaly & Risk Flags with Human-in-the-Loop Clarification Guide */}
+              {resolvedAnomalies.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-rose-600" />
+                      <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wider">
+                        Peringatan Anomali &amp; Manipulasi Dokumen ({resolvedAnomalies.length})
+                      </h4>
+                    </div>
+                    <span className="text-[11px] text-primary-slate-500 font-medium">
+                      Perlu Klarifikasi HR (HITL)
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {resolvedAnomalies.map((anom) => {
+                      const isHigh = anom.severity === 'HIGH';
+                      const isMedium = anom.severity === 'MEDIUM';
+
+                      return (
+                        <div
+                          key={anom.id}
+                          className={`p-4 rounded-2xl border transition-all ${
+                            isHigh
+                              ? 'bg-rose-50/70 border-rose-200 text-rose-950 shadow-xs'
+                              : isMedium
+                              ? 'bg-amber-50/70 border-amber-200 text-amber-950'
+                              : 'bg-primary-slate-50 border-primary-border-200 text-primary-slate-900'
+                          }`}
+                        >
+                          {/* Header: Title, Technical Tag, Severity Badge */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-rose-200/60">
+                            <div className="flex items-center gap-2">
+                              <AlertTriangle className={`w-4 h-4 shrink-0 ${isHigh ? 'text-rose-600' : 'text-amber-600'}`} />
+                              <span className="font-extrabold text-xs text-primary-black">
+                                {anom.title}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-white border border-rose-200 text-rose-700 font-semibold">
+                                {anom.type}
+                              </span>
+                              <span
+                                className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider text-white ${
+                                  isHigh ? 'bg-rose-600' : isMedium ? 'bg-amber-600' : 'bg-primary-slate-600'
+                                }`}
+                              >
+                                {isHigh ? 'Risiko Tinggi' : isMedium ? 'Perhatian' : 'Informatif'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Body: Description */}
+                          <div className="mt-2.5 text-xs text-primary-slate-800 leading-relaxed">
+                            <p className="font-semibold text-primary-slate-900 mb-1">Uraian Temuan Sistem:</p>
+                            <p className="bg-white/80 p-2.5 rounded-xl border border-rose-200/50">
+                              {anom.description}
+                            </p>
+                          </div>
+
+                          {/* Footer Guide: Suggested Verification for HR */}
+                          {anom.suggestedVerification && (
+                            <div className="mt-2.5 p-3 rounded-xl bg-white border border-primary-border-200 space-y-1">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-primary-black">
+                                <HelpCircle className="w-3.5 h-3.5 text-primary-orange shrink-0" />
+                                <span>Panduan Klarifikasi untuk HR:</span>
+                              </div>
+                              <p className="text-xs text-primary-slate-700 leading-relaxed pl-5">
+                                {anom.suggestedVerification}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1006,8 +1219,16 @@ export default function CandidateDetailPage() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('schedule')}
-                    disabled={isQuarantined}
-                    title={isQuarantined ? 'Kandidat dalam karantina keamanan — tidak dapat dijadwalkan' : undefined}
+                    disabled={isQuarantined || !canReview || isDecisionFinal}
+                    title={
+                      isDecisionFinal
+                        ? `Keputusan sudah final (${activeCandidateObj.status})`
+                        : !canReview
+                        ? `Role ${roleLabel()} tidak berwenang mereview keputusan`
+                        : isQuarantined
+                        ? 'Kandidat dalam karantina keamanan — tidak dapat dijadwalkan'
+                        : undefined
+                    }
                     className="px-4 py-2.5 bg-primary-info hover:bg-primary-info-dark text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Calendar className="w-3.5 h-3.5 text-white" />
@@ -1016,7 +1237,15 @@ export default function CandidateDetailPage() {
                   <button
                     type="button"
                     onClick={() => setViewState('reject_confirm')}
-                    className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl border border-rose-200 transition-colors"
+                    disabled={!canReview || isDecisionFinal}
+                    title={
+                      isDecisionFinal
+                        ? `Keputusan sudah final (${activeCandidateObj.status})`
+                        : !canReview
+                        ? `Role ${roleLabel()} tidak berwenang menolak kandidat`
+                        : undefined
+                    }
+                    className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl border border-rose-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Reject
                   </button>
@@ -1068,28 +1297,30 @@ export default function CandidateDetailPage() {
                     </div>
                   </div>
 
-                  {(activeCandidateObj.github_url || activeCandidateObj.portfolio_url) && (
+                  {(safeUrl(activeCandidateObj.github_url) || safeUrl(activeCandidateObj.portfolio_url)) && (
                     <div className="pt-2 border-t border-primary-border-200 space-y-1">
-                      {activeCandidateObj.github_url && (
+                      {safeUrl(activeCandidateObj.github_url) && (
                         <a
-                          href={activeCandidateObj.github_url}
+                          href={safeUrl(activeCandidateObj.github_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1.5 text-[11px] font-semibold text-primary-info hover:underline min-w-0"
                         >
                           <GitBranch className="w-3.5 h-3.5 shrink-0" />
                           <span className="truncate">{activeCandidateObj.github_url.replace(/^https?:\/\//, '')}</span>
+                          <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
                         </a>
                       )}
-                      {activeCandidateObj.portfolio_url && (
+                      {safeUrl(activeCandidateObj.portfolio_url) && (
                         <a
-                          href={activeCandidateObj.portfolio_url}
+                          href={safeUrl(activeCandidateObj.portfolio_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1.5 text-[11px] font-semibold text-primary-info hover:underline min-w-0"
                         >
                           <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                           <span className="truncate">{activeCandidateObj.portfolio_url.replace(/^https?:\/\//, '')}</span>
+                          <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
                         </a>
                       )}
                     </div>
@@ -1117,7 +1348,7 @@ export default function CandidateDetailPage() {
               {/* Render React Flow Graph Embedded */}
               <CandidateEvidenceGraph 
                 candidate={activeCandidateObj} 
-                onReloadCandidates={loadCandidateDetail}
+                onReloadCandidates={() => loadCandidateDetail()}
                 embedded={true}
                 initialDetail={candidateDetail}
               />

@@ -9,6 +9,7 @@ import { isAuthenticated } from './lib/api';
 // Code Splitting via Dynamic Imports (Sprint 5 Vite Optimization)
 const JobManagement = lazy(() => import('./components/JobManagement'));
 const CareerPortal = lazy(() => import('./components/CareerPortal'));
+const LandingHomePage = lazy(() => import('./components/careers/LandingHomePage'));
 const JobBoardPage = lazy(() => import('./components/careers/JobBoardPage'));
 const JobDetailPage = lazy(() => import('./components/careers/JobDetailPage'));
 const JobApplyPage = lazy(() => import('./components/careers/JobApplyPage'));
@@ -210,7 +211,7 @@ export default function App() {
       <Suspense fallback={<ComponentLoader label="Memuat ekosistem TalentOps AI..." />}>
         <Routes>
           {/* Public Career Portal at Root */}
-          <Route path="/" element={<Navigate to="/lowongan" replace />} />
+          <Route path="/" element={<LandingHomePage />} />
           <Route path="/lowongan" element={<JobBoardPage />} />
           <Route path="/lowongan/:id" element={<JobDetailPage />} />
           <Route path="/lowongan/:id/lamar" element={<JobApplyPage />} />

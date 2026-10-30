@@ -13,6 +13,7 @@ export default function PublicLayout({ children }) {
   const [isDpaModalOpen, setIsDpaModalOpen] = useState(false);
 
   const navItems = [
+    { label: 'Beranda', to: '/', match: /^\/$/ },
     { label: 'Lowongan', to: '/lowongan', match: /^\/lowongan/ },
     { label: 'Lacak Berkas', to: '/track', match: /^\/(track|careers\/track)/ },
     { label: 'Blog', to: '/blog', match: /^\/blog/ },
@@ -39,7 +40,7 @@ export default function PublicLayout({ children }) {
       <header className="sticky top-10 z-40 bg-white/95 backdrop-blur-md border-b border-primary-border-100 shadow-xs">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6">
           <div className="h-14 sm:h-16 flex items-center justify-between gap-3">
-            <Link to="/lowongan" className="flex items-center gap-2.5 shrink-0">
+            <Link to="/" className="flex items-center gap-2.5 shrink-0">
               <img src="/logo.svg" alt="TalentOps AI" className="h-8 w-auto object-contain" />
             </Link>
 

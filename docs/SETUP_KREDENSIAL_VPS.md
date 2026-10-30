@@ -198,84 +198,14 @@ Tidak cukup untuk demo ke pelamar.
 
 ---
 
-## 3. GOOGLE CALENDAR (OAUTH2)
+## 3. KALENDER WAWANCARA (SOVEREIGN CALENDAR ENGINE)
 
-### Kegunaan
+### Status & Keputusan Arsitektur
 
-`google_calendar_adapter` (`backend/app/adapters/google_calendar.py`) membuat event
-kalender saat HR menyetujui kandidat dan memilih slot wawancara. Alur OAuth ada di
-`backend/app/api/calendar_oauth.py`:
+TalentOps AI menggunakan **Internal Sovereign Calendar Engine** berbasis transaksi MariaDB ACID (`SELECT ... FOR UPDATE` urutan baku `users` -> `interview_slots` -> `candidates`). 
 
-| Endpoint | Fungsi |
-|---|---|
-| `GET /api/calendar/status` | apakah server terkonfigurasi & user terhubung |
-| `GET /api/calendar/oauth/authorize` | URL consent Google + `state` nonce (CSRF) |
-| `GET /api/calendar/oauth/callback` | menukar `code` menjadi token, disimpan terenkripsi |
-
-`state` disimpan di Redis bila tersedia, atau in-memory saat single worker
-(`calendar_oauth.py:44`). Karena service berjalan `--workers 1`, fallback in-memory
-cukup — jangan menaikkan jumlah worker tanpa mengisi `REDIS_URL`.
-
-### Langkah
-
-1. Buka https://console.cloud.google.com → buat project `talentops-ai`
-2. **APIs & Services** → **Library** → cari **Google Calendar API** → **Enable**
-3. **APIs & Services** → **OAuth consent screen**:
-   - User type: **External**
-   - App name `TalentOps AI`, email support Anda
-   - Scopes: `https://www.googleapis.com/auth/calendar.events` dan
-     `https://www.googleapis.com/auth/calendar.readonly`
-   - **Test users**: tambahkan alamat Gmail yang akan dipakai saat demo
-   - Status **Testing** sudah cukup; verifikasi Google tidak diperlukan untuk demo
-4. **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth client ID**:
-   - Application type: **Web application**
-   - Name: `TalentOps Backend`
-   - **Authorized redirect URIs**:
-     `https://api-talentops.fawt.biz.id/api/calendar/oauth/callback`
-   - Harus persis, tanpa trailing slash. Beda satu karakter → Google menolak dengan
-     `redirect_uri_mismatch`.
-5. Salin **Client ID** (berakhiran `.apps.googleusercontent.com`) dan **Client secret**
-
-### Pasang
-
-```dotenv
-GOOGLE_CLIENT_ID="xxxxxxxx.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET="GOCSPX-xxxxxxxxxxxxxxxxxxxx"
-GOOGLE_REDIRECT_URI="https://api-talentops.fawt.biz.id/api/calendar/oauth/callback"
-GOOGLE_CALENDAR_ID="primary"
-```
-
-```bash
-sudo systemctl restart talentops-backend
-```
-
-### Verifikasi
-
-```bash
-curl -s https://api-talentops.fawt.biz.id/api/calendar/status \
-  -H "Authorization: Bearer $JWT"
-```
-
-Yang diharapkan: `"configured": true` dan `"connected": false` (belum ada user yang
-menghubungkan akun). Kalau `"configured": false`, kredensial belum terbaca.
-
-Hubungkan akun:
-
-```bash
-curl -s https://api-talentops.fawt.biz.id/api/calendar/oauth/authorize \
-  -H "Authorization: Bearer $JWT"
-```
-
-Buka `auth_url` di browser, setujui consent, callback akan mengarahkan kembali ke
-`https://talentops.ai.id/admin/dashboard` (nilai `OAUTH_SUCCESS_REDIRECT`). Ulangi
-`/api/calendar/status` — sekarang harus `"connected": true`.
-
-### Catatan
-
-- Penguncian slot (`tentative`/TTL) masih memakai `mock_calendar_adapter`
-  (`slots.py:10`). Yang asli hanya pembuatan event. Jangan mengklaim seluruh alur
-  kalender sudah live.
-- Token akses disimpan terenkripsi per user di database, bukan di `.env`.
+1. **Zero External Dependency:** Tidak memerlukan kredensial Google OAuth2 (`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`) di backend. Seluruh data jadwal tersimpan 100% lokal on-premise untuk menjamin kedaulatan data subjek hukum sesuai UU PDP No. 27/2022.
+2. **Ekspor 1-Klik ke Google Calendar Pribadi:** Antarmuka admin dan dossier kandidat menyediakan tombol langsung `Ekspor ke Google Calendar Pribadi` berbasis URL template web Google Calendar resmi (`https://calendar.google.com/calendar/render?action=TEMPLATE&...`). Pewawancara atau kandidat dapat menyimpan jadwal ke akun Google Calendar pribadi mereka secara instan tanpa perlu memberikan izin OAuth kepada server.
 
 ---
 
@@ -283,9 +213,14 @@ Buka `auth_url` di browser, setujui consent, callback akan mengarahkan kembali k
 
 | Kredensial | Variabel wajib | Dampak bila kosong |
 |---|---|---|
-| GitHub | `GITHUB_TOKEN` | kuota 60 req/jam; triage batch mudah kena `RATE_LIMITED` |
-| Resend | `EMAIL_PROVIDER` + `RESEND_API_KEY` + `EMAIL_FROM` | email keputusan tidak terkirim (`EMAIL_NOT_CONFIGURED`) |
-| Google | `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` + `GOOGLE_REDIRECT_URI` | event kalender tidak dibuat; status `configured: false` |
+| GitHub | `GITHUB_TOKEN` | Kuota 60 req/jam; jika diisi, naik ke 5.000 req/jam |
+| Resend | `EMAIL_PROVIDER` + `RESEND_API_KEY` + `EMAIL_FROM` | Email keputusan tidak terkirim (`EMAIL_NOT_CONFIGURED`) |
+| Kalender | *(Tanpa Kredensial)* | 100% aktif via Sovereign Calendar & ekspor URL personal |
+
+Kredensial lain yang tidak boleh diubah sembarangan: `MASTER_KEK` dan `HMAC_PEPPER`
+mengenkripsi seluruh PII kandidat. Mengganti `MASTER_KEK` membuat semua data lama tidak
+bisa didekripsi; mengganti `HMAC_PEPPER` memutus `email_blind_index` sehingga pencarian
+berdasarkan email berhenti cocok.
 
 Kredensial lain yang tidak boleh diubah sembarangan: `MASTER_KEK` dan `HMAC_PEPPER`
 mengenkripsi seluruh PII kandidat. Mengganti `MASTER_KEK` membuat semua data lama tidak

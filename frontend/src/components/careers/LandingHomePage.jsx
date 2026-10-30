@@ -15,7 +15,10 @@ import {
   CheckCircle2,
   Lock,
   ChevronRight,
-  Share2
+  Share2,
+  ArrowUpRight,
+  KeyRound,
+  ExternalLink
 } from 'lucide-react';
 import PublicLayout from './PublicLayout';
 import { API_BASE_URL } from '../../lib/api';
@@ -41,7 +44,7 @@ function CompanyLogo({ job }) {
     .join('')
     .toUpperCase();
   return (
-    <div className={`${box} rounded-xl bg-primary-black text-white font-extrabold flex items-center justify-center shrink-0`}>
+    <div className={`${box} rounded-xl bg-primary-black text-white font-extrabold flex items-center justify-center shrink-0 font-jkt`}>
       {initials}
     </div>
   );
@@ -51,7 +54,7 @@ function DeadlineBadge({ deadline }) {
   if (!deadline) return null;
   const closed = new Date(deadline) < new Date();
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${closed ? 'text-rose-600' : 'text-primary-slate-600'}`}>
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold font-jkt ${closed ? 'text-rose-600' : 'text-primary-slate-600'}`}>
       <Clock className="w-3.5 h-3.5" />
       {closed ? 'Batas lamar terlewat' : `Batas Lamar: ${formatDate(deadline)}`}
     </span>
@@ -124,200 +127,315 @@ export default function LandingHomePage() {
 
   return (
     <PublicLayout>
-      {/* 1. HERO SECTION (Identik dengan JobBoardPage styling) */}
-      <section className="relative bg-primary-black text-white overflow-hidden">
-        <div aria-hidden="true" className="absolute inset-0 opacity-10 bg-dot-matrix pointer-events-none" />
-        <div className="relative container mx-auto max-w-7xl px-4 sm:px-6 pt-12 pb-14 sm:pt-16 sm:pb-16">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full pl-2 pr-4 py-1.5">
-              <span className="inline-flex items-center justify-center size-6 rounded-full bg-primary-orange">
-                <ShieldCheck className="size-3.5 text-white" />
+      {/* 1. HERO SECTION (WebEkspor Signature Aesthetics: White Canvas, Dot-Matrix, Watermark, Tangerine Highlight) */}
+      <section className="relative overflow-hidden bg-white py-12 sm:py-16 lg:py-20 border-b border-primary-border-100">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, #233876 1.2px, transparent 1.2px)',
+            backgroundSize: '26px 26px',
+          }}
+        />
+
+        <div className="relative container mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Left Column: Heading, Value proposition, Callouts, Buttons */}
+            <div className="lg:col-span-7 space-y-6 lg:space-y-7 relative">
+              <span
+                aria-hidden="true"
+                className="hidden lg:block absolute -top-16 -left-6 font-jkt font-extrabold text-[200px] leading-none text-primary-slate-100 select-none -z-10 pointer-events-none"
+              >
+                01
               </span>
-              <span className="font-semibold text-[11px] tracking-[0.22em] uppercase text-white font-jkt">
-                Portal Karier Berkeadilan
-              </span>
-            </span>
 
-            <h1 className="font-extrabold text-[2rem] sm:text-4xl lg:text-[3rem] leading-[1.18] tracking-tight mt-5 max-w-3xl font-jkt">
-              Rekrutmen Talenta Teknologi Berbasis{' '}
-              <span className="relative inline-block whitespace-nowrap">
-                <span className="relative z-10 italic font-medium">Bukti Nyata</span>
-                <span
-                  aria-hidden="true"
-                  className="absolute left-0 right-0 -bottom-0.5 h-2 sm:h-2.5 bg-primary-orange/70 -z-0 -skew-x-6"
-                />
-              </span>{' '}
-              & Integritas Keputusan AI.
-            </h1>
+              {/* Eyebrow Badge */}
+              <div className="inline-flex items-center gap-2 bg-primary-orange/10 border border-primary-orange/30 rounded-full pl-2 pr-4 py-1.5">
+                <span className="inline-flex items-center justify-center size-6 rounded-full bg-primary-orange">
+                  <Sparkles className="size-3.5 text-white" />
+                </span>
+                <span className="font-jkt font-semibold text-[11px] tracking-[0.22em] uppercase text-primary-black">
+                  Ekosistem Rekrutmen Berkeadilan · UU PDP No. 27/2022
+                </span>
+              </div>
 
-            <p className="text-sm sm:text-base text-primary-slate-300 mt-4 max-w-2xl leading-relaxed font-jkt">
-              Setiap lamaran disanitasi identitasnya sebelum dievaluasi. Sistem agen cerdas dengan tata kelola manusia mutlak
-              (HITL), kepatuhan privasi UU PDP No. 27/2022, dan skor deterministik yang dapat Anda lacak buktinya.
-            </p>
+              {/* Main Headline with WebEkspor Orange Skewed Marker */}
+              <h1 className="font-jkt font-extrabold text-[2.25rem] sm:text-5xl lg:text-[3.5rem] text-primary-black leading-[1.05] lg:leading-[3.75rem]">
+                Rekrutmen talenta teknologi dengan{' '}
+                <span className="relative inline-block whitespace-nowrap">
+                  <span className="relative z-10 italic font-medium">bukti nyata</span>
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-0 right-0 bottom-1 sm:bottom-2 h-3 sm:h-4 lg:h-5 bg-primary-orange/60 -z-0 -skew-x-6"
+                  />
+                </span>{' '}
+                tanpa bias demografi.
+              </h1>
 
-            <div className="flex flex-wrap items-center gap-3 mt-7">
-              <a
-                href="#lowongan"
-                className="px-6 py-3 rounded-full bg-primary-orange text-white text-xs font-bold hover:opacity-90 shadow-lg shadow-primary-orange/25 transition-all flex items-center gap-2 font-jkt"
-              >
-                <span>Lihat Lowongan Terbuka</span>
-                <ArrowRight className="w-4 h-4" />
-              </a>
-              <Link
-                to="/track"
-                className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold transition-all flex items-center gap-2 font-jkt"
-              >
-                <span>Lacak Status Berkas</span>
-              </Link>
-              <Link
-                to="/blog"
-                className="px-6 py-3 rounded-full text-primary-slate-300 hover:text-white text-xs font-semibold transition-colors flex items-center gap-1 font-jkt"
-              >
-                <span>Baca Riset & Blog</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
+              <p className="font-jkt font-medium text-base lg:text-lg text-primary-slate-700 leading-relaxed max-w-xl">
+                Sistem agen rekrutmen cerdas dengan pengawasan manusia mutlak (HITL), kepatuhan privasi enkripsi AES-256-GCM,
+                dan kalkulasi skor deterministik 4 dimensi yang 100% dapat diverifikasi ke CV asli.
+              </p>
 
-          {/* Key Value Metrics Strip */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 pt-8 border-t border-white/15">
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <p className="text-2xl sm:text-3xl font-extrabold text-primary-orange font-jkt tabular-nums">&le; 15 detik</p>
-              <p className="text-[11px] text-primary-slate-300 font-medium mt-1">Penyaringan triage otomatis</p>
+              {/* WebEkspor Metrics / Pricing Strip Style */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <span className="font-jkt font-semibold text-[11px] tracking-[0.22em] uppercase text-primary-slate-700">
+                  Target Triage
+                </span>
+                <span className="font-jkt font-extrabold text-2xl lg:text-3xl tabular-nums text-primary-black">
+                  &le; 15 detik
+                </span>
+                <span className="bg-primary-orange py-1 px-2.5 font-jkt font-semibold text-[11px] tracking-[0.18em] uppercase text-white rounded">
+                  100% Bukti Terverifikasi
+                </span>
+                <span className="font-jkt font-medium text-xs text-primary-slate-1100">
+                  Pangkas waktu HR hingga 80%
+                </span>
+              </div>
+
+              {/* WebEkspor Pill Button Group */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                <a
+                  href="#lowongan"
+                  className="group inline-flex items-center justify-center gap-2 bg-primary-black text-white px-7 py-3.5 rounded-full font-jkt font-semibold text-sm lg:text-base hover:bg-primary-blue transition-colors duration-300 shadow-md shadow-primary-black/10"
+                >
+                  <span>Lihat Lowongan Terbuka</span>
+                  <span className="w-6 h-6 rounded-full bg-primary-orange flex items-center justify-center group-hover:bg-white transition-colors duration-300">
+                    <ArrowRight className="size-3 text-primary-black" />
+                  </span>
+                </a>
+                <Link
+                  to="/track"
+                  className="inline-flex items-center justify-center gap-2 border-2 border-primary-black text-primary-black px-6 py-[12px] rounded-full font-jkt font-semibold text-sm lg:text-base hover:bg-primary-black hover:text-white transition-colors duration-300"
+                >
+                  Lacak Status Berkas
+                </Link>
+              </div>
             </div>
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <p className="text-2xl sm:text-3xl font-extrabold text-white font-jkt tabular-nums">100%</p>
-              <p className="text-[11px] text-primary-slate-300 font-medium mt-1">Ketertelusuran bukti CV</p>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <p className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-jkt tabular-nums">0 Halusinasi</p>
-              <p className="text-[11px] text-primary-slate-300 font-medium mt-1">Skor deterministik 4 dimensi</p>
-            </div>
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <p className="text-2xl sm:text-3xl font-extrabold text-white font-jkt">UU PDP</p>
-              <p className="text-[11px] text-primary-slate-300 font-medium mt-1">AES-256-GCM + Crypto-Shredding</p>
+
+            {/* Right Column: Interactive Trust Card Showcase */}
+            <div className="lg:col-span-5 flex items-center justify-center">
+              <div className="w-full max-w-md bg-white border border-primary-border-200 rounded-3xl p-6 shadow-card-hover space-y-5 font-jkt relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary-orange/5 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="flex items-center justify-between pb-3 border-b border-primary-border-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-primary-orange text-white flex items-center justify-center">
+                      <ShieldCheck className="size-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs text-primary-black">Trust Engine</p>
+                      <p className="text-[10px] text-primary-slate-500">Kepatuhan UU PDP No. 27/2022</p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-300">
+                    100% Aktif
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="p-3.5 rounded-xl bg-primary-slate-50 border border-primary-border-200 flex items-start gap-3">
+                    <div className="size-7 rounded-lg bg-primary-orange/10 text-primary-orange flex items-center justify-center shrink-0 mt-0.5">
+                      <Lock className="size-3.5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs text-primary-black">Enkripsi Envelope AES-256-GCM</p>
+                      <p className="text-[11px] text-primary-slate-600 mt-0.5 leading-relaxed">
+                        Data Encryption Key (DEK) unik per kandidat. Identitas terlindungi mutlak dari pembocoran.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-primary-slate-50 border border-primary-border-200 flex items-start gap-3">
+                    <div className="size-7 rounded-lg bg-primary-blue/10 text-primary-blue flex items-center justify-center shrink-0 mt-0.5">
+                      <EyeOff className="size-3.5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs text-primary-black">Sanitasi PII In-Memory Dua Arah</p>
+                      <p className="text-[11px] text-primary-slate-600 mt-0.5 leading-relaxed">
+                        Nama, nomor telepon, dan almamater disensor sebelum AI menganalisis resume.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-primary-slate-50 border border-primary-border-200 flex items-start gap-3">
+                    <div className="size-7 rounded-lg bg-emerald-600/10 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <Cpu className="size-3.5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs text-primary-black">Kalkulasi 4D Deterministik</p>
+                      <p className="text-[11px] text-primary-slate-600 mt-0.5 leading-relaxed">
+                        Skill, Experience non-overlap, Education, dan verifikasi GitHub REST API v3 tanpa halusinasi LLM.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between text-[11px] text-primary-slate-500">
+                  <span className="font-medium">Kompetisi: UINIC 8.0 &bull; GTNIC 2026</span>
+                  <span className="font-bold text-primary-orange">Verifikasi Nyata &rarr;</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. ARSITEKTUR & PILAR NILAI (EXPLANATION SECTION) */}
-      <section className="py-12 sm:py-16 bg-white border-b border-primary-border-100">
+      {/* 2. ARSITEKTUR & PILAR NILAI (WebEkspor Section 01 Header Pattern) */}
+      <section className="relative bg-primary-slate-50 py-12 sm:py-16 overflow-hidden">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto space-y-2 mb-10">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-orange/10 text-primary-orange text-xs font-bold font-jkt">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Prinsip Kerja Berkeadilan</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-end mb-10 lg:mb-14">
+            <div className="lg:col-span-8 space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-px bg-primary-orange" />
+                <span className="font-jkt font-semibold text-[10px] tracking-[0.28em] uppercase text-primary-orange">
+                  01 · Pilar Arsitektur &amp; Kepatuhan
+                </span>
+              </div>
+              <h2 className="font-jkt font-extrabold text-3xl sm:text-4xl lg:text-5xl text-primary-black leading-[1.08]">
+                Teknologi seleksi <span className="relative inline-block"><span className="relative z-10 italic font-medium">beretika</span><span aria-hidden="true" className="absolute left-0 right-0 bottom-1 sm:bottom-2 h-3 sm:h-4 bg-primary-orange/60 -z-0 -skew-x-6" /></span> dan berlandaskan hukum.
+              </h2>
             </div>
-            <h2 className="font-extrabold text-2xl sm:text-3xl text-primary-black tracking-tight font-jkt">
-              Mengapa TalentOps AI Berbeda dari ATS Biasa?
-            </h2>
-            <p className="text-xs sm:text-sm text-primary-slate-600 leading-relaxed font-jkt">
-              Menggantikan pencocokan kata kunci statis dan model black-box yang rawan bias dengan arsitektur agen
-              beretika, deterministik, dan berlandaskan kepatuhan hukum penuh.
+            <p className="lg:col-span-4 font-jkt font-medium text-base text-primary-slate-700 leading-relaxed">
+              Kami menggantikan pencocokan kata kunci statis dan model black-box yang rawan bias dengan sistem agen
+              deterministik berstandar kepatuhan UU PDP No. 27/2022.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6">
             {/* Card 1 */}
-            <div className="p-6 rounded-2xl border border-primary-border-200 bg-white hover:border-primary-orange hover:shadow-card-hover transition-all space-y-3 font-jkt">
-              <div className="size-11 rounded-xl bg-primary-orange/10 text-primary-orange flex items-center justify-center">
-                <EyeOff className="w-5 h-5" />
+            <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border border-primary-border-200 bg-white p-6 transition-colors hover:border-primary-orange/60 shadow-xs font-jkt">
+              <div className="size-12 rounded-xl bg-primary-orange/10 flex items-center justify-center mb-5 text-primary-orange">
+                <EyeOff className="size-6" />
               </div>
-              <h3 className="font-bold text-sm text-primary-black">Sanitasi PII In-Memory</h3>
-              <p className="text-xs text-primary-slate-600 leading-relaxed">
-                Nama, nomor telepon, email, dan asal kampus disanitasi sebelum evaluasi. AI menilai kompetensi tanpa
-                dapat melihat atribut demografis kandidat.
+              <span className="font-jkt italic font-medium text-xs text-primary-orange mb-2 block">Kerahasiaan Data</span>
+              <h3 className="font-jkt font-bold text-lg text-primary-black mb-2 leading-snug">Sanitasi PII In-Memory</h3>
+              <p className="font-jkt font-medium text-sm text-primary-slate-600 leading-relaxed flex-grow">
+                Nama, nomor kontak, foto, dan asal kampus disanitasi sebelum evaluasi. AI menilai murni kecakapan teknis
+                tanpa pengaruh demografi.
               </p>
+              <div className="mt-5 flex items-center justify-between pt-4 border-t border-primary-border-200">
+                <span className="font-jkt font-semibold text-[10px] tracking-[0.18em] uppercase text-primary-slate-1100">
+                  UU PDP 2022
+                </span>
+                <span className="inline-flex size-7 items-center justify-center rounded-full border border-primary-border-200 text-primary-slate-1100 transition-all duration-300 group-hover:border-primary-orange group-hover:bg-primary-orange group-hover:text-white">
+                  <ArrowUpRight className="size-3.5" />
+                </span>
+              </div>
             </div>
 
             {/* Card 2 */}
-            <div className="p-6 rounded-2xl border border-primary-border-200 bg-white hover:border-primary-orange hover:shadow-card-hover transition-all space-y-3 font-jkt">
-              <div className="size-11 rounded-xl bg-primary-blue/10 text-primary-blue flex items-center justify-center">
-                <FileCheck className="w-5 h-5" />
+            <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border border-primary-border-200 bg-white p-6 transition-colors hover:border-primary-orange/60 shadow-xs font-jkt">
+              <div className="size-12 rounded-xl bg-primary-blue/10 flex items-center justify-center mb-5 text-primary-blue">
+                <FileCheck className="size-6" />
               </div>
-              <h3 className="font-bold text-sm text-primary-black">Anti-Halusinasi Substring Guard</h3>
-              <p className="text-xs text-primary-slate-600 leading-relaxed">
-                Setiap klaim teknologi dan metrik performa dicocokkan verbatim ke dokumen CV asli serta diaudit langsung ke
-                repositori GitHub REST API publik.
+              <span className="font-jkt italic font-medium text-xs text-primary-blue mb-2 block">Integritas Fakta</span>
+              <h3 className="font-jkt font-bold text-lg text-primary-black mb-2 leading-snug">Anti-Halusinasi Substring</h3>
+              <p className="font-jkt font-medium text-sm text-primary-slate-600 leading-relaxed flex-grow">
+                Setiap klaim teknologi dan metrik performa dicocokkan verbatim ke teks CV asli dan diaudit ke GitHub REST API publik secara real-time.
               </p>
+              <div className="mt-5 flex items-center justify-between pt-4 border-t border-primary-border-200">
+                <span className="font-jkt font-semibold text-[10px] tracking-[0.18em] uppercase text-primary-slate-1100">
+                  Verbatim Guard
+                </span>
+                <span className="inline-flex size-7 items-center justify-center rounded-full border border-primary-border-200 text-primary-slate-1100 transition-all duration-300 group-hover:border-primary-orange group-hover:bg-primary-orange group-hover:text-white">
+                  <ArrowUpRight className="size-3.5" />
+                </span>
+              </div>
             </div>
 
             {/* Card 3 */}
-            <div className="p-6 rounded-2xl border border-primary-border-200 bg-white hover:border-primary-orange hover:shadow-card-hover transition-all space-y-3 font-jkt">
-              <div className="size-11 rounded-xl bg-emerald-600/10 text-emerald-600 flex items-center justify-center">
-                <Cpu className="w-5 h-5" />
+            <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border border-primary-border-200 bg-white p-6 transition-colors hover:border-primary-orange/60 shadow-xs font-jkt">
+              <div className="size-12 rounded-xl bg-emerald-600/10 flex items-center justify-center mb-5 text-emerald-600">
+                <Cpu className="size-6" />
               </div>
-              <h3 className="font-bold text-sm text-primary-black">Skoring 4D Deterministik</h3>
-              <p className="text-xs text-primary-slate-600 leading-relaxed">
-                LLM murni mengekstrak fakta terstruktur. Nilai akhir dihitung deterministik oleh backend Python pada pilar Skill,
-                Experience (non-overlap), Education, dan Portfolio.
+              <span className="font-jkt italic font-medium text-xs text-emerald-600 mb-2 block">Kalkulasi Presisi</span>
+              <h3 className="font-jkt font-bold text-lg text-primary-black mb-2 leading-snug">Skoring 4D Deterministik</h3>
+              <p className="font-jkt font-medium text-sm text-primary-slate-600 leading-relaxed flex-grow">
+                LLM hanya mengekstrak fakta terstruktur. Skor akhir dihitung deterministik Python pada Skill, Experience non-overlap, Education, dan Portfolio.
               </p>
+              <div className="mt-5 flex items-center justify-between pt-4 border-t border-primary-border-200">
+                <span className="font-jkt font-semibold text-[10px] tracking-[0.18em] uppercase text-primary-slate-1100">
+                  0 Halusinasi
+                </span>
+                <span className="inline-flex size-7 items-center justify-center rounded-full border border-primary-border-200 text-primary-slate-1100 transition-all duration-300 group-hover:border-primary-orange group-hover:bg-primary-orange group-hover:text-white">
+                  <ArrowUpRight className="size-3.5" />
+                </span>
+              </div>
             </div>
 
             {/* Card 4 */}
-            <div className="p-6 rounded-2xl border border-primary-border-200 bg-white hover:border-primary-orange hover:shadow-card-hover transition-all space-y-3 font-jkt">
-              <div className="size-11 rounded-xl bg-purple-600/10 text-purple-600 flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5" />
+            <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border border-primary-border-200 bg-white p-6 transition-colors hover:border-primary-orange/60 shadow-xs font-jkt">
+              <div className="size-12 rounded-xl bg-purple-600/10 flex items-center justify-center mb-5 text-purple-600">
+                <ShieldCheck className="size-6" />
               </div>
-              <h3 className="font-bold text-sm text-primary-black">Kendali Manusia Mutlak (HITL)</h3>
-              <p className="text-xs text-primary-slate-600 leading-relaxed">
-                AI tidak pernah mengambil keputusan penolakan atau penerimaan otonom tanpa review manusia. Keputusan akhir selalu
-                dikonfirmasi oleh tim HR berwenang.
+              <span className="font-jkt italic font-medium text-xs text-purple-600 mb-2 block">Etika &amp; Kontrol</span>
+              <h3 className="font-jkt font-bold text-lg text-primary-black mb-2 leading-snug">Supervisi Manusia (HITL)</h3>
+              <p className="font-jkt font-medium text-sm text-primary-slate-600 leading-relaxed flex-grow">
+                AI tidak pernah menolak atau meloloskan pelamar secara mandiri. Keputusan final persetujuan dan penjadwalan mutlak di tangan rekruter.
               </p>
+              <div className="mt-5 flex items-center justify-between pt-4 border-t border-primary-border-200">
+                <span className="font-jkt font-semibold text-[10px] tracking-[0.18em] uppercase text-primary-slate-1100">
+                  Human Gatekeeper
+                </span>
+                <span className="inline-flex size-7 items-center justify-center rounded-full border border-primary-border-200 text-primary-slate-1100 transition-all duration-300 group-hover:border-primary-orange group-hover:bg-primary-orange group-hover:text-white">
+                  <ArrowUpRight className="size-3.5" />
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 3. CARD LOWONGAN KERJA (Identik dengan JobCard JobBoardPage) */}
-      <section id="lowongan" className="py-12 sm:py-16 bg-primary-slate-50">
+      {/* 3. CARD LOWONGAN KERJA (WebEkspor Section 02 Collection Pattern) */}
+      <section id="lowongan" className="relative bg-white py-12 sm:py-16 overflow-hidden border-t border-primary-border-100">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-            <div>
-              <span className="text-xs font-bold text-primary-orange uppercase tracking-wider block font-jkt mb-1">
-                Peluang Karier Aktif
-              </span>
-              <h2 className="font-extrabold text-2xl sm:text-3xl text-primary-black tracking-tight font-jkt">
-                Posisi Lowongan Unggulan
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-end mb-8">
+            <div className="lg:col-span-8 space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-px bg-primary-orange" />
+                <span className="font-jkt font-semibold text-[10px] tracking-[0.28em] uppercase text-primary-orange">
+                  02 · Peluang Karier Unggulan
+                </span>
+              </div>
+              <h2 className="font-jkt font-extrabold text-3xl sm:text-4xl lg:text-5xl text-primary-black leading-[1.08]">
+                Posisi lowongan <span className="relative inline-block"><span className="relative z-10 italic font-medium">siap dilamar</span><span aria-hidden="true" className="absolute left-0 right-0 bottom-1 sm:bottom-2 h-3 sm:h-4 bg-primary-orange/60 -z-0 -skew-x-6" /></span> dengan penilaian transparan.
               </h2>
-              <p className="text-xs text-primary-slate-600 mt-1 font-jkt">
-                Setiap posisi dinilai murni dari kecakapan teknis dan portofolio nyata.
-              </p>
             </div>
-
-            <Link
-              to="/lowongan"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-black hover:text-primary-orange transition-colors shrink-0 font-jkt"
-            >
-              <span>Lihat Semua Lowongan ({jobs.length})</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <div className="lg:col-span-4 flex lg:justify-end">
+              <Link
+                to="/lowongan"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-primary-border-200 bg-white font-jkt font-semibold text-xs text-primary-slate-700 hover:border-primary-orange hover:text-primary-orange transition-colors"
+              >
+                <span>Lihat Semua Lowongan ({jobs.length})</span>
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
           </div>
 
           {loadingJobs ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-2 text-xs text-primary-slate-600">
+            <div className="py-16 flex flex-col items-center justify-center gap-2 text-xs text-primary-slate-600 font-jkt">
               <RefreshCw className="w-5 h-5 animate-spin text-primary-orange" />
               <span>Memuat lowongan kerja aktif...</span>
             </div>
           ) : jobsError ? (
-            <div className="p-6 rounded-2xl bg-white border border-primary-border-200 text-center space-y-2">
+            <div className="p-6 rounded-2xl bg-primary-slate-50 border border-primary-border-200 text-center space-y-2 font-jkt">
               <p className="text-xs text-rose-600 font-semibold">{jobsError}</p>
               <Link to="/lowongan" className="text-xs text-primary-orange font-bold hover:underline">
                 Buka Papan Lowongan
               </Link>
             </div>
           ) : jobs.length === 0 ? (
-            <div className="p-8 rounded-2xl bg-white border border-primary-border-200 text-center space-y-2">
+            <div className="p-8 rounded-2xl bg-primary-slate-50 border border-primary-border-200 text-center space-y-2 font-jkt">
               <Briefcase className="w-6 h-6 text-primary-slate-400 mx-auto" />
               <p className="text-xs font-bold text-primary-black">Belum ada posisi yang aktif saat ini.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {jobs.map((job) => (
                 <article
                   key={job.id}
-                  className="group bg-white border border-primary-border-200 rounded-2xl p-5 transition-all hover:border-primary-orange hover:shadow-card-hover flex flex-col font-jkt"
+                  className="group flex flex-col h-full overflow-hidden rounded-2xl border border-primary-border-200 bg-white p-5 transition-all hover:border-primary-orange hover:shadow-card-hover font-jkt"
                 >
                   <div className="flex items-start gap-3">
                     <CompanyLogo job={job} />
@@ -370,13 +488,13 @@ export default function LandingHomePage() {
                   <div className="flex items-center gap-2 mt-4 pt-4 border-t border-primary-border-100 mt-auto">
                     <Link
                       to={`/lowongan/${job.id}`}
-                      className="flex-1 px-3 py-2 rounded-full border border-primary-border-200 text-xs font-bold text-primary-black hover:border-primary-orange transition-colors text-center"
+                      className="flex-1 py-2 rounded-full border border-primary-border-200 text-xs font-bold text-primary-black hover:border-primary-orange transition-colors text-center"
                     >
-                      Lihat Detail
+                      Detail
                     </Link>
                     <Link
                       to={`/lowongan/${job.id}/lamar`}
-                      className="flex-1 px-3 py-2 rounded-full bg-primary-orange text-white text-xs font-bold hover:opacity-90 shadow-sm shadow-primary-orange/25 transition-all text-center"
+                      className="flex-1 py-2 rounded-full bg-primary-orange text-white text-xs font-bold hover:opacity-90 shadow-sm shadow-primary-orange/25 transition-all text-center"
                     >
                       Lamar
                     </Link>
@@ -388,47 +506,48 @@ export default function LandingHomePage() {
         </div>
       </section>
 
-      {/* 4. CARD BLOG & RISET (Identik dengan BlogFeedPage) */}
-      <section id="blog" className="py-12 sm:py-16 bg-white border-t border-primary-border-100">
+      {/* 4. CARD BLOG & RISET (WebEkspor Section 03 Content Pattern) */}
+      <section id="blog" className="relative bg-primary-slate-50 py-12 sm:py-16 overflow-hidden border-t border-primary-border-100">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-            <div>
-              <span className="text-xs font-bold text-primary-orange uppercase tracking-wider block font-jkt mb-1">
-                Wawasan & Riset Rekrutmen
-              </span>
-              <h2 className="font-extrabold text-2xl sm:text-3xl text-primary-black tracking-tight font-jkt">
-                Artikel Terbaru TalentOps AI
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-end mb-8">
+            <div className="lg:col-span-8 space-y-4">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-px bg-primary-orange" />
+                <span className="font-jkt font-semibold text-[10px] tracking-[0.28em] uppercase text-primary-orange">
+                  03 · Wawasan &amp; Riset Rekrutmen
+                </span>
+              </div>
+              <h2 className="font-jkt font-extrabold text-3xl sm:text-4xl lg:text-5xl text-primary-black leading-[1.08]">
+                Catatan riset etika AI, <span className="relative inline-block"><span className="relative z-10 italic font-medium">kepatuhan privasi</span><span aria-hidden="true" className="absolute left-0 right-0 bottom-1 sm:bottom-2 h-3 sm:h-4 bg-primary-orange/60 -z-0 -skew-x-6" /></span> &amp; teknologi.
               </h2>
-              <p className="text-xs text-primary-slate-600 mt-1 font-jkt">
-                Catatan arsitektur, panduan kepatuhan regulasi, dan eksplorasi etika kecerdasan buatan.
-              </p>
             </div>
-
-            <Link
-              to="/blog"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-black hover:text-primary-orange transition-colors shrink-0 font-jkt"
-            >
-              <span>Buka Blog Lengkap</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <div className="lg:col-span-4 flex lg:justify-end">
+              <Link
+                to="/blog"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-primary-border-200 bg-white font-jkt font-semibold text-xs text-primary-slate-700 hover:border-primary-orange hover:text-primary-orange transition-colors"
+              >
+                <span>Buka Blog Lengkap</span>
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
           </div>
 
           {loadingPosts ? (
-            <div className="py-12 flex flex-col items-center justify-center gap-2 text-xs text-primary-slate-600">
+            <div className="py-12 flex flex-col items-center justify-center gap-2 text-xs text-primary-slate-600 font-jkt">
               <RefreshCw className="w-5 h-5 animate-spin text-primary-orange" />
               <span>Memuat artikel blog...</span>
             </div>
           ) : posts.length === 0 ? (
-            <div className="p-8 rounded-2xl bg-primary-slate-50 border border-primary-border-200 text-center space-y-2">
+            <div className="p-8 rounded-2xl bg-white border border-primary-border-200 text-center space-y-2 font-jkt">
               <BookOpen className="w-6 h-6 text-primary-slate-400 mx-auto" />
               <p className="text-xs font-bold text-primary-black">Nantikan artikel wawasan terbaru segera.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {posts.map((post) => (
                 <article
                   key={post.id}
-                  className="group bg-white rounded-2xl border border-primary-border-200 overflow-hidden hover:border-primary-orange hover:shadow-card-hover transition-all flex flex-col font-jkt"
+                  className="group flex flex-col h-full overflow-hidden rounded-2xl border border-primary-border-200 bg-white transition-all hover:border-primary-orange hover:shadow-card-hover font-jkt"
                 >
                   <div className="aspect-video bg-primary-slate-100 overflow-hidden flex items-center justify-center relative">
                     {post.cover_image_url ? (
@@ -440,34 +559,34 @@ export default function LandingHomePage() {
                     ) : (
                       <BookOpen className="w-10 h-10 text-primary-slate-300" />
                     )}
-                    <span className="absolute top-3 left-3 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-xs text-[10px] font-bold text-primary-orange uppercase tracking-wider font-jkt">
+                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-white/95 backdrop-blur-xs text-[10px] font-bold text-primary-orange uppercase tracking-wider">
                       {post.category}
                     </span>
                   </div>
 
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-3 font-jkt">
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                     <div>
-                      <div className="flex items-center gap-2 text-[11px] text-primary-slate-500 mb-1.5 font-jkt">
+                      <div className="flex items-center gap-2 text-[11px] text-primary-slate-500 mb-1.5">
                         <Clock className="w-3 h-3 text-primary-slate-400" />
                         <span>{post.read_time_minutes} min read</span>
                         <span>&bull;</span>
                         <span>{formatDate(post.created_at)}</span>
                       </div>
                       <Link to={`/blog/${post.slug}`}>
-                        <h3 className="font-extrabold text-sm sm:text-base text-primary-black group-hover:text-primary-orange transition-colors leading-snug line-clamp-2 font-jkt">
+                        <h3 className="font-extrabold text-sm sm:text-base text-primary-black group-hover:text-primary-orange transition-colors leading-snug line-clamp-2">
                           {post.title}
                         </h3>
                       </Link>
-                      <p className="text-xs text-primary-slate-600 mt-2 line-clamp-2 leading-relaxed font-jkt">
+                      <p className="text-xs text-primary-slate-600 mt-2 line-clamp-2 leading-relaxed">
                         {post.summary}
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs font-jkt">
+                    <div className="pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs">
                       <span className="text-[11px] text-primary-slate-500 font-medium">{post.author_name}</span>
                       <Link
                         to={`/blog/${post.slug}`}
-                        className="font-bold text-primary-orange hover:underline inline-flex items-center gap-1 font-jkt"
+                        className="font-bold text-primary-orange hover:underline inline-flex items-center gap-1"
                       >
                         <span>Baca Lengkap</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -481,32 +600,24 @@ export default function LandingHomePage() {
         </div>
       </section>
 
-      {/* 5. CALL TO ACTION: LACAK BERKAS (Identik dengan dark section) */}
-      <section className="py-12 sm:py-16 bg-primary-black text-white">
+      {/* 5. SUB-FOOTER ACTION CALLOUT (WebEkspor Signature Ocean Blue Bar #0369a1) */}
+      <section className="bg-[#0369a1] py-8 sm:py-10 text-white font-jkt">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="rounded-3xl border border-white/10 p-8 sm:p-10 flex flex-col lg:flex-row items-center justify-between gap-6 bg-white/5 backdrop-blur-xs">
-            <div className="space-y-2 max-w-2xl text-center lg:text-left">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-primary-orange uppercase tracking-wider font-jkt">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Transparansi Pelamar 100%
-              </span>
-              <h2 className="font-extrabold text-xl sm:text-2xl text-white tracking-tight font-jkt">
-                Sudah Mengajukan Lamaran di TalentOps AI?
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
+            <div className="text-center sm:text-left space-y-1">
+              <h2 className="font-bold text-lg sm:text-2xl text-white tracking-tight">
+                Sudah Mengajukan Berkas Lamaran di TalentOps AI?
               </h2>
-              <p className="text-xs sm:text-sm text-primary-slate-300 leading-relaxed font-jkt">
-                Gunakan Secret Tracking Token Anda untuk memantau status antrean seleksi, rincian skor kompetensi 4D, dan alasan
-                keputusan evaluasi secara anonim tanpa login.
+              <p className="font-medium text-xs sm:text-sm text-white/90">
+                Gunakan Secret Tracking Token untuk melihat transparansi penilaian dan alasan keputusan secara mandiri.
               </p>
             </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full sm:w-auto">
-              <Link
-                to="/track"
-                className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-primary-orange text-white text-xs font-bold hover:opacity-90 shadow-lg shadow-primary-orange/25 transition-all text-center font-jkt"
-              >
-                Lacak Status Sekarang
-              </Link>
-            </div>
+            <Link
+              to="/track"
+              className="shrink-0 bg-white px-7 py-3.5 rounded-full font-bold text-xs sm:text-sm text-[#0369a1] hover:bg-white/90 shadow-md transition-all text-center"
+            >
+              Lacak Status Sekarang
+            </Link>
           </div>
         </div>
       </section>

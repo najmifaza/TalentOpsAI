@@ -1007,26 +1007,77 @@ export default function CandidateDetailPage() {
 
                 {/* Key Strengths & Risk Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                  <div className="p-3.5 rounded-xl bg-white border border-primary-border-200 space-y-1.5">
+                  <div className="p-3.5 rounded-xl bg-white border border-primary-border-200 space-y-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                       Kekuatan Utama Terdeteksi
                     </span>
-                    <ul className="text-[11px] text-primary-slate-700 space-y-1 list-disc list-inside">
-                      {aiExplanation.strengths.map((str, idx) => (
-                        <li key={idx} className="leading-snug">{str}</li>
-                      ))}
-                    </ul>
+                    {activeCandidateObj.key_technologies && activeCandidateObj.key_technologies.length > 0 ? (
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] text-primary-slate-600 font-medium">Teknologi &amp; Kompetensi Terekstrak:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeCandidateObj.key_technologies.map((t) => (
+                            <span
+                              key={t}
+                              className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-mono font-medium"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-primary-slate-500 italic">
+                        Belum ada teknologi yang terekstrak dari berkas.
+                      </p>
+                    )}
                   </div>
 
-                  <div className="p-3.5 rounded-xl bg-white border border-primary-border-200 space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                      Potensi Risiko / Hal Perlu Diverifikasi
-                    </span>
-                    <p className="text-[11px] text-primary-slate-700 leading-snug">
-                      {aiExplanation.risks}
-                    </p>
+                  <div className="p-3.5 rounded-xl bg-white border border-primary-border-200 space-y-2">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 flex items-center gap-1">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                        Potensi Risiko / Hal Perlu Diverifikasi
+                      </span>
+                      {resolvedAnomalies.length > 0 && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                          {resolvedAnomalies.length} temuan
+                        </span>
+                      )}
+                    </div>
+
+                    {resolvedAnomalies.length > 0 ? (
+                      <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                        {resolvedAnomalies.map((anom, idx) => (
+                          <div
+                            key={anom.id || idx}
+                            className="p-2.5 rounded-xl bg-rose-50/80 border border-rose-200/70 text-[11px] space-y-1"
+                          >
+                            <div className="flex items-center justify-between gap-1.5">
+                              <span className="font-bold text-rose-950 flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></span>
+                                {anom.title}
+                              </span>
+                              <span
+                                className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold uppercase text-white shrink-0 ${
+                                  anom.severity === 'HIGH' ? 'bg-rose-600' : 'bg-amber-600'
+                                }`}
+                              >
+                                {anom.severity === 'HIGH' ? 'Kritis' : 'Perhatian'}
+                              </span>
+                            </div>
+                            <p className="text-primary-slate-800 leading-snug pl-3 text-[11px]">
+                              {anom.description}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200/60 text-emerald-800 text-[11px] flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>Tidak ada anomali atau risiko integritas berkas tercatat.</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

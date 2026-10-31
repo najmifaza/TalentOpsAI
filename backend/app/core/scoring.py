@@ -20,6 +20,15 @@ SKILL_TAXONOMY_MAP: Dict[str, Set[str]] = {
     "react": {"vue", "next.js", "frontend", "typescript", "javascript"},
 }
 
+# Build bidirectional taxonomy lookup for symmetric matching
+_BIDIRECTIONAL_TAXONOMY: Dict[str, Set[str]] = {}
+for _k, _vals in SKILL_TAXONOMY_MAP.items():
+    _k_norm = _k.strip().lower()
+    _BIDIRECTIONAL_TAXONOMY.setdefault(_k_norm, set()).update(v.strip().lower() for v in _vals)
+    for _v in _vals:
+        _v_norm = _v.strip().lower()
+        _BIDIRECTIONAL_TAXONOMY.setdefault(_v_norm, set()).add(_k_norm)
+
 METRIC_PATTERN = re.compile(
     r"(?i)(?<![\w.])(?:\d+(?:[.,]\d+)*\+?\s?(?:%|x|ms|sec|detik|rps|qps|tps|req/s|users?|pengguna|k|jt|juta|miliar|m|b|rb|ribu|transaksi|dokumen|kontrak|klien|peserta|karyawan|leads)(?![a-z0-9])|(?:rp|\$|idr|usd)\s?\d[\d.,]*)"
 )
@@ -115,13 +124,13 @@ def calculate_relevance(
             if _has_term(claimed, item) or _has_term(item, claimed):
                 return 0.7
 
-    # 2. Check static fallback SKILL_TAXONOMY_MAP
-    equivalents = SKILL_TAXONOMY_MAP.get(required, set())
+    # 2. Check bidirectional static fallback SKILL_TAXONOMY_MAP
+    equivalents = _BIDIRECTIONAL_TAXONOMY.get(required, set())
     if claimed in equivalents:
         return 0.7
 
     for eq in equivalents:
-        if _has_term(claimed, eq):
+        if _has_term(claimed, eq) or _has_term(eq, claimed):
             return 0.7
 
     return 0.0
@@ -156,6 +165,21 @@ def is_tier3_metric_claim(context_narrative: Optional[str], metric_string: Optio
 
 PRESENT_TERMS = {"present", "sekarang", "current", "now", "saat ini"}
 DATE_PATTERN = re.compile(r"^(\d{4})(?:[-/](\d{1,2}))?(?:[-/]\d{1,2})?$")
+MONTH_NAME_MAP = {
+    "jan": 1, "januari": 1, "january": 1,
+    "feb": 2, "februari": 2, "february": 2,
+    "mar": 3, "maret": 3, "march": 3,
+    "apr": 4, "april": 4,
+    "may": 5, "mei": 5,
+    "jun": 6, "juni": 6, "june": 6,
+    "jul": 7, "juli": 7, "july": 7,
+    "aug": 8, "agu": 8, "agustus": 8, "august": 8,
+    "sep": 9, "september": 9,
+    "oct": 10, "oktober": 10, "october": 10,
+    "nov": 11, "november": 11,
+    "dec": 12, "desember": 12, "december": 12,
+}
+MONTH_TEXT_PATTERN = re.compile(r"^([a-z]+)[,\s/-]+(\d{4})$|^(\d{4})[,\s/-]+([a-z]+)$")
 
 
 def parse_date_to_months(
@@ -165,7 +189,7 @@ def parse_date_to_months(
     end_of_period: bool = False,
 ) -> Optional[int]:
     """
-    Converts YYYY-MM, YYYY, or present string into absolute month count from Year 0.
+    Converts YYYY-MM, YYYY, month names (e.g. 'Jan 2023', 'Mei 2021'), or present string into absolute month count from Year 0.
     Returns None for invalid or unparseable input (no silent Jan guessing).
     """
     if date_val is None:
@@ -177,6 +201,15 @@ def parse_date_to_months(
     now = as_of or datetime.now()
     if cleaned in PRESENT_TERMS:
         return now.year * 12 + now.month
+
+    # Check text month e.g. "Jan 2022" or "2022 Jan"
+    tm = MONTH_TEXT_PATTERN.match(cleaned)
+    if tm:
+        m_str = tm.group(1) or tm.group(4)
+        y_str = tm.group(2) or tm.group(3)
+        month = MONTH_NAME_MAP.get(m_str)
+        if month:
+            return int(y_str) * 12 + month
 
     m = DATE_PATTERN.match(cleaned)
     if not m:
@@ -787,9 +820,19 @@ class DeterministicScoringEngine:
         """Runs complete deterministic scoring pipeline and returns detailed evaluation bundle."""
         current_time = as_of or datetime.now()
         w = weights or cls.DEFAULT_WEIGHTS
-        total_w = sum(w.values()) if w else 1.0
+        # Sanitize weights: enforce non-negative numbers and ensure all dimensions are keyed
+        cleaned_w = {}
+        for dim in cls.DEFAULT_WEIGHTS.keys():
+            val = w.get(dim, 0.0 if weights is not None else cls.DEFAULT_WEIGHTS[dim])
+            try:
+                val_f = float(val)
+                cleaned_w[dim] = max(0.0, val_f)
+            except (TypeError, ValueError):
+                cleaned_w[dim] = 0.0
+
+        total_w = sum(cleaned_w.values())
         if total_w > 0:
-            w_norm = {k: v / total_w for k, v in w.items()}
+            w_norm = {k: v / total_w for k, v in cleaned_w.items()}
         else:
             w_norm = cls.DEFAULT_WEIGHTS
 

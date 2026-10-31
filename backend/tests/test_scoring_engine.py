@@ -259,3 +259,70 @@ def test_case_5_eko_prasetyo_fairness_career_break():
     assert eko_res["unresolved_risk"] == "LOW", "Legitimate career break must not be penalized"
     assert "CAREER_BREAK_FLAG" in eko_res["anomaly_flags"]
     assert eko_res["recommendation"] == "STRONG_MATCH"
+
+
+def test_symmetric_bidirectional_taxonomy():
+    # FastAPI in taxonomy has python, django, etc.
+    # Inverse check: requirement "starlette" or "django" should match claimed "fastapi"
+    assert calculate_relevance("fastapi", "django") == 0.7
+    assert calculate_relevance("fastapi", "starlette") == 0.7
+    assert calculate_relevance("golang", "go") == 0.7
+    assert calculate_relevance("go", "golang") == 0.7
+    assert calculate_relevance("rust", "go") == 0.7
+    assert calculate_relevance("go", "rust") == 0.7
+
+
+def test_flexible_date_parsing():
+    from app.core.scoring import parse_date_to_months
+    # Standard YYYY-MM
+    assert parse_date_to_months("2023-05") == 2023 * 12 + 5
+    # Indonesian month names
+    assert parse_date_to_months("Januari 2022") == 2022 * 12 + 1
+    assert parse_date_to_months("Mei 2021") == 2021 * 12 + 5
+    assert parse_date_to_months("Agu 2020") == 2020 * 12 + 8
+    # English month names
+    assert parse_date_to_months("Oct 2024") == 2024 * 12 + 10
+    assert parse_date_to_months("December 2019") == 2019 * 12 + 12
+    # Invalid strings
+    assert parse_date_to_months("invalid_date") is None
+    assert parse_date_to_months("") is None
+
+
+def test_custom_weights_partial_normalization():
+    # Only SKILL provided: should normalize SKILL to 1.0, others 0.0
+    res = DeterministicScoringEngine.compute_full_assessment(
+        claims=[{"dimension": "SKILL", "technology": "FastAPI", "has_implementation_detail": True}],
+        career_timeline=[],
+        education=None,
+        anomalies={},
+        core_competencies=["FastAPI"],
+        weights={"SKILL": 10.0},  # Partial weight
+    )
+    # Skill score is 60.0 (Tier 2). Overall score should be exactly 60.0, NOT inflated by default fallbacks
+    assert res["dimension_scores"]["SKILL"] == 60.0
+    assert res["overall_score"] == 60.0
+
+    # All zero weights fallback to default weights without zero division
+    res_zero = DeterministicScoringEngine.compute_full_assessment(
+        claims=[],
+        career_timeline=[],
+        education=None,
+        anomalies={},
+        core_competencies=["FastAPI"],
+        weights={"SKILL": 0, "EXPERIENCE": 0, "EDUCATION": 0, "PORTFOLIO": 0},
+    )
+    assert 0.0 <= res_zero["overall_score"] <= 100.0
+
+
+def test_empty_and_edge_case_inputs():
+    res = DeterministicScoringEngine.compute_full_assessment(
+        claims=[],
+        career_timeline=[],
+        education=None,
+        anomalies={},
+        core_competencies=[],
+    )
+    assert res["overall_score"] >= 0.0
+    assert res["confidence_level"] == "LOW"
+    assert res["unresolved_risk"] == "LOW"
+

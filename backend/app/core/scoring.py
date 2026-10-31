@@ -15,13 +15,13 @@ SKILL_TAXONOMY_MAP: Dict[str, Set[str]] = {
     "mysql": {"mariadb", "postgresql", "sql"},
     "ci/cd": {"github actions", "gitlab ci", "jenkins", "argocd", "devops"},
     "redis": {"memcached", "cache", "key-value store"},
-    "go": {"golang", "rust", "c++", "c"},
+    "go": {"golang", "rust"},
     "kafka": {"rabbitmq", "sqs", "event-driven", "pubsub"},
     "react": {"vue", "next.js", "frontend", "typescript", "javascript"},
 }
 
 METRIC_PATTERN = re.compile(
-    r"(?i)(?<![\w.])(?:\d+(?:[.,]\d+)?\s?(?:%|x|ms|sec|detik|rps|qps|tps|req/s|users?|pengguna|k|jt|juta|miliar|m|b|rb|ribu|transaksi|dokumen|kontrak|klien|peserta|karyawan|leads)(?![a-z0-9])|(?:rp|\$|idr|usd)\s?\d[\d.,]*)"
+    r"(?i)(?<![\w.])(?:\d+(?:[.,]\d+)*\+?\s?(?:%|x|ms|sec|detik|rps|qps|tps|req/s|users?|pengguna|k|jt|juta|miliar|m|b|rb|ribu|transaksi|dokumen|kontrak|klien|peserta|karyawan|leads)(?![a-z0-9])|(?:rp|\$|idr|usd)\s?\d[\d.,]*)"
 )
 
 CONTEXT_KEYWORDS = {
@@ -53,12 +53,16 @@ def inclusivity_from_findings(findings: list[dict]) -> tuple[int, str]:
     """
     penalty = 0
     for finding in findings:
-        severity = (finding or {}).get("severity")
+        if not isinstance(finding, dict):
+            continue
+        severity = str(finding.get("severity") or "").strip().upper()
         if severity == "HIGH":
             penalty += 15
         elif severity == "MEDIUM":
             penalty += 8
-        else:
+        elif severity == "LOW":
+            penalty += 4
+        elif severity:
             penalty += 4
 
     score = max(0, 100 - penalty)
@@ -74,6 +78,13 @@ def inclusivity_from_findings(findings: list[dict]) -> tuple[int, str]:
 # ==============================================================================
 # 2. HELPER FUNCTIONS
 # ==============================================================================
+def _has_term(text: str, term: str) -> bool:
+    """Checks if term appears in text with boundary constraints (not substring of larger word)."""
+    if not text or not term:
+        return False
+    return re.search(rf"(?<![a-z0-9+#.]){re.escape(term)}(?![a-z0-9+#.])", text) is not None
+
+
 def calculate_relevance(
     claimed_tech: str,
     required_comp: str,
@@ -83,7 +94,10 @@ def calculate_relevance(
     claimed = claimed_tech.strip().lower()
     required = required_comp.strip().lower()
 
-    if claimed == required or required in claimed:
+    if not claimed or not required:
+        return 0.0
+
+    if claimed == required or _has_term(claimed, required):
         return 1.0
 
     # 1. Check dynamic taxonomies if available (case-insensitive)
@@ -92,13 +106,13 @@ def calculate_relevance(
         for k, v in dynamic_taxonomy.items():
             if k.strip().lower() == required:
                 if isinstance(v, (list, set, tuple)):
-                    dyn_set.update(str(item).strip().lower() for item in v)
-                elif isinstance(v, str):
+                    dyn_set.update(str(item).strip().lower() for item in v if str(item).strip())
+                elif isinstance(v, str) and v.strip():
                     dyn_set.add(v.strip().lower())
         if claimed in dyn_set:
             return 0.7
         for item in dyn_set:
-            if item in claimed or claimed in item:
+            if _has_term(claimed, item) or _has_term(item, claimed):
                 return 0.7
 
     # 2. Check static fallback SKILL_TAXONOMY_MAP
@@ -107,7 +121,7 @@ def calculate_relevance(
         return 0.7
 
     for eq in equivalents:
-        if eq in claimed:
+        if _has_term(claimed, eq):
             return 0.7
 
     return 0.0
@@ -123,37 +137,71 @@ def is_tier3_metric_claim(context_narrative: Optional[str], metric_string: Optio
     if not combined:
         return False
 
-    has_metric = bool(METRIC_PATTERN.search(combined))
-    if not has_metric:
+    metric_match = METRIC_PATTERN.search(combined)
+    if not metric_match:
         return False
 
-    has_context_word = any(re.search(rf"\b{re.escape(word)}\b", combined) for word in CONTEXT_KEYWORDS)
+    remaining_text = METRIC_PATTERN.sub(" ", combined)
+    has_context_word = any(
+        re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", remaining_text)
+        for word in CONTEXT_KEYWORDS
+    )
+    if not has_context_word:
+        has_context_word = any(
+            re.search(rf"(?<![a-z0-9]){re.escape(word)}(?![a-z0-9])", combined)
+            for word in (CONTEXT_KEYWORDS - {"karyawan", "dokumen"})
+        )
     return has_context_word
 
 
-def parse_date_to_months(date_str: str) -> int:
-    """Converts YYYY-MM or YYYY string into absolute month count from Year 0."""
-    cleaned = date_str.strip().lower()
-    now = datetime.now()
-    if cleaned in ("present", "sekarang", "current", "now"):
+PRESENT_TERMS = {"present", "sekarang", "current", "now", "saat ini"}
+DATE_PATTERN = re.compile(r"^(\d{4})(?:[-/](\d{1,2}))?(?:[-/]\d{1,2})?$")
+
+
+def parse_date_to_months(
+    date_val: Any,
+    *,
+    as_of: Optional[datetime] = None,
+    end_of_period: bool = False,
+) -> Optional[int]:
+    """
+    Converts YYYY-MM, YYYY, or present string into absolute month count from Year 0.
+    Returns None for invalid or unparseable input (no silent Jan guessing).
+    """
+    if date_val is None:
+        return None
+    cleaned = str(date_val).strip().lower()
+    if cleaned in ("none", "null", ""):
+        return None
+
+    now = as_of or datetime.now()
+    if cleaned in PRESENT_TERMS:
         return now.year * 12 + now.month
 
-    parts = cleaned.split("-")
-    try:
-        year = int(parts[0])
-        month = int(parts[1]) if len(parts) > 1 else 1
+    m = DATE_PATTERN.match(cleaned)
+    if not m:
+        return None
+
+    year = int(m.group(1))
+    if m.group(2):
+        month = int(m.group(2))
+    else:
+        month = 12 if end_of_period else 1
+
+    if 1 <= month <= 12:
         return year * 12 + month
-    except (ValueError, IndexError):
-        return now.year * 12 + 1
+    return None
 
 
 def normalize_technology_key(name: str) -> str:
-    """Identity of a technology name for dedupe: "Next.js" and "nextjs" are one skill."""
-    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    """Identity of a technology name for dedupe: retains + and # (C++, C# != C), collapses dots (Next.js == nextjs)."""
+    return re.sub(r"[^a-z0-9+#]", "", (name or "").lower())
 
 
-def months_to_label(months: int) -> str:
+def months_to_label(months: Optional[int]) -> str:
     """Inverse of parse_date_to_months: absolute month count back to YYYY-MM."""
+    if months is None:
+        return "-"
     year = months // 12
     month = months - year * 12
     if month == 0:
@@ -162,24 +210,42 @@ def months_to_label(months: int) -> str:
     return f"{year:04d}-{month:02d}"
 
 
-def merge_employment_intervals(timeline: List[Dict[str, Any]]) -> float:
+def merge_employment_intervals(
+    timeline: List[Dict[str, Any]],
+    as_of: Optional[datetime] = None,
+) -> float:
     """
     PRD Bab 5.2 Interval Merging:
     Merges overlapping work periods on relevant engineering roles to prevent double-counting.
     Returns aggregated experience in years.
     """
+    now = as_of or datetime.now()
+    now_m = now.year * 12 + now.month
     intervals: List[Tuple[int, int]] = []
+
     for item in timeline:
+        if not isinstance(item, dict):
+            continue
         if not item.get("is_relevant_role", True):
             continue
 
-        start_str = str(item.get("start", ""))
-        end_str = str(item.get("end", "present"))
-        if not start_str:
+        raw_start = item.get("start")
+        raw_end = item.get("end")
+        if raw_end is None or str(raw_end).strip().lower() in ("none", "null", ""):
+            raw_end = "present"
+
+        start_m = parse_date_to_months(raw_start, as_of=now, end_of_period=False)
+        end_m = parse_date_to_months(raw_end, as_of=now, end_of_period=True)
+
+        if start_m is None or end_m is None:
             continue
 
-        start_m = parse_date_to_months(start_str)
-        end_m = parse_date_to_months(end_str)
+        # Clamp future date to current month
+        if end_m > now_m:
+            end_m = now_m
+        if start_m > now_m:
+            start_m = now_m
+
         if end_m < start_m:
             end_m = start_m
 
@@ -203,7 +269,7 @@ def merge_employment_intervals(timeline: List[Dict[str, Any]]) -> float:
             merged.append(current)
 
     total_months = sum((end - start + 1) for start, end in merged)
-    return max(0.0, total_months / 12.0)
+    return round(max(0.0, total_months / 12.0), 2)
 
 
 # ==============================================================================
@@ -238,7 +304,7 @@ class DeterministicScoringEngine:
         MatchScore(k) = max(TierScore_i / 100.0 * Relevance_ik)
         """
         if not core_competencies:
-            return 100.0, []
+            return 50.0, []
 
         verified_repos = verified_github_repos or {}
         evidence_records: List[Dict[str, Any]] = []
@@ -285,7 +351,7 @@ class DeterministicScoringEngine:
             match_scores.append(best_match_score)
             if best_claim:
                 conf = 1.00 if best_tier == 100.0 else (0.75 if best_tier == 60.0 else 0.50)
-                claim_tech = (best_claim.get("technology") or req_comp).strip()
+                claim_tech = (best_claim.get("technology") or best_claim.get("competency") or req_comp).strip()
                 matched_technologies.add(normalize_technology_key(claim_tech))
                 evidence_records.append({
                     "dimension": "SKILL",
@@ -360,14 +426,18 @@ class DeterministicScoringEngine:
         return list(kept.values())
 
     @classmethod
-    def calculate_experience_score(cls, timeline: List[Dict[str, Any]]) -> Tuple[float, float]:
+    def calculate_experience_score(
+        cls,
+        timeline: List[Dict[str, Any]],
+        as_of: Optional[datetime] = None,
+    ) -> Tuple[float, float]:
         """
         Calculates S_exp based on MergedYears (PRD Bab 5.2):
         - MergedYears < 1.0: 20.0
         - 1.0 <= MergedYears <= 3.0: 20.0 + ((MergedYears - 1.0) / 2.0) * 40.0
         - MergedYears > 3.0: min(100.0, 60.0 + ((MergedYears - 3.0) / 2.0) * 40.0)
         """
-        merged_years = merge_employment_intervals(timeline)
+        merged_years = merge_employment_intervals(timeline, as_of=as_of)
 
         if merged_years < 1.0:
             score = 20.0
@@ -399,14 +469,14 @@ class DeterministicScoringEngine:
         if is_programmer_role:
             is_it_field = any(k in field for k in [
                 "informatika", "komputer", "sistem informasi", "software",
-                "computer science", "information technology", "rekayasa perangkat lunak"
+                "computer science", "information technology", "teknologi informasi", "rekayasa perangkat lunak"
             ])
             if not is_it_field:
                 return 20.0
 
-        if "S2" in deg or "S3" in deg or "MASTER" in deg or "PHD" in deg:
+        if any(re.search(rf"\b{k}\b", deg) for k in ["S2", "S3", "MASTER", "MAGISTER", "PHD"]):
             return 100.0
-        if "S1" in deg or "D3" in deg or "D4" in deg or "BACHELOR" in deg:
+        if any(re.search(rf"\b{k}\b", deg) for k in ["S1", "D3", "D4", "BACHELOR", "SARJANA", "DIPLOMA"]):
             return 60.0
 
         return 20.0
@@ -465,6 +535,7 @@ class DeterministicScoringEngine:
         cls,
         anomalies: Dict[str, Any],
         timeline: List[Dict[str, Any]],
+        as_of: Optional[datetime] = None,
     ) -> Tuple[str, List[str], List[Dict[str, Any]]]:
         """
         Evaluates Unresolved Risk (HIGH, MEDIUM, LOW) & builds anomaly notes.
@@ -503,14 +574,27 @@ class DeterministicScoringEngine:
         # placed on a timeline, so they are skipped rather than defaulted to "now".
         full_time_roles = [
             t for t in timeline
-            if t.get("employment_type", "full_time") == "full_time" and str(t.get("start") or "").strip()
+            if isinstance(t, dict)
+            and t.get("employment_type", "full_time") == "full_time"
+            and str(t.get("start") or "").strip()
+            and str(t.get("start") or "").strip().lower() not in ("none", "null")
         ]
         for i in range(len(full_time_roles)):
             for j in range(i + 1, len(full_time_roles)):
-                r1_start = parse_date_to_months(str(full_time_roles[i].get("start", "")))
-                r1_end = parse_date_to_months(str(full_time_roles[i].get("end", "present")))
-                r2_start = parse_date_to_months(str(full_time_roles[j].get("start", "")))
-                r2_end = parse_date_to_months(str(full_time_roles[j].get("end", "present")))
+                end_i = full_time_roles[i].get("end")
+                if end_i is None or str(end_i).strip().lower() in ("none", "null", ""):
+                    end_i = "present"
+                end_j = full_time_roles[j].get("end")
+                if end_j is None or str(end_j).strip().lower() in ("none", "null", ""):
+                    end_j = "present"
+
+                r1_start = parse_date_to_months(full_time_roles[i].get("start"), as_of=as_of, end_of_period=False)
+                r1_end = parse_date_to_months(end_i, as_of=as_of, end_of_period=True)
+                r2_start = parse_date_to_months(full_time_roles[j].get("start"), as_of=as_of, end_of_period=False)
+                r2_end = parse_date_to_months(end_j, as_of=as_of, end_of_period=True)
+
+                if r1_start is None or r1_end is None or r2_start is None or r2_end is None:
+                    continue
 
                 overlap_start = max(r1_start, r2_start)
                 overlap_end = min(r1_end, r2_end)
@@ -639,30 +723,38 @@ class DeterministicScoringEngine:
         portfolio_url: Optional[str] = None,
         competency_taxonomies: Optional[Dict[str, Any]] = None,
         job_title: str = "Posisi",
+        as_of: Optional[datetime] = None,
+        cutoff_threshold: float = 85.0,
     ) -> Dict[str, Any]:
         """Runs complete deterministic scoring pipeline and returns detailed evaluation bundle."""
+        current_time = as_of or datetime.now()
         w = weights or cls.DEFAULT_WEIGHTS
+        total_w = sum(w.values()) if w else 1.0
+        if total_w > 0:
+            w_norm = {k: v / total_w for k, v in w.items()}
+        else:
+            w_norm = cls.DEFAULT_WEIGHTS
 
         # 1. Dimension Scores
         skill_score, skill_evidence = cls.calculate_skill_score(
             claims, core_competencies, verified_repos, dynamic_taxonomy=competency_taxonomies
         )
-        exp_score, merged_years = cls.calculate_experience_score(career_timeline)
+        exp_score, merged_years = cls.calculate_experience_score(career_timeline, as_of=current_time)
         edu_score = cls.calculate_education_score(education, is_programmer_role=is_programmer_role)
         port_score = cls.calculate_portfolio_score(verified_repos, is_programmer_role, portfolio_url)
 
-        # 2. Overall Score
+        # 2. Overall Score (Normalized & Clamped to [0.0, 100.0])
         overall = (
-            (skill_score * w.get("SKILL", 0.4))
-            + (exp_score * w.get("EXPERIENCE", 0.3))
-            + (edu_score * w.get("EDUCATION", 0.1))
-            + (port_score * w.get("PORTFOLIO", 0.2))
+            (skill_score * w_norm.get("SKILL", 0.4))
+            + (exp_score * w_norm.get("EXPERIENCE", 0.3))
+            + (edu_score * w_norm.get("EDUCATION", 0.1))
+            + (port_score * w_norm.get("PORTFOLIO", 0.2))
         )
-        overall_score = round(overall, 2)
+        overall_score = max(0.0, min(100.0, round(overall, 2)))
 
         # 3. Confidence & Risk
         confidence = cls.evaluate_confidence(claims)
-        risk, anomaly_flags, anomaly_details = cls.evaluate_risk(anomalies, career_timeline)
+        risk, anomaly_flags, anomaly_details = cls.evaluate_risk(anomalies, career_timeline, as_of=current_time)
 
         has_injection = (
             anomalies.get("prompt_injection_detected", False)
@@ -675,6 +767,7 @@ class DeterministicScoringEngine:
             confidence=confidence,
             risk=risk,
             has_prompt_injection=has_injection,
+            cutoff_threshold=cutoff_threshold,
         )
 
         # 5. Adaptive Assessment Trigger Check (PRD Bab 5.3 Step 5)
@@ -682,8 +775,19 @@ class DeterministicScoringEngine:
         needs_adaptive_challenge = (skill_score < 70.0 or risk in ("HIGH", "MEDIUM"))
         adaptive_challenges = []
         if needs_adaptive_challenge and core_competencies:
-            # Pick first unmastered skill
-            target_skill = core_competencies[0]
+            # Pick first unmastered or lowest scored requirement
+            req_scores: Dict[str, float] = {}
+            for ev in skill_evidence:
+                req = ev.get("matched_requirement")
+                sc = ev.get("score_contribution", 0.0)
+                if req:
+                    req_scores[req] = max(req_scores.get(req, 0.0), sc)
+
+            unmastered = [c for c in core_competencies if req_scores.get(c, 0.0) < 60.0]
+            if not unmastered:
+                unmastered = [c for c in core_competencies if req_scores.get(c, 0.0) < 100.0]
+            target_skill = unmastered[0] if unmastered else core_competencies[0]
+
             difficulty = "L2_CASE_STUDY" if risk == "HIGH" else "L1_FUNDAMENTAL"
             if is_programmer_role:
                 scenario_q = f"Explain concurrency control, state management, and edge-case error recovery when implementing {target_skill}."

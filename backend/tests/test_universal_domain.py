@@ -101,7 +101,30 @@ def test_non_it_adaptive_challenge_question():
     challenges = assessment.get("adaptive_challenges", [])
     assert len(challenges) > 0
     q = challenges[0]["scenario_question"]
-    # Question must be contextual to the job title and competency, NOT database concurrency rollback
+    # Question must be contextual to the job title and target the unmastered competency (Laporan Keuangan)
     assert "concurrency control" not in q
     assert "Staff Akuntan & Pajak" in q
-    assert "Pajak PPh 21" in q
+    assert "Laporan Keuangan" in q
+
+
+def test_claude_audit_edge_cases():
+    from app.core.scoring import merge_employment_intervals, normalize_technology_key
+
+    # Substring boundaries
+    assert calculate_relevance("mongodb", "go") == 0.0
+    assert calculate_relevance("javascript", "java") == 0.0
+    assert calculate_relevance("docker", "go") == 0.0
+
+    # Metric & context detection
+    assert is_tier3_metric_claim("melayani 1.000.000 pengguna", None) is True
+    assert is_tier3_metric_claim("mengelola 5 karyawan", None) is False  # Headcount without business metric
+
+    # Dates parsing and interval merging
+    assert merge_employment_intervals([{"start": "2020", "end": "2023"}]) == 4.0
+    assert merge_employment_intervals([{"start": "2024-01", "end": None}]) > 0
+
+    # Distinct language keys
+    assert normalize_technology_key("C++") != normalize_technology_key("C#")
+    assert normalize_technology_key("C++") != normalize_technology_key("C")
+    assert normalize_technology_key("Next.js") == normalize_technology_key("nextjs")
+

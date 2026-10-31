@@ -32,6 +32,19 @@ logger = logging.getLogger(__name__)
 
 TERMINAL_EVENTS = ("completed", "failed")
 
+INTERMEDIATE_TRIAGE_STEPS = {
+    "triage_initiated",
+    "pii_sanitization",
+    "hidden_text_audit",
+    "docx_integrity",
+    "llm_extraction",
+    "substring_guard_audit",
+    "substring_guard",
+    "github_repo_verification",
+    "github_audit",
+    "deterministic_scoring",
+}
+
 
 class SSEBroadcaster:
     """
@@ -201,15 +214,29 @@ class SSEBroadcaster:
 
     # -- publishing ---------------------------------------------------------
 
-    async def publish(self, candidate_id: int, step_name: str, status: str, details: Optional[dict] = None) -> None:
+    async def publish(
+        self,
+        candidate_id: int,
+        step_name: str,
+        status: str,
+        details: Optional[dict] = None,
+        is_terminal: Optional[bool] = None,
+    ) -> None:
+        if is_terminal is None:
+            if step_name in INTERMEDIATE_TRIAGE_STEPS:
+                is_terminal = False
+            elif step_name in ("triage_completed", "agent_decision", "triage_failed") or status in ("failed", "error"):
+                is_terminal = True
+            else:
+                is_terminal = status in TERMINAL_EVENTS
+
         event_data = {
             "candidate_id": candidate_id,
             "step": step_name,
             "status": status,
             "details": details or {},
+            "event": status if is_terminal else "progress",
         }
-        # `event` field drives generator termination; keep it alongside step/status
-        event_data["event"] = status
 
         client = await redis_state.client()
         if client is not None:

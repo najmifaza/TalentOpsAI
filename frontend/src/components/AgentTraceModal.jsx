@@ -334,19 +334,6 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                startedRef.current = true;
-                isCompletedRef.current = false;
-                startStream();
-              }}
-              disabled={isStreaming}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all border border-white/10 disabled:opacity-50"
-              title="Jalankan Ulang Penyaringan Berkas"
-            >
-              <RotateCcw className={`w-3.5 h-3.5 ${isStreaming ? 'animate-spin' : ''}`} />
-              <span>Analisis Ulang</span>
-            </button>
-            <button
               aria-label="Tutup monitor trace"
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"

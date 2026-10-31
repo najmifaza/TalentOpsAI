@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import json
 import logging
 import re
@@ -15,7 +14,6 @@ from app.core.state import DistributedSemaphore
 from app.core.llm_adapter import LLMAdapter, compute_file_hash
 from app.core.prompt import build_extraction_prompt, clean_llm_json_response
 from app.core.scoring import DeterministicScoringEngine
-from app.core.hidden_text_detector import audit_docx_hidden_text
 from app.schemas.extraction import (
     CandidateExtractionSchema,
     AnomalyFlags,

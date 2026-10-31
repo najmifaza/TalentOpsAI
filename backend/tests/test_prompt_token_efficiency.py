@@ -80,3 +80,6 @@ def test_clean_llm_json_response():
 
     raw_plain = "{\"test\": 456}"
     assert clean_llm_json_response(raw_plain) == "{\"test\": 456}"
+
+    raw_with_conversational = "Here is the extracted JSON output:\n```json\n{\"test\": 789}\n```\nHope this helps!"
+    assert clean_llm_json_response(raw_with_conversational) == "{\"test\": 789}"

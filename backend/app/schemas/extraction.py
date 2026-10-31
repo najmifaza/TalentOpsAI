@@ -230,7 +230,11 @@ class CandidateExtractionSchema(BaseModel):
         AND drop the unverified text, so a paraphrase can never be rendered later as a
         verbatim resume quotation.
         """
+        def _normalize_tokens(text: str) -> str:
+            return "".join(re.sub(r"[^\w]", "", text).lower().split())
+
         normalized_cv = " ".join(sanitized_cv_text.lower().split())
+        norm_cv_alphanumeric = _normalize_tokens(sanitized_cv_text)
 
         for claim in self.claims:
             if not claim.has_implementation_detail:
@@ -238,8 +242,14 @@ class CandidateExtractionSchema(BaseModel):
 
             narrative = (claim.context_narrative or "").strip().lower()
             norm_narrative = " ".join(narrative.split())
+            norm_claim_alphanumeric = _normalize_tokens(narrative)
 
-            if norm_narrative and norm_narrative not in normalized_cv:
+            is_verified = (
+                norm_narrative in normalized_cv
+                or (bool(norm_claim_alphanumeric) and norm_claim_alphanumeric in norm_cv_alphanumeric)
+            )
+
+            if norm_narrative and not is_verified:
                 claim.has_implementation_detail = False
                 claim.context_narrative = None
                 claim.metric_string = None

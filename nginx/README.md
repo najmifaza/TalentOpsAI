@@ -60,15 +60,15 @@ sudo systemctl reload nginx
 ## 4. Sertifikat SSL Let's Encrypt (Certbot)
 Jika sertifikat baru dibutuhkan:
 ```bash
-sudo certbot certonly --webroot -w /var/www/certbot -d api-talentops.fawt.biz.id --agree-tos --email admin@talentops.id
+sudo certbot certonly --webroot -w /var/www/certbot -d api.talentops.ai.id --agree-tos --email admin@talentops.id
 ```
 
 ---
 
 ## 5. Verifikasi Status Live
-* Endpoint Health: `curl -I https://api-talentops.fawt.biz.id/api/health`
-* Swagger Docs: `https://api-talentops.fawt.biz.id/docs`
+* Endpoint Health: `curl -I https://api.talentops.ai.id/api/health`
+* Swagger Docs: `https://api.talentops.ai.id/docs`
 * Header Check:
 ```bash
-curl -I https://api-talentops.fawt.biz.id/api/health | grep -iE "strict-transport|x-frame|x-content"
+curl -I https://api.talentops.ai.id/api/health | grep -iE "strict-transport|x-frame|x-content"
 ```

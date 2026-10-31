@@ -5,7 +5,7 @@ import { recLabel, formatScore } from '../lib/labels';
 import WeightSliders from './WeightSliders';
 import { toPercent, toRatio, DEFAULT_WEIGHT_PCT } from '../lib/dimensions';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
 const BUCKETS = [
   { key: 'STRONG_MATCH', label: recLabel('STRONG_MATCH'), cls: 'text-emerald-700 bg-emerald-50 border-emerald-300' },

@@ -3,7 +3,7 @@ import { Building2, ExternalLink, Menu, Circle, RefreshCw, LogOut } from 'lucide
 import { getUser, logout } from '../lib/api';
 import { roleLabel } from '../lib/roles';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
 export default function Header({ currentTitle = "Dashboard & Antrean Berkas", onActionClick, onToggleMobileMenu }) {
   const [apiStatus, setApiStatus] = useState('checking'); // 'ok' | 'error' | 'checking'

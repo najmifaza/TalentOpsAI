@@ -68,7 +68,7 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
   const [trackerInitialToken, setTrackerInitialToken] = useState('');
 
   const fileInputRef = useRef(null);
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
   // Fetch Jobs on Mount
   useEffect(() => {

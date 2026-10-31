@@ -27,7 +27,7 @@ import { recLabel, statusLabel, confidenceLabel, riskLabel, slotStatusLabel, for
 import { DIMENSIONS } from '../lib/dimensions';
 import { can, roleLabel, unmaskBlockedReason } from '../lib/roles';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
 const safeUrl = (u) => {
   if (!u || typeof u !== 'string') return null;

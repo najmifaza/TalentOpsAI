@@ -45,6 +45,7 @@ def test_legacy_and_api_origins_still_allowed():
     for origin in (
         "https://talentops.fawt.biz.id",
         "https://api-talentops.fawt.biz.id",
+        "https://api.talentops.ai.id",
         "https://talentops-preview.vercel.app",
     ):
         assert re.match(CORS_REGEX, origin), f"{origin} rejected by allow_origin_regex"

@@ -42,7 +42,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
   const [trackingData, setTrackingData] = useState(null);
   const [lastChecked, setLastChecked] = useState(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
   const fetchStatus = async (tokenToFetch) => {
     const raw = (tokenToFetch || tokenInput).trim();

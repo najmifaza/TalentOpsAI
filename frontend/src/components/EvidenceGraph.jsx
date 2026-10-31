@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
 // --- CUSTOM NODES (Grafana Labs Enterprise Theme) ---
 

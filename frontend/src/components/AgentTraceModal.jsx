@@ -85,7 +85,7 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
   const isPlayingRef = useRef(false);
   const playTimerRef = useRef(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
   // Auto-scroll logs to bottom
   useEffect(() => {

@@ -15,7 +15,7 @@ import WeightBar from './WeightBar';
 import WeightSliders from './WeightSliders';
 import { toPercent, toRatio, DEFAULT_WEIGHT_PCT } from '../lib/dimensions';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
 const PRESETS = {
   balanced: {

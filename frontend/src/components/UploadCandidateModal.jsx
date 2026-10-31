@@ -31,7 +31,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
   const [uploadResult, setUploadResult] = useState(null);
   const fileInputRef = useRef(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
   useEffect(() => {
     async function loadJobs() {

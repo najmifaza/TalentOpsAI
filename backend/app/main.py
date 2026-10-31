@@ -90,7 +90,7 @@ Backend Core Engine berbasis **FastAPI & MariaDB ACID** yang menghubungkan siklu
     contact={
         "name": "Tim Rekayasa TalentOps AI",
         "email": "engineering@talentops.id",
-        "url": "https://api-talentops.fawt.biz.id",
+        "url": "https://api.talentops.ai.id",
     },
     license_info={
         "name": "MIT License",

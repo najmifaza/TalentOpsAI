@@ -1,7 +1,7 @@
 // Central auth + fetch layer.
 // Components keep calling bare fetch(); this installs a one-time interceptor that
 // attaches the Bearer JWT to every backend call, so no component needs to know about auth.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-talentops.fawt.biz.id';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
 const TOKEN_KEY = 'talentops_token';
 const USER_KEY = 'talentops_user';

@@ -76,6 +76,12 @@ const ANOMALY_DICTIONARY = {
     defaultDesc: 'Terdeteksi kesenjangan waktu tanpa riwayat kerja aktif lebih dari 12 bulan.',
     defaultAction: 'Tanyakan secara santun aktivitas pengembangan kompetensi, studi lanjutan, atau proyek independen selama masa jeda tersebut.',
   },
+  PDF_MICRO_IMAGE: {
+    title: 'Deteksi Elemen Grafis Mikro (Micro-Image / Marker)',
+    severity: 'MEDIUM',
+    defaultDesc: 'Berkas PDF memuat gambar berukuran sangat kecil (<= 2x2 piksel). Umumnya berupa ornamen desain dari pembuat CV (Canva, Word, Figma) seperti pola garis/bayangan latar berulang, atau sisa marker template.',
+    defaultAction: 'Periksa tampilan visual CV. Jika tata letak terbaca normal dan bersih, temuan ini dapat diabaikan karena merupakan bawaan software ekspor PDF.',
+  },
 };
 
 // Post-commit delivery report for a review decision. Each channel is best-effort

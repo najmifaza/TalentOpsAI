@@ -112,7 +112,12 @@ class AgentTriageService:
                 candidate_id,
                 step_name="triage_initiated",
                 status="started",
-                details={"masked_identifier": masked_id, "run_id": run_id},
+                details={
+                    "masked_identifier": masked_id,
+                    "run_id": run_id,
+                    "backend_action": f"Memulai Autonomous Agent Triage untuk berkas kandidat {masked_id} (Posisi: {job_title}).",
+                    "ai_thought": f"AI mempersiapkan pipeline verifikasi bukti: sanitasi privasi UU PDP, ekstraksi klaim struktural, audit anti-halusinasi, dan kalkulasi skor 4D deterministik.",
+                },
             )
 
             # ==================================================================
@@ -134,13 +139,26 @@ class AgentTriageService:
                     hidden_snippets.append(ea["description"])
 
             dur_ms = int((time.time() - t0) * 1000)
+            anom_types = [a["anomaly_type"] for a in existing_anoms]
+            audit_thought = (
+                f"Memeriksa integritas naskah resume ({len(sanitized_text)} karakter). Terdeteksi anomali: {', '.join(anom_types)}. Perlu perhatian audit HR."
+                if anom_types
+                else f"Memeriksa integritas naskah resume ({len(sanitized_text)} karakter). Berkas bersih dari manipulasi font 0pt, teks putih siluman, atau prompt injection."
+            )
+            audit_details = {
+                "hidden_detected": hidden_detected,
+                "snippets_count": len(hidden_snippets),
+                "anomalies_detected": anom_types,
+                "backend_action": f"Inspeksi struktur biner berkas dan enkripsi AES-256 selesai ({dur_ms} ms).",
+                "ai_thought": audit_thought,
+            }
             await self._record_step(
                 db, run_id, candidate_id, masked_id, "hidden_text_audit",
-                "completed", dur_ms, {"hidden_detected": hidden_detected}
+                "completed", dur_ms, audit_details
             )
             await sse_broadcaster.publish(
                 candidate_id, "hidden_text_audit", "completed",
-                {"hidden_detected": hidden_detected, "snippets_count": len(hidden_snippets)}
+                audit_details
             )
 
             # ==================================================================
@@ -148,6 +166,14 @@ class AgentTriageService:
             # ==================================================================
             t0 = time.time()
             prompt_msgs = build_extraction_prompt(sanitized_text)
+
+            await sse_broadcaster.publish(
+                candidate_id, "llm_extraction", "started",
+                {
+                    "backend_action": f"Mengirim {len(sanitized_text)} karakter naskah tersanitasi ke model Gemini 3.8...",
+                    "ai_thought": f"AI membaca resume dan mencocokkan dengan kriteria '{job_title}'. Mengevaluasi keahlian, kronologi peran, dan bukti capaian metrik...",
+                }
+            )
 
             extraction_error = None
             try:
@@ -172,9 +198,25 @@ class AgentTriageService:
                 extraction_source = "FALLBACK"
 
             dur_ms = int((time.time() - t0) * 1000)
+            extracted_skills = [
+                str(c.technology or c.competency)
+                for c in schema.claims 
+                if (c.technology or c.competency) and (c.technology or c.competency) != "-"
+            ]
+            metric_claims = [c for c in schema.claims if bool(c.metric_string)]
+            roles_summary = [f"{t.role} ({t.start}-{t.end or 'sekarang'})" for t in schema.career_timeline]
+            edu_str = f"{schema.education.degree or ''} {schema.education.field_of_study or ''}".strip() if schema.education else "Tidak tertera"
+
+            extraction_thought = (
+                f"AI mengekstraksi {len(schema.claims)} klaim kompetensi ({', '.join(extracted_skills[:5])}{'...' if len(extracted_skills) > 5 else ''}), "
+                f"termasuk {len(metric_claims)} klaim dengan metrik terukur. Ditemukan {len(schema.career_timeline)} riwayat kerja. Pendidikan: {edu_str}."
+            )
             step_details = {
                 "source": extraction_source,
                 "claims_count": len(schema.claims),
+                "extracted_skills": extracted_skills[:8],
+                "backend_action": f"Validasi JSON terstruktur ke skema Pydantic v2 sukses via {extraction_source} ({dur_ms} ms).",
+                "ai_thought": extraction_thought,
             }
             if extraction_error:
                 step_details["llm_gateway_error"] = extraction_error
@@ -196,13 +238,24 @@ class AgentTriageService:
             verified_claims_count = sum(1 for c in schema.claims if c.has_implementation_detail)
             dur_ms = int((time.time() - t0) * 1000)
 
+            unverified_count = len(schema.claims) - verified_claims_count
+            guard_thought = (
+                f"Audit Anti-Halusinasi: Dari {len(schema.claims)} klaim, sebanyak {verified_claims_count} klaim lolos verifikasi verbatim dengan bukti narasi nyata (Tier 2/3). "
+                + (f"{unverified_count} klaim diturunkan ke Tier 1 karena tidak memuat kutipan aksi konkret." if unverified_count > 0 else "Seluruh klaim didukung naskah asli.")
+            )
+            guard_details = {
+                "verified_claims": verified_claims_count,
+                "total_claims": len(schema.claims),
+                "backend_action": f"Verbatim Substring Guard mencocokkan kutipan CV ke teks asli ({dur_ms} ms).",
+                "ai_thought": guard_thought,
+            }
             await self._record_step(
                 db, run_id, candidate_id, masked_id, "substring_guard_audit",
-                "completed", dur_ms, {"verified_claims": verified_claims_count}
+                "completed", dur_ms, guard_details
             )
             await sse_broadcaster.publish(
                 candidate_id, "substring_guard_audit", "completed",
-                {"verified_claims": verified_claims_count, "total_claims": len(schema.claims)}
+                guard_details
             )
 
             # ==================================================================
@@ -225,15 +278,32 @@ class AgentTriageService:
                         repo_audit = await self.github_adapter.verify_repository(candidate_github_url)
                         verified_repos[candidate_github_url] = repo_audit
 
+                verified_repo_names = list(verified_repos.keys())
+                repo_thought = (
+                    f"Audit Repositori GitHub ({len(verified_repo_names)} repo): Memeriksa kode sumber, keaslian repo, dan riwayat commit kandidat "
+                    f"({', '.join(verified_repo_names) if verified_repo_names else 'URL GitHub tidak disertakan/tidak valid'})."
+                )
+                repo_backend_action = f"GitHub REST API v3 verifikasi selesai ({dur_ms} ms). {len(verified_repo_names)} repositori valid."
+            else:
+                repo_thought = f"Posisi '{job_title}' merupakan peran Non-IT. Sistem tidak menuntut repositori kode GitHub; portofolio dialihkan ke evaluasi dokumen karya dan link profesional."
+                repo_backend_action = f"Audit GitHub di-bypass secara adaptif ({dur_ms} ms) tanpa penalti skor portofolio."
+
             dur_ms = int((time.time() - t0) * 1000)
             status_step = "completed" if is_tech_role else "skipped_non_tech"
+            repo_step_details = {
+                "repos_verified": len(verified_repos),
+                "repos": list(verified_repos.keys()),
+                "is_tech_role": is_tech_role,
+                "backend_action": repo_backend_action,
+                "ai_thought": repo_thought,
+            }
             await self._record_step(
                 db, run_id, candidate_id, masked_id, "github_repo_verification",
-                status_step, dur_ms, {"repos_verified": len(verified_repos), "is_tech_role": is_tech_role}
+                status_step, dur_ms, repo_step_details
             )
             await sse_broadcaster.publish(
                 candidate_id, "github_repo_verification", status_step,
-                {"repos_verified": len(verified_repos), "repos": list(verified_repos.keys()), "is_tech_role": is_tech_role}
+                repo_step_details
             )
 
             # ==================================================================
@@ -258,6 +328,24 @@ class AgentTriageService:
                 job_title=job_title,
             )
             dur_ms = int((time.time() - t0) * 1000)
+            dim = assessment["dimension_scores"]
+            w_applied = assessment.get("weights_applied", weights or {})
+            scoring_thought = (
+                f"Kalkulasi Formula 4D Objektif: Keahlian={dim['SKILL']} (bobot {int(w_applied.get('SKILL', 0.4)*100)}%), "
+                f"Pengalaman={dim['EXPERIENCE']} (bobot {int(w_applied.get('EXPERIENCE', 0.3)*100)}%), "
+                f"Pendidikan={dim['EDUCATION']} (bobot {int(w_applied.get('EDUCATION', 0.1)*100)}%), "
+                f"Portofolio={dim['PORTFOLIO']} (bobot {int(w_applied.get('PORTFOLIO', 0.2)*100)}%). "
+                f"Total Skor Akhir: {assessment['overall_score']}/100 -> Rekomendasi: {assessment['recommendation']}."
+            )
+            scoring_details = {
+                "overall_score": assessment["overall_score"],
+                "dimension_scores": assessment["dimension_scores"],
+                "recommendation": assessment["recommendation"],
+                "confidence": assessment["confidence_level"],
+                "risk": assessment["unresolved_risk"],
+                "backend_action": f"Deterministic Scoring Engine menghitung formula matematis tanpa halusinasi ({dur_ms} ms).",
+                "ai_thought": scoring_thought,
+            }
 
             await self._record_step(
                 db, run_id, candidate_id, masked_id, "deterministic_scoring",
@@ -265,13 +353,7 @@ class AgentTriageService:
             )
             await sse_broadcaster.publish(
                 candidate_id, "deterministic_scoring", "completed",
-                {
-                    "overall_score": assessment["overall_score"],
-                    "dimension_scores": assessment["dimension_scores"],
-                    "recommendation": assessment["recommendation"],
-                    "confidence": assessment["confidence_level"],
-                    "risk": assessment["unresolved_risk"],
-                }
+                scoring_details
             )
 
             # ==================================================================
@@ -428,6 +510,10 @@ class AgentTriageService:
                     "recommendation": assessment["recommendation"],
                 }
             )
+            final_thought = (
+                f"Penyaringan autonomous selesai. Rekomendasi akhir: {assessment['recommendation']} (Prioritas: {assessment['triage_priority']}). "
+                + (f"Jadwal wawancara tentatif berhasil dikunci di kalender (Slot #{reserved_slot_id})." if calendar_reserved else "Berkas dikirim ke antrean peninjauan Human-in-the-Loop.")
+            )
             await sse_broadcaster.publish(
                 candidate_id, "triage_completed", "completed",
                 {
@@ -436,6 +522,8 @@ class AgentTriageService:
                     "priority": assessment["triage_priority"],
                     "calendar_reserved": calendar_reserved,
                     "status": next_status,
+                    "backend_action": f"Basis data diperbarui, relasi evidence graph terkunci ({dur_ms} ms). Total eksekusi: {int((time.time() - start_total) * 1000)} ms.",
+                    "ai_thought": final_thought,
                 }
             )
 

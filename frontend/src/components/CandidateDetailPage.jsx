@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft,
@@ -13,7 +13,6 @@ import {
   ArrowRight, 
   Sparkles, 
   Info,
-  RefreshCw,
   Mail,
   Phone,
   Eye,
@@ -23,6 +22,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { CandidateEvidenceGraph } from './EvidenceGraph';
+import AgentTraceModal from './AgentTraceModal';
 import { recLabel, statusLabel, confidenceLabel, riskLabel, slotStatusLabel, formatScore } from '../lib/labels';
 import { DIMENSIONS } from '../lib/dimensions';
 import { can, roleLabel, unmaskBlockedReason } from '../lib/roles';
@@ -179,8 +179,7 @@ export default function CandidateDetailPage() {
   // A failed file fetch belongs to the CV tab; leaving it must clear the error
   // instead of letting it follow the reviewer to every other tab.
   useEffect(() => { setResumeFileError(null); }, [activeTab]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyzeMessage, setAnalyzeMessage] = useState(null);
+  const [isTraceModalOpen, setIsTraceModalOpen] = useState(false);
   // Decision submission failure. Never render a success receipt off a failed POST.
   const [submitError, setSubmitError] = useState(null);
 
@@ -199,7 +198,6 @@ export default function CandidateDetailPage() {
   // backend, so the UI must show a failure instead of assuming delivery.
   const [notifications, setNotifications] = useState(null);
   const [rejectReason, setRejectReason] = useState('Skor keahlian di bawah threshold kompetensi posisi');
-  const messageTimeoutRef = useRef(null);
 
   const goBack = () => {
     if (window.history.length > 1 && window.location.key !== 'default') navigate(-1);
@@ -359,11 +357,6 @@ export default function CandidateDetailPage() {
     return () => controller.abort();
   }, [loadCandidateDetail]);
 
-  // Clear any pending status-message timer on unmount
-  useEffect(() => () => {
-    if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
-  }, []);
-
   // Merge candidate info with real backend candidate record. Both sources are
   // empty on the first render (candidate is fetched here, not passed in), so every
   // read must tolerate null.
@@ -478,58 +471,29 @@ export default function CandidateDetailPage() {
     }
   }, [candidateId]);
 
-  // Trigger live AI triage
-  const scheduleMessageClear = (delay) => {
-    if (messageTimeoutRef.current) clearTimeout(messageTimeoutRef.current);
-    messageTimeoutRef.current = setTimeout(() => setAnalyzeMessage(null), delay);
+  // Open Live Agentic Trace & AI Analysis Modal
+  const handleRunAIAnalysis = () => {
+    if (!candidateId) return;
+    setIsTraceModalOpen(true);
   };
 
-  const handleRunAIAnalysis = async () => {
-    if (!candidateId) return;
-    setIsAnalyzing(true);
-    setAnalyzeMessage('Model sedang mengekstrak klaim CV dan menghitung skor 4D...');
-    const before = candidateDetail?.candidate || {};
-    const beforeScore = before.overall_score ?? null;
-    const beforeRec = before.recommendation ?? null;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}/triage`, { method: 'POST' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setIsAnalyzing(false);
-        setAnalyzeMessage(`Gagal memicu analisis AI: ${err.detail || res.status}`);
-        scheduleMessageClear(4000);
-        return;
-      }
-
-      // Triage is dispatched as a background task, so completion has to be observed
-      // by polling the dossier. A fixed sleep would report success on a job that
-      // may still be running or may have failed.
-      setAnalyzeMessage('Penyaringan berjalan di latar belakang. Menunggu hasil...');
-      const deadline = Date.now() + 120000;
-      while (Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 2500));
-        const poll = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}`);
-        if (!poll.ok) continue;
-        const json = await poll.json();
-        const fresh = json?.candidate || {};
-        if (fresh.overall_score !== beforeScore || fresh.recommendation !== beforeRec) {
-          setCandidateDetail(json);
-          loadCandidateDetail();
-          setIsAnalyzing(false);
-          setAnalyzeMessage('Analisis AI selesai. Skor dan bukti terbaru sudah dimuat.');
-          scheduleMessageClear(4000);
-          return;
-        }
-      }
-      setIsAnalyzing(false);
-      setAnalyzeMessage('Penyaringan melewati batas tunggu 2 menit. Muat ulang dossier beberapa saat lagi.');
-      scheduleMessageClear(6000);
-    } catch (err) {
-      console.error('Triage run error:', err);
-      setIsAnalyzing(false);
-      setAnalyzeMessage('Gagal menghubungi layanan penyaringan.');
-      scheduleMessageClear(4000);
+  const handleTraceComplete = async (_cid, triageResult) => {
+    if (triageResult) {
+      setCandidateDetail((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          candidate: {
+            ...prev.candidate,
+            overall_score: triageResult.overall_score ?? prev.candidate?.overall_score,
+            recommendation: triageResult.recommendation ?? prev.candidate?.recommendation,
+            scores_4d: triageResult.scores_4d ?? prev.candidate?.scores_4d,
+            status: triageResult.status ?? prev.candidate?.status,
+          },
+        };
+      });
     }
+    await loadCandidateDetail();
   };
 
   const isApproved = (activeCandidateObj.status || '').toLowerCase() === 'approved';
@@ -910,24 +874,16 @@ export default function CandidateDetailPage() {
             <button
               type="button"
               onClick={handleRunAIAnalysis}
-              disabled={isAnalyzing || !can('batchTriage')}
+              disabled={!can('batchTriage')}
               className="px-4 py-2 bg-primary-orange hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center gap-1.5"
-              title={!can('batchTriage') ? 'Peran Anda tidak berwenang menjalankan AI Triage' : 'Picu penyaringan AI untuk memindai berkas dan memperbarui skor 4D di database'}
+              title={!can('batchTriage') ? 'Peran Anda tidak berwenang menjalankan AI Triage' : 'Buka monitor alur penalaran AI dan jalankan penyaringan berkas secara langsung'}
             >
-              <Sparkles className={`w-3.5 h-3.5 text-white ${isAnalyzing ? 'animate-spin' : ''}`} />
-              <span>{isAnalyzing ? 'Menganalisis Berkas CV...' : 'Jalankan Analisis AI'}</span>
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+              <span>Jalankan Analisis AI</span>
             </button>
 
           </div>
         </div>
-
-          {/* Real-time Triage Status Notification */}
-          {analyzeMessage && (
-            <div className="mt-3 p-2.5 rounded-xl bg-primary-blue/10 border border-primary-blue/30 text-primary-black text-xs font-medium flex items-center gap-2 animate-fade-in">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0 text-primary-blue" />
-              <span>{analyzeMessage}</span>
-            </div>
-          )}
 
           {/* TAB NAVIGATION BAR */}
           <div className="mt-4 flex items-center gap-1 border-b border-primary-border-100 pt-1 overflow-x-auto scrollbar-none sticky top-16 z-20 bg-white">
@@ -1817,6 +1773,18 @@ export default function CandidateDetailPage() {
 
           </div>
         </div>
+
+      {/* Live Agentic Trace & AI Reasoning SSE Modal */}
+      <AgentTraceModal
+        candidate={{
+          id: candidateId,
+          masked_identifier: candidate?.masked_identifier || `CAN-${candidateId}`,
+          job_title: candidate?.job_title || 'Posisi Terkait',
+        }}
+        isOpen={isTraceModalOpen}
+        onClose={() => setIsTraceModalOpen(false)}
+        onTriageComplete={handleTraceComplete}
+      />
     </div>
   );
 }

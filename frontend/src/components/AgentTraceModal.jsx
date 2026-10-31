@@ -155,55 +155,41 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
     const candidateId = candidate?.id || 1;
     let hasReceivedEvent = false;
 
-    // 1. Trigger live backend triage in background
     try {
-      const triageRes = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}/triage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (!triageRes.ok) {
-        const errJson = await triageRes.json().catch(() => ({}));
-        setStreamStatus('ERROR');
-        setStreamError(
-          triageRes.status === 404
-            ? `Kandidat (ID: ${candidateId}) tidak ditemukan di basis data backend VPS (${API_BASE_URL}). Pastikan ID terdaftar.`
-            : `Penyaringan Galat (${triageRes.status}): ${errJson.detail || 'Gagal memulai penyaringan di server.'}`
-        );
-        setIsStreaming(false);
-        cleanupConnections();
-        return;
-      }
-    } catch (e) {
-      console.warn('Triage POST failed:', e);
-      setStreamStatus('ERROR');
-      setStreamError(`Koneksi Backend Gagal: ${e.message}`);
-      setIsStreaming(false);
-      cleanupConnections();
-      return;
-    }
-
-    // 2. Exchange JWT for a single-use SSE ticket, then open the authenticated stream
-    try {
+      // 1. Exchange JWT for a single-use SSE ticket, then open authenticated stream first
       const ticket = await issueSseTicket(candidateId);
       const sseSource = new EventSource(
         `${API_BASE_URL}/api/candidates/${candidateId}/trace-stream?ticket=${encodeURIComponent(ticket)}`
       );
       sseRef.current = sseSource;
 
-      // Watchdog: If server stream gives no event within 6s
+      // Watchdog: If server stream gives no event within 15s (accounting for LLM inference)
       const streamWatchdog = setTimeout(() => {
         if (!hasReceivedEvent) {
           setStreamStatus('ERROR');
-          setStreamError(`Timeout: Backend di ${API_BASE_URL} belum mengirim data stream. Silakan coba tekan "Analisis Ulang".`);
+          setStreamError(`Timeout: Backend di ${API_BASE_URL} belum merespons stream. Silakan coba tekan "Analisis Ulang".`);
           setIsStreaming(false);
           cleanupConnections();
         }
-      }, 6000);
+      }, 15000);
 
       sseSource.onopen = () => {
         setStreamStatus('STREAMING');
         setStreamError(null);
       };
+
+      // 2. Trigger live backend triage in background
+      fetch(`${API_BASE_URL}/api/candidates/${candidateId}/triage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).then(async (triageRes) => {
+        if (!triageRes.ok) {
+          const errJson = await triageRes.json().catch(() => ({}));
+          console.warn('Triage POST warning:', errJson);
+        }
+      }).catch((e) => {
+        console.warn('Triage POST failed:', e);
+      });
 
       sseSource.onmessage = (event) => {
         hasReceivedEvent = true;
@@ -456,28 +442,113 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
                 </div>
               )}
 
-              {events.map((evt, idx) => (
-                <div 
-                  key={idx} 
-                  className="p-3 rounded-lg border border-primary-slate-1000 bg-[#1a1c22] transition-all"
-                >
-                  <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-primary-slate-1000 mb-2">
-                    <span className="text-primary-info font-bold flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary-info" />
-                      {evt.step}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-primary-info-border font-bold text-[10px]">{evt.status}</span>
-                      <span className="text-primary-slate-600 text-[10px]">{evt.time}</span>
+              {events.map((evt, idx) => {
+                const details = (typeof evt.details === 'object' && evt.details !== null) ? evt.details : null;
+                const hasThought = Boolean(details?.ai_thought);
+                const hasAction = Boolean(details?.backend_action);
+                const extractedSkills = Array.isArray(details?.extracted_skills) ? details.extracted_skills : null;
+                const dimScores = details?.dimension_scores;
+
+                return (
+                  <div 
+                    key={idx} 
+                    className="p-3.5 rounded-xl border border-slate-800 bg-[#171920] transition-all shadow-sm space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between text-[11px] pb-2 border-b border-slate-800/80">
+                      <span className="text-primary-info font-bold flex items-center gap-1.5 font-mono">
+                        <span className={`w-2 h-2 rounded-full ${evt.status === 'COMPLETED' ? 'bg-emerald-400' : evt.status === 'SKIPPED_NON_TECH' ? 'bg-slate-400' : 'bg-primary-orange animate-pulse'}`} />
+                        {evt.step}
+                      </span>
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                          evt.status === 'COMPLETED' ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40' :
+                          evt.status === 'SKIPPED_NON_TECH' ? 'bg-slate-800 text-slate-300' :
+                          'bg-amber-950/60 text-amber-300 border border-amber-800/40'
+                        }`}>
+                          {evt.status}
+                        </span>
+                        <span className="text-slate-500 text-[10px]">{evt.time}</span>
+                      </div>
                     </div>
+
+                    {/* Alur Berpikir AI */}
+                    {hasThought && (
+                      <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-100 text-xs font-sans">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-400 mb-1 text-[11px] uppercase tracking-wider">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                          <span>Alur Penalaran AI (AI Thought)</span>
+                        </div>
+                        <p className="leading-relaxed text-slate-100 text-[11.5px] font-medium">
+                          {details.ai_thought}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Tindakan Backend Server */}
+                    {hasAction && (
+                      <div className="p-2.5 rounded-lg bg-blue-950/40 border border-blue-500/25 text-blue-200 text-[11px] flex items-start gap-2">
+                        <Terminal className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+                        <div className="font-sans leading-relaxed">
+                          <span className="font-semibold text-blue-400 font-mono">Proses Server: </span>
+                          <span className="text-slate-300">{details.backend_action}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Kompetensi yang Terdeteksi */}
+                    {extractedSkills && extractedSkills.length > 0 && (
+                      <div className="pt-1 flex flex-wrap gap-1.5 items-center">
+                        <span className="text-[10px] text-slate-400 font-sans font-semibold">Kompetensi Terekstraksi:</span>
+                        {extractedSkills.map((s, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-800 text-slate-200 border border-slate-700">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Skor 4 Dimensi */}
+                    {dimScores && (
+                      <div className="pt-1 grid grid-cols-2 sm:grid-cols-4 gap-1.5 font-mono text-[11px]">
+                        <div className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-center">
+                          <span className="text-[9px] text-slate-400 block font-sans">Keahlian (40%)</span>
+                          <span className="font-bold text-white">{dimScores.SKILL}</span>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-center">
+                          <span className="text-[9px] text-slate-400 block font-sans">Pengalaman (30%)</span>
+                          <span className="font-bold text-white">{dimScores.EXPERIENCE}</span>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-center">
+                          <span className="text-[9px] text-slate-400 block font-sans">Pendidikan (10%)</span>
+                          <span className="font-bold text-white">{dimScores.EDUCATION}</span>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-center">
+                          <span className="text-[9px] text-slate-400 block font-sans">Portofolio (20%)</span>
+                          <span className="font-bold text-white">{dimScores.PORTFOLIO}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Collapsible raw data payload */}
+                    {details && (
+                      <details className="mt-1 pt-1 border-t border-slate-800/40 group">
+                        <summary className="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer select-none font-mono flex items-center gap-1">
+                          <span>Detail Teknis Payload JSON</span>
+                        </summary>
+                        <pre className="mt-1.5 p-2 rounded bg-black/60 text-[10px] text-slate-400 whitespace-pre-wrap break-all overflow-x-auto border border-slate-900 leading-relaxed font-mono">
+                          {JSON.stringify(details, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+
+                    {!details && (
+                      <pre className="text-slate-300 text-[11px] whitespace-pre-wrap break-all overflow-x-auto leading-relaxed font-mono">
+                        {String(evt.details)}
+                      </pre>
+                    )}
                   </div>
-                  <pre className="text-primary-border-200 text-[11px] whitespace-pre-wrap break-all overflow-x-auto leading-relaxed">
-                    {typeof evt.details === 'object' 
-                      ? JSON.stringify(evt.details, null, 2) 
-                      : evt.details}
-                  </pre>
-                </div>
-              ))}
+                );
+              })}
 
               {streamStatus === 'COMPLETED' && (
                 <div className="p-3 rounded-lg border border-primary-info/30 bg-primary-info/10 text-primary-info-border text-[11px] flex items-center gap-2">

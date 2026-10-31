@@ -199,7 +199,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
         <div className="bg-white rounded-2xl border border-primary-border-200 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
           <div className="p-5 border-b border-primary-border-200 flex items-center justify-between bg-primary-slate-100">
             <div className="flex items-center gap-2.5">
-              <div className={`w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-xs ${risky ? 'bg-amber-500' : 'bg-emerald-600'}`}>
+              <div className={`w-9 h-9 rounded-xl text-white flex items-center justify-center shadow-xs ${risky ? 'bg-amber-500' : 'bg-primary-orange'}`}>
                 {risky ? <ShieldAlert className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
               </div>
               <div>
@@ -220,13 +220,13 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
             </button>
           </div>
 
-          <div className="p-6 space-y-4 overflow-y-auto">
+          <div className="p-6 space-y-4 overflow-y-auto font-jkt">
             <div className={`p-3.5 rounded-xl border flex items-start gap-2.5 text-xs ${
               risky
                 ? 'bg-amber-50 border-amber-200 text-amber-900'
-                : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : 'bg-primary-orange/5 border-primary-orange/20 text-primary-slate-900'
             }`}>
-              {risky ? <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" /> : <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />}
+              {risky ? <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" /> : <ShieldCheck className="w-4 h-4 text-primary-orange shrink-0 mt-0.5" />}
               <div className="space-y-1">
                 <p className="font-bold">
                   {risky ? 'PII_RESIDUAL_RISK — perlu tinjauan manual' : 'Sanitasi PII bersih'}
@@ -272,7 +272,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2 rounded-lg bg-primary-info hover:bg-primary-info-dark text-white text-xs font-bold transition-all shadow-xs"
+                className="px-5 py-2.5 rounded-xl bg-primary-orange hover:bg-primary-orange-dark text-white text-xs font-bold transition-all shadow-xs"
               >
                 Mengerti &amp; Tutup
               </button>
@@ -479,7 +479,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
             <button
               type="submit"
               disabled={isSubmitting || !file}
-              className="px-5 py-2 rounded-lg bg-primary-info hover:bg-primary-info-dark disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-primary-orange hover:bg-primary-orange-dark disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2"
             >
               {isSubmitting ? (
                 <>

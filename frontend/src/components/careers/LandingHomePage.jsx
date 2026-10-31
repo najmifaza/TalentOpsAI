@@ -65,13 +65,14 @@ export default function LandingHomePage() {
   const navigate = useNavigate();
 
   const [jobs, setJobs] = useState([]);
+  const [totalJobsCount, setTotalJobsCount] = useState(0);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [jobsError, setJobsError] = useState(null);
 
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
 
-  // Fetch jobs (top 6)
+  // Fetch jobs (top 3 terbaru untuk beranda)
   useEffect(() => {
     let ignore = false;
     fetch(`${API_BASE_URL}/api/careers`)
@@ -82,7 +83,8 @@ export default function LandingHomePage() {
       .then((json) => {
         if (!ignore) {
           const list = json.data && Array.isArray(json.data) ? json.data : [];
-          setJobs(list.slice(0, 6));
+          setTotalJobsCount(list.length);
+          setJobs(list.slice(0, 3));
           setLoadingJobs(false);
         }
       })
@@ -407,7 +409,7 @@ export default function LandingHomePage() {
                 to="/lowongan"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-primary-border-200 bg-white font-jkt font-semibold text-xs text-primary-slate-700 hover:border-primary-orange hover:text-primary-orange transition-colors"
               >
-                <span>Lihat Semua Lowongan ({jobs.length})</span>
+                <span>Lihat Semua Lowongan ({totalJobsCount || jobs.length})</span>
                 <ArrowRight className="size-3.5" />
               </Link>
             </div>

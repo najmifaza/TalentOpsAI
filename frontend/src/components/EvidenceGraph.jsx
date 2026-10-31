@@ -547,33 +547,36 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
     });
   });
 
-  // Layer 4: GitHub / Portfolio Artifact
-  const gitNodeId = 'git-artifact-main';
-  const hasRepo = Boolean(resolvedGithubUrl);
+  // Layer 4: GitHub / Portfolio Artifact (Only for Tech Roles)
+  const isTechRole = candidate.is_tech_role !== false;
+  if (isTechRole) {
+    const gitNodeId = 'git-artifact-main';
+    const hasRepo = Boolean(resolvedGithubUrl);
 
-  nodes.push({
-    id: gitNodeId,
-    type: 'github',
-    position: { x: 1250, y: 50 },
-    data: {
-      status: isSecurity ? 'FAILED_AUDIT' : (hasRepo ? 'VERIFIED' : 'NOT_APPLICABLE'),
-      repoName: hasRepo ? resolvedGithubUrl.replace('https://github.com/', '') : (isSecurity ? 'Audit Kredensial Gagal' : 'Tidak Ada Repositori Publik'),
-      url: hasRepo ? resolvedGithubUrl : null,
-    },
-  });
+    nodes.push({
+      id: gitNodeId,
+      type: 'github',
+      position: { x: 1250, y: 50 },
+      data: {
+        status: isSecurity ? 'FAILED_AUDIT' : (hasRepo ? 'VERIFIED' : 'NOT_APPLICABLE'),
+        repoName: hasRepo ? resolvedGithubUrl.replace('https://github.com/', '') : (isSecurity ? 'Audit Kredensial Gagal' : 'Tidak Ada Repositori Publik'),
+        url: hasRepo ? resolvedGithubUrl : null,
+      },
+    });
 
-  edges.push({
-    id: `e-root-${gitNodeId}`,
-    source: 'root-candidate',
-    sourceHandle: 'root-top-git',
-    target: gitNodeId,
-    targetHandle: 'git-target-left',
-    type: 'smoothstep',
-    animated: hasRepo,
-    style: { stroke: isSecurity ? '#E11D48' : (hasRepo ? '#1b55f5' : '#9CA3AF'), strokeWidth: 2 },
-  });
+    edges.push({
+      id: `e-root-${gitNodeId}`,
+      source: 'root-candidate',
+      sourceHandle: 'root-top-git',
+      target: gitNodeId,
+      targetHandle: 'git-target-left',
+      type: 'smoothstep',
+      animated: hasRepo,
+      style: { stroke: isSecurity ? '#E11D48' : (hasRepo ? '#1b55f5' : '#9CA3AF'), strokeWidth: 2 },
+    });
+  }
 
-  return { nodes, edges, midY, totalGraphHeight };
+  return { nodes, edges, midY, totalGraphHeight, isTechRole };
 }
 
 // Inner Canvas Component utilizing useReactFlow hook
@@ -701,7 +704,7 @@ function EvidenceGraphInner({ candidate, onReloadCandidates, embedded = false, i
             <Layers className="w-3.5 h-3.5 text-primary-info" />
             Lompat Layer:
           </span>
-          {GRAPH_LAYERS.map((layer, idx) => {
+          {(graphElements.isTechRole === false ? GRAPH_LAYERS.slice(0, 3) : GRAPH_LAYERS).map((layer, idx) => {
             const isActive = activeLayerIdx === idx;
             return (
               <button

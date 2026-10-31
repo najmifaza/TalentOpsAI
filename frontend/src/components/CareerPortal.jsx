@@ -509,29 +509,32 @@ export default function CareerPortal({ onBackToDashboard, initialTab = 'apply' }
                         </div>
 
                         {/* Input: GitHub & Portfolio Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-primary-black">
-                              URL Profil / Repo GitHub <span className="text-[10px] font-normal text-primary-slate-400">(Opsional)</span>
-                            </label>
-                            <input
-                              type="url"
-                              value={githubUrl}
-                              onChange={(e) => setGithubUrl(e.target.value)}
-                              placeholder="https://github.com/username/project"
-                              className="w-full px-4 py-2.5 rounded-xl border border-primary-border-200 bg-white text-xs text-primary-slate-900 placeholder:text-primary-slate-400 focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 transition-all"
-                            />
-                          </div>
+                        <div className={`grid grid-cols-1 ${selectedJob?.is_tech_role !== false ? 'sm:grid-cols-2' : ''} gap-4`}>
+                          {selectedJob?.is_tech_role !== false && (
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-primary-black">
+                                URL Profil / Repo GitHub <span className="text-[10px] font-normal text-primary-slate-400">(Opsional)</span>
+                              </label>
+                              <input
+                                type="url"
+                                value={githubUrl}
+                                onChange={(e) => setGithubUrl(e.target.value)}
+                                placeholder="https://github.com/username/project"
+                                className="w-full px-4 py-2.5 rounded-xl border border-primary-border-200 bg-white text-xs text-primary-slate-900 placeholder:text-primary-slate-400 focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 transition-all"
+                              />
+                            </div>
+                          )}
 
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-primary-black">
-                              Link Portofolio / Website <span className="text-[10px] font-normal text-primary-slate-400">(Opsional)</span>
+                              {selectedJob?.is_tech_role !== false ? 'Link Portofolio / Website' : 'Tautan Portofolio / Berkas Karya'}{' '}
+                              <span className="text-[10px] font-normal text-primary-slate-400">(Opsional)</span>
                             </label>
                             <input
                               type="url"
                               value={portfolioUrl}
                               onChange={(e) => setPortfolioUrl(e.target.value)}
-                              placeholder="https://portfolio-anda.dev"
+                              placeholder={selectedJob?.is_tech_role !== false ? 'https://portfolio-anda.dev' : 'https://drive.google.com/..., https://notion.so/..., atau LinkedIn'}
                               className="w-full px-4 py-2.5 rounded-xl border border-primary-border-200 bg-white text-xs text-primary-slate-900 placeholder:text-primary-slate-400 focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 transition-all"
                             />
                           </div>

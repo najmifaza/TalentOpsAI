@@ -60,7 +60,9 @@ class AgentTriageService:
                 text("""
                     SELECT c.id, c.job_id, c.masked_identifier, c.sanitized_resume_text,
                            c.file_hash_sha256, c.resume_file_path, c.status,
-                           j.title as job_title, j.department, j.core_competencies, j.weight_config
+                           c.github_url, c.portfolio_url,
+                           j.title as job_title, j.department, j.core_competencies, j.weight_config,
+                           j.is_tech_role, j.competency_taxonomies
                     FROM candidates c
                     JOIN job_descriptions j ON c.job_id = j.id
                     WHERE c.id = :id AND c.is_deleted = FALSE
@@ -74,6 +76,15 @@ class AgentTriageService:
             masked_id = candidate["masked_identifier"]
             sanitized_text = candidate["sanitized_resume_text"] or ""
             file_hash = candidate["file_hash_sha256"] or compute_file_hash(sanitized_text)
+
+            is_tech_role = bool(candidate["is_tech_role"]) if "is_tech_role" in candidate.keys() and candidate["is_tech_role"] is not None else True
+            comp_tax = candidate["competency_taxonomies"] if "competency_taxonomies" in candidate.keys() else None
+            if isinstance(comp_tax, str):
+                try:
+                    comp_tax = json.loads(comp_tax)
+                except Exception:
+                    comp_tax = None
+            job_title = candidate.get("job_title") or "Posisi"
 
             core_competencies: List[str] = candidate["core_competencies"]
             if isinstance(core_competencies, str):
@@ -199,28 +210,30 @@ class AgentTriageService:
             # ==================================================================
             t0 = time.time()
             verified_repos = {}
-            candidate_github_url = schema.github_url
+            if is_tech_role:
+                candidate_github_url = schema.github_url or candidate.get("github_url")
 
-            # Search repo URLs in claims
-            for claim in schema.claims:
-                if claim.repo_url and claim.repo_url not in verified_repos:
-                    repo_audit = await self.github_adapter.verify_repository(claim.repo_url)
-                    verified_repos[claim.repo_url] = repo_audit
+                # Search repo URLs in claims
+                for claim in schema.claims:
+                    if claim.repo_url and claim.repo_url not in verified_repos:
+                        repo_audit = await self.github_adapter.verify_repository(claim.repo_url)
+                        verified_repos[claim.repo_url] = repo_audit
 
-            if candidate_github_url and candidate_github_url not in verified_repos:
-                if "/repos/" not in candidate_github_url and candidate_github_url.count("/") == 4:
-                    # Specific repo format
-                    repo_audit = await self.github_adapter.verify_repository(candidate_github_url)
-                    verified_repos[candidate_github_url] = repo_audit
+                if candidate_github_url and candidate_github_url not in verified_repos:
+                    if "/repos/" not in candidate_github_url and candidate_github_url.count("/") == 4:
+                        # Specific repo format
+                        repo_audit = await self.github_adapter.verify_repository(candidate_github_url)
+                        verified_repos[candidate_github_url] = repo_audit
 
             dur_ms = int((time.time() - t0) * 1000)
+            status_step = "completed" if is_tech_role else "skipped_non_tech"
             await self._record_step(
                 db, run_id, candidate_id, masked_id, "github_repo_verification",
-                "completed", dur_ms, {"repos_verified": len(verified_repos)}
+                status_step, dur_ms, {"repos_verified": len(verified_repos), "is_tech_role": is_tech_role}
             )
             await sse_broadcaster.publish(
-                candidate_id, "github_repo_verification", "completed",
-                {"repos_verified": len(verified_repos), "repos": list(verified_repos.keys())}
+                candidate_id, "github_repo_verification", status_step,
+                {"repos_verified": len(verified_repos), "repos": list(verified_repos.keys()), "is_tech_role": is_tech_role}
             )
 
             # ==================================================================
@@ -239,6 +252,10 @@ class AgentTriageService:
                 core_competencies=core_competencies,
                 verified_repos=verified_repos,
                 weights=weights,
+                is_programmer_role=is_tech_role,
+                portfolio_url=schema.portfolio_url or candidate.get("portfolio_url"),
+                competency_taxonomies=comp_tax,
+                job_title=job_title,
             )
             dur_ms = int((time.time() - t0) * 1000)
 

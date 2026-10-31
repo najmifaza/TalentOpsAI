@@ -77,6 +77,8 @@ def _job_public_row(row) -> dict:
         "company_about": row["company_about"],
         "company_address": row["company_address"],
         "company_website": row["company_website"],
+        "is_tech_role": bool(row["is_tech_role"]) if "is_tech_role" in row.keys() and row["is_tech_role"] is not None else True,
+        "competency_taxonomies": json.loads(row["competency_taxonomies"]) if "competency_taxonomies" in row.keys() and isinstance(row["competency_taxonomies"], str) else (row.get("competency_taxonomies") or {}),
         # Audit bias hanya ditampilkan kalau rekruter pernah menjalankannya.
         # NULL berarti "belum diaudit", bukan "skor 100".
         "bias_audit": (
@@ -96,7 +98,8 @@ PUBLIC_JOB_COLUMNS = """
     id, title, department, raw_text, core_competencies, flagged_ambiguities, status, created_at,
     company_name, company_logo_url, company_industry, job_function, employment_level,
     location, deadline, description_text, requirements_text,
-    company_about, company_address, company_website
+    company_about, company_address, company_website,
+    is_tech_role, competency_taxonomies
 """
 
 

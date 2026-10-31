@@ -16,7 +16,7 @@
    - _Focus Area:_ Enterprise & Industry (AI Recruitment Agent)
    - _Deliverables:_ Proposal 15 Halaman + Video Demo 3–5 Menit + Live Interface & Repo
 
-**Document Version:** 2.5.4 (Codebase-Aligned Master: Blog CMS, Public Job Profile, Verified Evidence & Dropzone Meta)  
+**Document Version:** 2.6.0 (Universal Recruitment Architecture: Dynamic Taxonomies, Non-IT Adaptive Scoring, and Domain-Agnostic Flow)  
 **Status:** Approved for Implementation & Competition Submission  
 **Authors:** Tim Pengembang TalentOps AI (System Architecture, AI Engineering, Full-Stack Web & Compliance)
 
@@ -36,6 +36,7 @@
 | **v2.5.2** | 2026-10-17 | Core Team | **Implementation Consistency Lock:** <br>1. Harmonisasi urutan kunci transaksional baku (`users` -> `interview_slots` -> `candidates`) pada seluruh alur termasuk `POST /api/candidates/{id}/review`.<br>2. Integrasi endpoint `DELETE /api/candidates/{id}` ke service terpadu `talentops_erasure`.<br>3. Penegasan soft deletion kriptografis (`is_deleted = TRUE` tanpa physical delete).<br>4. Perapian visual diagram arsitektur Bab 3.1. |
 | **v2.5.3** | 2026-10-18 | Core Team | **Production Deployment & Driver Compatibility Hardening:** <br>1. Integrasi Vercel Edge Serverless Proxy Rewrite (`/api/(.*)` -> VPS Backend `https://api-talentops.fawt.biz.id`) untuk mengeliminasi latensi CORS preflight pada custom domain `https://talentops.fawt.biz.id`.<br>2. Resolusi kompatibilitas driver biner `aiomysql` + `pymysql<=1.1.1` dengan runtime adapter `escape_bytes_prefixed` untuk penanganan parameter biner AES-256-GCM (`VARBINARY(255)`).<br>3. Penegakan format baku RFC 4122 UUIDv4 36-karakter untuk `tracking_token` dengan mekanisme client auto-healing.<br>4. Resiliensi modal Live SSE Agent Trace via Watchdog Timer 1.5s dengan auto-fallback deterministik.<br>5. Integrasi langsung tata kelola privasi UU PDP No. 27/2022 pada Public Career Portal (`/careers/apply` & `/careers/track`) dan Candidate Dossier modal. |
 | **v2.5.4** | 2026-10-22 | Core Team | **Full Codebase Synchronization & Portal Expansion:** <br>1. Integrasi tabel `blog_posts` (13 tabel inti) dan RBAC endpoint Blog CMS (`/api/blog`) serta portal publik artikel.<br>2. Harmonisasi skema `job_descriptions` (+12 kolom profil publik migrasi 005), `candidates` (`masked_name_hint` migrasi 004), dan `candidate_evidence` (`matched_requirement`, `verified` migrasi 003).<br>3. Sinkronisasi alur Dropzone HR dengan form `applicant_meta` (nama & email asli) dan dictionary PII sanitization.<br>4. Dokumentasi endpoint OAuth & status kalender (`/api/calendar/*`).<br>5. Transparansi status flag `DEMO_PURGE_ENABLED=False` (default nonaktif demi integritas dataset golden penjurian) dan penempatan banner data sintetis di dashboard. |
+| **v2.6.0** | 2026-10-31 | Core Team | **Universal Recruitment Expansion & Domain-Agnostic Engine:** <br>1. Transformasi sistem dari IT-only menjadi Universal Domain Rekrutmen (Finance, HR, Legal, Marketing, Sales, Medis, dll).<br>2. Integrasi kolom `is_tech_role` (TINYINT) dan kamus sinonim dinamis `competency_taxonomies` (JSON) pada `job_descriptions` (Migrasi 007).<br>3. Auto-detection domain pekerjaan (`infer_is_tech_role`) dan generator taksonomi dinamis per lowongan (`generate_dynamic_taxonomies`).<br>4. Scoring adaptif non-IT: portofolio dinilai dari tautan universal (Drive, Notion, Behance, LinkedIn) tanpa penalti 0 GitHub; pengakuan jenjang pendidikan (S1, S2, D3) tanpa pemaksaan rumpun komputer.<br>5. Ekspansi metrik kuantitatif ke domain bisnis & operasional (`omzet`, `revenue`, `closing`, `leads`, `sla`, `turnover`, `kepatuhan`, dll).<br>6. Generator skenario wawancara adaptif kontekstual sesuai posisi jabatan pelamar.<br>7. Kondisional input frontend: Input GitHub otomatis disembunyikan pada formulir pelamar posisi non-IT (`JobApplyPage` & `CareerPortal`), dan node audit GitHub disembunyikan pada `EvidenceGraph`. |
 
 ---
 
@@ -497,6 +498,8 @@ CREATE TABLE job_descriptions (
     deadline DATE NULL,
     description_text LONGTEXT NULL,
     requirements_text LONGTEXT NULL,
+    is_tech_role TINYINT(1) NOT NULL DEFAULT 1, -- Klasifikasi posisi: 1 = IT/Engineering, 0 = Non-IT (Migrasi 007)
+    competency_taxonomies JSON NULL,           -- Kamus sinonim & ekosistem dinamis per kompetensi (Migrasi 007)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

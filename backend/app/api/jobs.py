@@ -73,6 +73,78 @@ class JobProfileFields(BaseModel):
         return {field: data[field] for field in self.PROFILE_FIELDS}
 
 
+def infer_is_tech_role(title: str, department: str = "", raw_text: str = "") -> bool:
+    """Infers whether a job opening belongs to IT / engineering domain or non-IT domain."""
+    combined = f"{title} {department} {raw_text}".lower()
+    non_tech_signals = [
+        "akuntan", "accounting", "finance", "keuangan", "pajak", "tax",
+        "legal", "hukum", "lawyer", "advokat", "notaris",
+        "human resource", "hrd", "recruiter", "talent acquisition", "payroll",
+        "copywriter", "content writer", "marketing", "sales", "bisnis", "teller",
+        "dokter", "perawat", "apoteker", "medis", "bidan",
+        "administrasi", "customer service", "kasir", "logistik", "barista"
+    ]
+    tech_signals = [
+        "software", "developer", "programmer", "engineer", "frontend", "backend",
+        "fullstack", "devops", "cloud", "data scientist", "data engineer",
+        "qa engineer", "penetration tester", "security analyst", "sysadmin",
+        "golang", "python", "javascript", "react", "fastapi", "docker", "kubernetes",
+        "machine learning", "deep learning", "ai engineer"
+    ]
+    tech_matches = sum(1 for s in tech_signals if s in combined)
+    non_tech_matches = sum(1 for s in non_tech_signals if s in combined)
+
+    if non_tech_matches > tech_matches:
+        return False
+    if tech_matches > 0:
+        return True
+    return True
+
+
+def generate_dynamic_taxonomies(core_competencies: List[str], raw_text: str = "") -> Dict[str, List[str]]:
+    """Generates dynamic synonym / ecosystem equivalents for competencies."""
+    from app.core.scoring import SKILL_TAXONOMY_MAP
+
+    result: Dict[str, List[str]] = {}
+    UNIVERSAL_SYNONYM_DICT: Dict[str, List[str]] = {
+        "pajak": ["pph 21", "pph 23", "pph badan", "ppn", "tax compliance", "e-spt", "fiskal"],
+        "pajak pph 21": ["pajak", "pph 21", "withholding tax", "bukti potong 1721", "pph 23"],
+        "akuntansi": ["accounting", "pembukuan", "jurnal", "buku besar", "general ledger"],
+        "laporan keuangan": ["financial report", "financial statement", "neraca", "rugi laba", "cash flow", "aruskas"],
+        "audit": ["pemeriksaan keuangan", "internal audit", "compliance audit", "auditor"],
+        "psak": ["standar akuntansi keuangan", "ifrs", "prinsip akuntansi"],
+        "accurate": ["sap", "myob", "zahir", "jurnal.id", "accounting software"],
+        "drafting kontrak": ["perjanjian kerja sama", "mou", "legal review", "kontrak kerja", "nda", "legal drafting"],
+        "hukum bisnis": ["corporate law", "legal compliance", "kepatuhan hukum", "uuck", "uu cipta kerja"],
+        "litigasi": ["penyelesaian sengketa", "advokat", "hukum acara", "arbitrase"],
+        "recruitment": ["talent acquisition", "penarikan bakat", "sourcing", "interview", "wawancara kerja"],
+        "payroll": ["penggajian", "bpjs ketenagakerjaan", "bpjs kesehatan", "pph 21 gaji", "kompensasi"],
+        "manajemen kinerja": ["kpi", "okr", "performance appraisal", "evaluasi kinerja"],
+        "copywriting": ["content writing", "penulisan naskah", "artikel", "copywriter", "storytelling"],
+        "social media": ["manajemen medsos", "instagram", "tiktok", "content planning", "konten kreatif"],
+        "seo": ["search engine optimization", "sem", "google analytics", "keyword research"],
+        "desain grafis": ["graphic design", "adobe photoshop", "illustrator", "canva", "figma"],
+        "sales": ["penjualan", "b2b sales", "closing", "canvassing", "negosiasi", "lead generation"],
+        "negosiasi": ["diplomasi", "kesepakatan bisnis", "deal negotiation", "tawar menawar"],
+    }
+
+    for comp in core_competencies:
+        key = comp.strip().lower()
+        synonyms = set()
+        if key in SKILL_TAXONOMY_MAP:
+            synonyms.update(SKILL_TAXONOMY_MAP[key])
+        for u_key, u_vals in UNIVERSAL_SYNONYM_DICT.items():
+            if u_key == key or u_key in key or key in u_key:
+                synonyms.update(u_vals)
+        if not synonyms:
+            synonyms.add(key)
+            if " " in key:
+                synonyms.update(key.split())
+        result[comp] = sorted(list(synonyms))
+
+    return result
+
+
 class CreateJobRequest(JobProfileFields):
     title: str = Field(..., min_length=3, max_length=150, description="Judul posisi lowongan")
     department: str = Field(..., min_length=2, max_length=100, description="Departemen / Divisi")
@@ -80,6 +152,8 @@ class CreateJobRequest(JobProfileFields):
     core_competencies: List[str] = Field(default_factory=list, description="Daftar kompetensi kunci")
     weight_config: WeightConfigSchema = Field(default_factory=WeightConfigSchema, description="Konfigurasi bobot 4D")
     owner_id: int = Field(default=1, description="ID recruiter pemilik lowongan")
+    is_tech_role: Optional[bool] = Field(default=None, description="True bila posisi IT/engineering, False bila non-IT")
+    competency_taxonomies: Optional[Dict[str, List[str]]] = Field(default=None, description="Kamus sinonim/ekosistem dinamis per kompetensi")
 
 
 class UpdateJobRequest(JobProfileFields):
@@ -89,6 +163,8 @@ class UpdateJobRequest(JobProfileFields):
     core_competencies: Optional[List[str]] = None
     weight_config: Optional[WeightConfigSchema] = None
     status: Optional[str] = None
+    is_tech_role: Optional[bool] = None
+    competency_taxonomies: Optional[Dict[str, List[str]]] = None
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -112,18 +188,28 @@ async def create_job(
     w_json = json.dumps(payload.weight_config.model_dump())
     profile = payload.as_params()
 
+    if payload.is_tech_role is None:
+        payload.is_tech_role = infer_is_tech_role(payload.title, payload.department, payload.raw_text)
+
+    if not payload.competency_taxonomies and payload.core_competencies:
+        payload.competency_taxonomies = generate_dynamic_taxonomies(payload.core_competencies, payload.raw_text)
+
+    tax_json = json.dumps(payload.competency_taxonomies) if payload.competency_taxonomies else None
+
     insert_query = text("""
         INSERT INTO job_descriptions (
             owner_id, title, department, raw_text, core_competencies, weight_config, status,
             company_name, company_logo_url, company_about, company_address,
             company_industry, company_website, job_function, employment_level,
-            location, deadline, description_text, requirements_text
+            location, deadline, description_text, requirements_text,
+            is_tech_role, competency_taxonomies
         )
         VALUES (
             :owner_id, :title, :department, :raw_text, :core_competencies, :weight_config, 'active',
             :company_name, :company_logo_url, :company_about, :company_address,
             :company_industry, :company_website, :job_function, :employment_level,
-            :location, :deadline, :description_text, :requirements_text
+            :location, :deadline, :description_text, :requirements_text,
+            :is_tech_role, :competency_taxonomies
         )
     """)
     res = await db.execute(insert_query, {
@@ -133,6 +219,8 @@ async def create_job(
         "raw_text": payload.raw_text,
         "core_competencies": comp_json,
         "weight_config": w_json,
+        "is_tech_role": 1 if payload.is_tech_role else 0,
+        "competency_taxonomies": tax_json,
         **profile,
     })
     await db.commit()
@@ -149,6 +237,8 @@ async def create_job(
             "core_competencies": payload.core_competencies,
             "weight_config": payload.weight_config.model_dump(),
             "status": "active",
+            "is_tech_role": payload.is_tech_role,
+            "competency_taxonomies": payload.competency_taxonomies,
             **profile,
         },
     }
@@ -189,6 +279,12 @@ async def update_job(
     if payload.status is not None:
         updates.append("status = :status")
         params["status"] = payload.status
+    if payload.is_tech_role is not None:
+        updates.append("is_tech_role = :is_tech_role")
+        params["is_tech_role"] = 1 if payload.is_tech_role else 0
+    if payload.competency_taxonomies is not None:
+        updates.append("competency_taxonomies = :competency_taxonomies")
+        params["competency_taxonomies"] = json.dumps(payload.competency_taxonomies)
 
     # Profil publik: hanya kolom yang benar-benar dikirim. `exclude_unset` penting
     # di sini karena `None` yang eksplisit berarti "kosongkan", sedangkan field
@@ -222,7 +318,8 @@ async def list_jobs(
             SELECT id, title, department, raw_text, core_competencies, weight_config, status,
                    company_name, company_logo_url, company_about, company_address,
                    company_industry, company_website, job_function, employment_level,
-                   location, deadline, description_text, requirements_text
+                   location, deadline, description_text, requirements_text,
+                   is_tech_role, competency_taxonomies
             FROM job_descriptions WHERE status = 'active'
         """)
     )
@@ -248,6 +345,8 @@ async def list_jobs(
             "core_competencies": comp,
             "weight_config": w,
             "status": r["status"],
+            "is_tech_role": bool(r["is_tech_role"]) if "is_tech_role" in r.keys() and r["is_tech_role"] is not None else True,
+            "competency_taxonomies": json.loads(r["competency_taxonomies"]) if "competency_taxonomies" in r.keys() and isinstance(r["competency_taxonomies"], str) else (r.get("competency_taxonomies") or {}),
             # Profil publik ikut di list: modal edit di JobManagement dibuka dari
             # baris tabel ini. Tanpa kolomnya di sini, form terbuka kosong dan
             # menyimpan akan menghapus profil yang sudah diisi.
@@ -319,6 +418,8 @@ async def get_job_detail(
         "description_text": job["description_text"],
         "requirements_text": job["requirements_text"],
         "flagged_ambiguities": json.loads(job["flagged_ambiguities"]) if isinstance(job["flagged_ambiguities"], str) else job["flagged_ambiguities"],
+        "is_tech_role": bool(job.get("is_tech_role", True)),
+        "competency_taxonomies": json.loads(job["competency_taxonomies"]) if isinstance(job.get("competency_taxonomies"), str) else (job.get("competency_taxonomies") or {}),
     }
 
 

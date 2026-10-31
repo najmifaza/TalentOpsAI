@@ -86,6 +86,7 @@ export default function JobManagement() {
   // Profil publik (migrasi 005) disimpan sebagai satu objek: 12 useState terpisah
   // hanya menambah baris tanpa menambah kejelasan.
   const [formProfile, setFormProfile] = useState(EMPTY_PROFILE);
+  const [formIsTechRole, setFormIsTechRole] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -123,6 +124,7 @@ export default function JobManagement() {
     setFormComp('');
     setFormWeights(DEFAULT_WEIGHT_PCT);
     setFormProfile(EMPTY_PROFILE);
+    setFormIsTechRole(true);
     setErrorMsg(null);
     setIsModalOpen(true);
   };
@@ -134,6 +136,7 @@ export default function JobManagement() {
     setFormDesc(job.raw_text || '');
     setFormComp((job.core_competencies || []).join(', '));
     setFormWeights(toPercent(job.weight_config));
+    setFormIsTechRole(job.is_tech_role !== false);
     // Deadline dari API berupa ISO penuh; <input type="date"> hanya menerima YYYY-MM-DD.
     setFormProfile({
       ...EMPTY_PROFILE,
@@ -189,6 +192,7 @@ export default function JobManagement() {
         raw_text: formDesc.trim(),
         core_competencies: competenciesArray,
         weight_config: normalizedWeights,
+        is_tech_role: formIsTechRole,
         // String kosong dikirim sebagai null supaya portal menyembunyikan barisnya,
         // bukan mencetak label dengan nilai kosong.
         ...Object.fromEntries(
@@ -339,10 +343,17 @@ export default function JobManagement() {
                 {/* Card Header */}
                 <div className="flex items-start justify-between gap-3 pb-3 border-b border-primary-border-100">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-extrabold text-base sm:text-lg text-primary-black">
                         {job.title}
                       </h3>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${
+                        job.is_tech_role !== false 
+                          ? 'bg-blue-50 text-primary-info border border-blue-200'
+                          : 'bg-amber-50 text-amber-800 border border-amber-200'
+                      }`}>
+                        {job.is_tech_role !== false ? '💻 IT / Tech' : '📄 Non-IT'}
+                      </span>
                       <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase ${
                         isActive ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-primary-slate-100 text-primary-slate-700 border border-primary-border-200'
                       }`}>
@@ -478,6 +489,50 @@ export default function JobManagement() {
                     onChange={(e) => setFormDept(e.target.value)}
                     className="w-full px-3 py-2 bg-primary-slate-50 border border-primary-border-200 rounded-xl text-xs text-primary-black placeholder:text-primary-slate-400 font-medium focus:outline-none focus:border-primary-orange focus:ring-2 focus:ring-primary-orange/20 focus:bg-white"
                   />
+                </div>
+              </div>
+
+              {/* Kategori Domain Posisi (IT vs Non-IT) */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-primary-black">
+                  Kategori Domain Evaluasi <span className="text-rose-600">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormIsTechRole(true)}
+                    className={`p-3 rounded-xl border text-xs font-bold transition-all text-left flex items-start gap-2.5 ${
+                      formIsTechRole
+                        ? 'bg-blue-50/80 border-primary-info text-primary-info ring-1 ring-primary-info'
+                        : 'bg-white border-primary-border-200 text-primary-slate-600 hover:border-primary-slate-300'
+                    }`}
+                  >
+                    <span className="text-base leading-none">💻</span>
+                    <div>
+                      <div className="font-bold">Posisi IT / Engineering</div>
+                      <div className="text-[10px] font-normal text-primary-slate-600 mt-0.5">
+                        Memeriksa repositori GitHub, commit, arsitektur kode.
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormIsTechRole(false)}
+                    className={`p-3 rounded-xl border text-xs font-bold transition-all text-left flex items-start gap-2.5 ${
+                      !formIsTechRole
+                        ? 'bg-amber-50/80 border-amber-500 text-amber-900 ring-1 ring-amber-500'
+                        : 'bg-white border-primary-border-200 text-primary-slate-600 hover:border-primary-slate-300'
+                    }`}
+                  >
+                    <span className="text-base leading-none">📄</span>
+                    <div>
+                      <div className="font-bold">Posisi Non-IT (Umum/Bisnis)</div>
+                      <div className="text-[10px] font-normal text-primary-slate-600 mt-0.5">
+                        Finance, HR, Legal, Marketing, Sales (bebas syarat GitHub).
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
 

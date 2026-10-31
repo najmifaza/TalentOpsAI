@@ -1123,10 +1123,10 @@ export default function CandidateDetailPage() {
                 </div>
               )}
 
-              {/* Technologies Taxonomy */}
+              {/* Competencies Taxonomy */}
               <div>
                 <h4 className="text-xs font-bold text-primary-slate-600 uppercase tracking-wider mb-2">
-                  Taksonomi Teknologi Terverifikasi
+                  Taksonomi Keahlian &amp; Kompetensi Terverifikasi
                 </h4>
                 <div className="flex flex-wrap gap-1.5">
                   {activeCandidateObj.key_technologies && activeCandidateObj.key_technologies.length > 0 ? (
@@ -1136,7 +1136,7 @@ export default function CandidateDetailPage() {
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-primary-slate-600">Belum ada teknologi yang terekstrak.</span>
+                    <span className="text-xs text-primary-slate-600">Belum ada keahlian yang terekstrak.</span>
                   )}
                 </div>
               </div>

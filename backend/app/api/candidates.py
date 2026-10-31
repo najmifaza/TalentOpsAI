@@ -357,10 +357,18 @@ async def get_candidate_dossier(
             "export_google_url": google_url,
         }
 
+    job_res = await db.execute(
+        text("SELECT id, title, department, is_tech_role FROM job_descriptions WHERE id = :jid"),
+        {"jid": cand["job_id"]},
+    )
+    job_info = job_res.mappings().first()
+
     return {
         "candidate": {
             "id": cand["id"],
             "job_id": cand["job_id"],
+            "job_title": job_info["title"] if job_info else None,
+            "is_tech_role": bool(job_info["is_tech_role"]) if job_info and job_info.get("is_tech_role") is not None else True,
             "masked_identifier": cand["masked_identifier"],
             "status": cand["status"],
             "triage_priority": cand["triage_priority"],

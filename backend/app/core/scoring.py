@@ -21,13 +21,25 @@ SKILL_TAXONOMY_MAP: Dict[str, Set[str]] = {
 }
 
 METRIC_PATTERN = re.compile(
-    r"(?i)(?<![\w.])(?:\d+(?:[.,]\d+)?\s?(?:%|x|ms|sec|detik|rps|qps|tps|req/s|users?|pengguna|k|jt|juta)(?![a-z0-9])|(?:rp|\$)\s?\d[\d.,]*)"
+    r"(?i)(?<![\w.])(?:\d+(?:[.,]\d+)?\s?(?:%|x|ms|sec|detik|rps|qps|tps|req/s|users?|pengguna|k|jt|juta|miliar|m|b|rb|ribu|transaksi|dokumen|kontrak|klien|peserta|karyawan|leads)(?![a-z0-9])|(?:rp|\$|idr|usd)\s?\d[\d.,]*)"
 )
 
 CONTEXT_KEYWORDS = {
+    # Engineering & Tech
     "latency", "throughput", "waktu", "biaya", "error", "uptime", "availability",
     "user", "users", "pengguna", "beban", "request", "requests", "query",
     "performa", "akurasi", "memory", "cpu", "rps", "qps", "tps",
+    # Finance, Sales & Marketing
+    "omzet", "revenue", "penjualan", "closing", "leads", "anggaran", "budget", "margin",
+    "miliar", "juta", "transaksi", "fiskal", "pajak", "roi", "cpa", "cpc", "roas",
+    # Operations & Supply Chain
+    "sla", "turnaround", "stok", "efisiensi", "inventory", "volume", "pengiriman", "logistik",
+    # HR & Management
+    "karyawan", "retensi", "turnover", "headcount", "kepuasan", "nps", "rekrutmen", "talent",
+    # Legal & Governance
+    "kontrak", "klausul", "sengketa", "audit", "kepatuhan", "regulasi", "perjanjian", "dokumen",
+    # Business Growth
+    "mitra", "proyek", "target", "pertumbuhan", "growth"
 }
 
 
@@ -62,14 +74,34 @@ def inclusivity_from_findings(findings: list[dict]) -> tuple[int, str]:
 # ==============================================================================
 # 2. HELPER FUNCTIONS
 # ==============================================================================
-def calculate_relevance(claimed_tech: str, required_comp: str) -> float:
-    """Returns 1.0 for exact match, 0.7 for ecosystem equivalent, 0.0 otherwise."""
+def calculate_relevance(
+    claimed_tech: str,
+    required_comp: str,
+    dynamic_taxonomy: Optional[Dict[str, Any]] = None,
+) -> float:
+    """Returns 1.0 for exact match, 0.7 for ecosystem/synonym equivalent, 0.0 otherwise."""
     claimed = claimed_tech.strip().lower()
     required = required_comp.strip().lower()
 
     if claimed == required or required in claimed:
         return 1.0
 
+    # 1. Check dynamic taxonomies if available (case-insensitive)
+    if dynamic_taxonomy and isinstance(dynamic_taxonomy, dict):
+        dyn_set: Set[str] = set()
+        for k, v in dynamic_taxonomy.items():
+            if k.strip().lower() == required:
+                if isinstance(v, (list, set, tuple)):
+                    dyn_set.update(str(item).strip().lower() for item in v)
+                elif isinstance(v, str):
+                    dyn_set.add(v.strip().lower())
+        if claimed in dyn_set:
+            return 0.7
+        for item in dyn_set:
+            if item in claimed or claimed in item:
+                return 0.7
+
+    # 2. Check static fallback SKILL_TAXONOMY_MAP
     equivalents = SKILL_TAXONOMY_MAP.get(required, set())
     if claimed in equivalents:
         return 0.7
@@ -199,6 +231,7 @@ class DeterministicScoringEngine:
         claims: List[Dict[str, Any]],
         core_competencies: List[str],
         verified_github_repos: Optional[Dict[str, Any]] = None,
+        dynamic_taxonomy: Optional[Dict[str, Any]] = None,
     ) -> Tuple[float, List[Dict[str, Any]]]:
         """
         S_comp = (sum(MatchScore_k) / M) * 100
@@ -218,8 +251,8 @@ class DeterministicScoringEngine:
             best_tier = 0.0
 
             for claim in claims:
-                tech = claim.get("technology", "")
-                relevance = calculate_relevance(tech, req_comp)
+                tech = claim.get("technology") or claim.get("competency") or ""
+                relevance = calculate_relevance(tech, req_comp, dynamic_taxonomy)
                 if relevance == 0.0:
                     continue
 
@@ -346,11 +379,15 @@ class DeterministicScoringEngine:
         return round(score, 2), round(merged_years, 2)
 
     @classmethod
-    def calculate_education_score(cls, education: Optional[Dict[str, Any]]) -> float:
+    def calculate_education_score(
+        cls,
+        education: Optional[Dict[str, Any]],
+        is_programmer_role: bool = True,
+    ) -> float:
         """
         Calculates S_edu (Scalar):
         - Tier 1 (20.0): Non-relevant degree or uncompleted
-        - Tier 2 (60.0): D3/S1 in IT / Computer Science / Informatics
+        - Tier 2 (60.0): D3/S1 in IT (jika IT) atau jenjang D3/S1 umum (jika non-IT)
         - Tier 3 (100.0): S2/S3 or high specialization
         """
         if not education:
@@ -359,13 +396,13 @@ class DeterministicScoringEngine:
         deg = str(education.get("degree", "")).upper()
         field = str(education.get("field_of_study", "")).lower()
 
-        is_it_field = any(k in field for k in [
-            "informatika", "komputer", "sistem informasi", "software",
-            "computer science", "information technology", "rekayasa perangkat lunak"
-        ])
-
-        if not is_it_field:
-            return 20.0
+        if is_programmer_role:
+            is_it_field = any(k in field for k in [
+                "informatika", "komputer", "sistem informasi", "software",
+                "computer science", "information technology", "rekayasa perangkat lunak"
+            ])
+            if not is_it_field:
+                return 20.0
 
         if "S2" in deg or "S3" in deg or "MASTER" in deg or "PHD" in deg:
             return 100.0
@@ -384,10 +421,10 @@ class DeterministicScoringEngine:
         """
         Calculates S_port:
         - For programmer roles: max score among verified repos (Tier 3=100, Tier 2=60, Tier 1=20).
-        - For non-programmer roles: bypassed without penalty (100.0 if active portfolio, else 60.0).
+        - For non-programmer roles: bypassed without penalty (100.0 if active portfolio, else 70.0).
         """
         if not is_programmer_role:
-            return 100.0 if portfolio_url else 60.0
+            return 100.0 if (portfolio_url and portfolio_url.strip()) else 70.0
 
         if not verified_repos:
             return 0.0
@@ -600,14 +637,18 @@ class DeterministicScoringEngine:
         weights: Optional[Dict[str, float]] = None,
         is_programmer_role: bool = True,
         portfolio_url: Optional[str] = None,
+        competency_taxonomies: Optional[Dict[str, Any]] = None,
+        job_title: str = "Posisi",
     ) -> Dict[str, Any]:
         """Runs complete deterministic scoring pipeline and returns detailed evaluation bundle."""
         w = weights or cls.DEFAULT_WEIGHTS
 
         # 1. Dimension Scores
-        skill_score, skill_evidence = cls.calculate_skill_score(claims, core_competencies, verified_repos)
+        skill_score, skill_evidence = cls.calculate_skill_score(
+            claims, core_competencies, verified_repos, dynamic_taxonomy=competency_taxonomies
+        )
         exp_score, merged_years = cls.calculate_experience_score(career_timeline)
-        edu_score = cls.calculate_education_score(education)
+        edu_score = cls.calculate_education_score(education, is_programmer_role=is_programmer_role)
         port_score = cls.calculate_portfolio_score(verified_repos, is_programmer_role, portfolio_url)
 
         # 2. Overall Score
@@ -643,12 +684,19 @@ class DeterministicScoringEngine:
         if needs_adaptive_challenge and core_competencies:
             # Pick first unmastered skill
             target_skill = core_competencies[0]
-            difficulty = "L2_SYSTEM_DESIGN" if risk == "HIGH" else "L1_FUNDAMENTAL"
+            difficulty = "L2_CASE_STUDY" if risk == "HIGH" else "L1_FUNDAMENTAL"
+            if is_programmer_role:
+                scenario_q = f"Explain concurrency control, state management, and edge-case error recovery when implementing {target_skill}."
+                eval_crit = "Assesses system design depth, race condition prevention, and fault tolerance."
+            else:
+                scenario_q = f"Jelaskan metodologi dan studi kasus konkret penerapan {target_skill} dalam menyelesaikan kendala operasional pada posisi {job_title}."
+                eval_crit = f"Menilai penguasaan terapan {target_skill}, penalaran analisis masalah, dan efektivitas solusi pada peran {job_title}."
+
             adaptive_challenges.append({
                 "target_skill": target_skill,
                 "difficulty_level": difficulty,
-                "scenario_question": f"Explain concurrency control and transaction rollback strategy when designing services with {target_skill}.",
-                "evaluation_criteria": "Assesses technical depth, handling of race conditions, and error recovery.",
+                "scenario_question": scenario_q,
+                "evaluation_criteria": eval_crit,
             })
 
         return {

@@ -1,6 +1,6 @@
 import re
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 VALID_EMPLOYMENT_TYPES = {"full_time", "part_time", "contract", "internship", "freelance"}
 
@@ -80,6 +80,7 @@ class ClaimItem(BaseModel):
 
     dimension: Literal["SKILL", "EXPERIENCE", "EDUCATION", "PORTFOLIO"] = "SKILL"
     technology: str = Field(default="-", description="Normalized name of technology or competency")
+    competency: str | None = Field(default=None, description="Alias for technology/competency claim")
     has_implementation_detail: bool = Field(
         default=False,
         description="True if narrative contains real implementation action and context",
@@ -100,6 +101,14 @@ class ClaimItem(BaseModel):
         default=None,
         description="Page or section where claim is cited in CV",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def unify_competency_and_technology(cls, data):
+        if isinstance(data, dict):
+            if "competency" in data and ("technology" not in data or data.get("technology") in (None, "-")):
+                data["technology"] = data["competency"]
+        return data
 
     @field_validator("dimension", mode="before")
     @classmethod

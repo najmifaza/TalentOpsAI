@@ -29,6 +29,7 @@ PUBLIC_KEYS = {
     "company_name", "company_logo_url", "company_industry", "job_function",
     "employment_level", "location", "deadline", "description_text", "requirements_text",
     "company_about", "company_address", "company_website", "bias_audit",
+    "is_tech_role", "competency_taxonomies",
 }
 
 

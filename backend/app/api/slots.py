@@ -38,7 +38,7 @@ async def list_interview_slots(
 
     query_str = """
         SELECT s.id, s.interviewer_id, u.username as interviewer_name,
-               s.candidate_id, c.masked_identifier, j.title as job_title,
+               s.candidate_id, c.masked_identifier, c.masked_name_hint, j.title as job_title,
                s.start_time, s.end_time, s.status, s.external_calendar_event_id
         FROM interview_slots s
         JOIN users u ON s.interviewer_id = u.id
@@ -90,6 +90,7 @@ async def list_interview_slots(
             "interviewer_name": row["interviewer_name"],
             "candidate_id": row["candidate_id"],
             "masked_identifier": row["masked_identifier"],
+            "masked_name_hint": row["masked_name_hint"],
             "job_title": row["job_title"],
             "start_time": start_dt.isoformat(),
             "end_time": end_dt.isoformat(),

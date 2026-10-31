@@ -178,9 +178,15 @@ export default function CandidateDetailPage() {
   // Decision submission failure. Never render a success receipt off a failed POST.
   const [submitError, setSubmitError] = useState(null);
 
-  // Scheduling states
-  const [slots, setSlots] = useState([]);
-  const [selectedSlotId, setSelectedSlotId] = useState(null);
+  // Scheduling states: direct date & time input
+  const [interviewDate, setInterviewDate] = useState(() => {
+    const tmr = new Date();
+    tmr.setDate(tmr.getDate() + 1);
+    return tmr.toISOString().split('T')[0];
+  });
+  const [interviewTime, setInterviewTime] = useState('10:00');
+  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [interviewAgenda, setInterviewAgenda] = useState('Technical System Architecture & Competency Defense');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookedEvent, setBookedEvent] = useState(null);
   // Post-commit side effects reported by POST /{id}/review. Best-effort on the
@@ -209,6 +215,12 @@ export default function CandidateDetailPage() {
     setViewState('dossier');
     setActiveTab('summary');
     setLoadError(null);
+    const tmr = new Date();
+    tmr.setDate(tmr.getDate() + 1);
+    setInterviewDate(tmr.toISOString().split('T')[0]);
+    setInterviewTime('10:00');
+    setDurationMinutes(60);
+    setInterviewAgenda('Technical System Architecture & Competency Defense');
   }, [candidateId]);
 
   // Load dossier detail + the matching list row for this candidate
@@ -334,56 +346,6 @@ export default function CandidateDetailPage() {
       setIsUnmasking(false);
     }
   }, [candidateId, unmaskReason]);
-
-  // Fetch live available slots from backend
-  const fetchSlots = useCallback(async (signal) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/slots/available`, { signal });
-      if (res && res.ok) {
-        const json = await res.json();
-        if (json.data && json.data.length > 0) {
-          const formatted = json.data.map(s => {
-            const start = new Date(s.start_time);
-            const end = new Date(s.end_time);
-            const dateStr = start.toLocaleDateString('id-ID', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              timeZone: 'Asia/Jakarta',
-            });
-            const timeStr = `${start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} - ${end.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB`;
-            return {
-              id: s.id,
-              date: dateStr,
-              time: timeStr,
-              interviewer: s.interviewer_name || 'Interviewer belum ditentukan',
-              type: 'Technical System Architecture Interview',
-              status: s.status,
-            };
-          });
-          setSlots(formatted);
-          const firstAvail = formatted.find(s => !s.status || s.status === 'available');
-          setSelectedSlotId(firstAvail ? firstAvail.id : null);
-        } else {
-          setSlots([]);
-          setSelectedSlotId(null);
-        }
-      }
-    } catch (err) {
-      if (err?.name !== 'AbortError') {
-        console.warn('Available slot fetch failed:', err);
-        setSlots([]);
-        setSelectedSlotId(null);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchSlots(controller.signal);
-    return () => controller.abort();
-  }, [fetchSlots]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -564,17 +526,14 @@ export default function CandidateDetailPage() {
     }
   };
 
-  const isDecisionFinal = ['approved', 'rejected'].includes((activeCandidateObj.status || '').toLowerCase());
-
-  const selectedSlot = slots.find(s => s.id === selectedSlotId && (!s.status || s.status === 'available')) || null;
-
-  const generateMockEventId = (slotId, candId) => {
-    return `talentops_slot${slotId}_cand${candId}_${btoa(`ev_${slotId}`).replace(/=/g, '').toLowerCase()}`;
-  };
+  const isApproved = (activeCandidateObj.status || '').toLowerCase() === 'approved';
+  const isRejected = (activeCandidateObj.status || '').toLowerCase() === 'rejected';
+  const isDecisionFinal = isApproved || isRejected;
+  const existingInterview = candidateDetail?.scheduled_interview || null;
 
   const handleConfirmSchedule = async () => {
-    if (!selectedSlot) {
-      setSubmitError('Tidak ada slot wawancara yang bisa dipilih.');
+    if (!interviewDate || !interviewTime) {
+      setSubmitError('Pilih tanggal dan jam wawancara terlebih dahulu.');
       return;
     }
     setSubmitError(null);
@@ -582,10 +541,10 @@ export default function CandidateDetailPage() {
     try {
       const formData = new FormData();
       formData.append('decision', 'APPROVED_DISPATCH');
-      formData.append('notes', 'Wawancara teknis disetujui via HR Recruiter Dashboard');
-      formData.append('slot_id', String(selectedSlot.id));
-      // reviewer_id is ignored by the backend, which derives the reviewer from the
-      // authenticated session; it is not sent as an authorization claim.
+      formData.append('notes', interviewAgenda || 'Wawancara teknis disetujui via HR Recruiter Dashboard');
+      formData.append('interview_date', interviewDate);
+      formData.append('interview_time', interviewTime);
+      formData.append('duration_minutes', String(durationMinutes));
 
       const res = await fetch(`${API_BASE_URL}/api/candidates/${candidateId}/review`, {
         method: 'POST',
@@ -596,22 +555,39 @@ export default function CandidateDetailPage() {
         const err = await res.json().catch(() => ({}));
         setSubmitError(err.detail || `Gagal menyimpan keputusan (${res.status})`);
         loadCandidateDetail();
-        fetchSlots();
         return; // stay on the schedule tab: the slot was NOT locked
       }
 
       const payload = await res.json().catch(() => ({}));
       setNotifications(payload.notifications || null);
 
-      const eventId = payload.notifications?.calendar?.event_id || null;
+      const cal = payload.notifications?.calendar || {};
+      const eventId = cal.event_id || null;
+      const exportUrl = cal.export_google_url || null;
+
+      const [y, m, d] = interviewDate.split('-');
+      const [hr, mn] = interviewTime.split(':');
+      const startObj = new Date(Number(y), Number(m) - 1, Number(d), Number(hr), Number(mn));
+      const endObj = new Date(startObj.getTime() + durationMinutes * 60000);
+
       setBookedEvent({
         eventId,
-        slot: selectedSlot,
+        exportGoogleUrl: exportUrl,
+        slot: {
+          date: startObj.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'Asia/Jakarta',
+          }),
+          time: `${startObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} - ${endObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB`,
+          interviewer: 'Tim HR Recruiter',
+        },
         timestamp: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
       });
       setViewState('scheduled_done');
       loadCandidateDetail();
-      fetchSlots();
     } catch (err) {
       setSubmitError('Gagal menghubungi backend. Jadwal belum terkunci.');
       console.warn('Review submit failed:', err);
@@ -953,7 +929,7 @@ export default function CandidateDetailPage() {
               { key: 'summary', Icon: Sparkles, label: 'Penjelasan & Evaluasi AI' },
               { key: 'graph', Icon: GitBranch, label: 'Evidence Graph Flow' },
               { key: 'cv', Icon: FileText, label: 'Dokumen CV / Resume' },
-              { key: 'schedule', Icon: Calendar, label: 'Jadwalkan Wawancara' },
+              { key: 'schedule', Icon: Calendar, label: isApproved ? 'Jadwal Wawancara (Terkunci)' : 'Jadwalkan Wawancara' },
             ].map(({ key, Icon, label }) => (
               <button
                 key={key}
@@ -1270,11 +1246,11 @@ export default function CandidateDetailPage() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('schedule')}
-                    disabled={isQuarantined || !canReview || isDecisionFinal}
+                    disabled={isQuarantined || (!canReview && !isApproved) || isRejected}
                     title={
-                      isDecisionFinal
-                        ? `Keputusan sudah final (${activeCandidateObj.status})`
-                        : !canReview
+                      isRejected
+                        ? 'Kandidat telah ditolak'
+                        : !canReview && !isApproved
                         ? `Role ${roleLabel()} tidak berwenang mereview keputusan`
                         : isQuarantined
                         ? 'Kandidat dalam karantina keamanan — tidak dapat dijadwalkan'
@@ -1283,7 +1259,7 @@ export default function CandidateDetailPage() {
                     className="px-4 py-2.5 bg-primary-info hover:bg-primary-info-dark text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Calendar className="w-3.5 h-3.5 text-white" />
-                    <span>Approve &amp; Schedule</span>
+                    <span>{isApproved ? 'Lihat Jadwal Wawancara' : 'Approve & Schedule'}</span>
                   </button>
                   <button
                     type="button"
@@ -1464,134 +1440,221 @@ export default function CandidateDetailPage() {
           {/* TAB 4: SCHEDULE INTERVIEW & CALENDAR ATOMIC LOCK */}
           {viewState === 'dossier' && activeTab === 'schedule' && (
             <div className="space-y-5 animate-fade-in">
-              <div className="p-4 rounded-2xl bg-primary-info-soft border border-primary-info-border flex items-start gap-3">
-                <Lock className="w-5 h-5 text-primary-info shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <span className="font-bold text-primary-slate-900">
-                    Atomic Calendar Lock Protocol (`SELECT ... FOR UPDATE`):
-                  </span>
-                  <p className="text-primary-slate-700 mt-0.5 leading-relaxed">
-                    Menjamin zero double-booking secara ACID pada database MariaDB. Slot yang Anda pilih akan dikunci eksklusif untuk kandidat <strong>{resolvedIdentity.name} ({candidate.masked_identifier})</strong>.
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-xs font-bold text-primary-slate-900 uppercase tracking-wider mb-2.5 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary-info" />
-                  <span>Pilih Slot Wawancara Yang Tersedia</span>
-                </h4>
-
-                <div className="space-y-2.5">
-                  {slots.length === 0 ? (
-                    <div className="p-4 rounded-xl bg-primary-slate-100 border border-primary-border-200 text-xs text-primary-slate-600 text-center">
-                      Belum ada slot wawancara tersedia. Hubungi tim rekrutmen untuk membuka slot baru.
+              {/* If already scheduled / approved: show locked schedule view */}
+              {existingInterview || isApproved ? (
+                <div className="p-6 rounded-2xl bg-white border-2 border-emerald-500/40 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-primary-border-100 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                      <h4 className="text-sm font-extrabold text-primary-slate-900">
+                        Jadwal Wawancara Terkunci (ACID Lock)
+                      </h4>
                     </div>
-                  ) : (
-                    slots.map((slot) => {
-                      const isSelected = slot.id === selectedSlotId;
-                      const isAvailable = !slot.status || slot.status === 'available';
-                      return (
-                        <div
-                          key={slot.id}
-                          onClick={() => isAvailable && setSelectedSlotId(slot.id)}
-                          className={`p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between ${
-                            !isAvailable
-                              ? 'bg-primary-slate-100 border-primary-border-200 opacity-60 cursor-not-allowed'
-                              : isSelected
-                                ? 'bg-primary-slate-50 border-primary-info shadow-xs cursor-pointer'
-                                : 'bg-white border-primary-border-200 hover:border-primary-info-border cursor-pointer'
-                          }`}
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-primary-slate-900">{slot.date}</span>
-                              <span className="font-mono text-xs text-primary-info font-bold bg-primary-info-soft px-2 py-0.5 rounded-md">
-                                {slot.time}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-primary-slate-700">
-                              Pewawancara: <strong>{slot.interviewer}</strong>
-                            </p>
-                            <p className="text-[10px] text-primary-slate-600 font-mono">
-                              Agenda: {slot.type}
-                            </p>
-                          </div>
+                    <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold uppercase">
+                      Status: Terkunci &bull; Booked
+                    </span>
+                  </div>
 
-                          <div className="shrink-0 flex items-center gap-2">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold border ${
-                              isAvailable
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : 'bg-primary-border-200 text-primary-slate-700 border-primary-slate-300'
-                            }`}>
-                              {slotStatusLabel(slot.status || 'available')}
-                            </span>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                              isSelected ? 'border-primary-info bg-primary-info' : 'border-gray-300'
-                            }`}>
-                              {isSelected && <span className="w-2 h-2 rounded-full bg-white"></span>}
-                            </div>
-                          </div>
+                  <p className="text-xs text-primary-slate-700 leading-relaxed">
+                    Kandidat <strong>{resolvedIdentity.name} ({candidate.masked_identifier})</strong> telah dijadwalkan untuk tahap wawancara teknis. Sesuai prinsip integritas rekrutmen kedaulatan internal, jadwal wawancara hanya dapat diproses satu kali per kandidat.
+                  </p>
+
+                  {existingInterview && (
+                    <div className="p-4 rounded-xl bg-primary-slate-50 border border-primary-border-200 space-y-2 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-primary-slate-600 font-medium">Waktu Sesi:</span>
+                        <span className="font-bold text-primary-slate-900">
+                          {new Date(existingInterview.start_time).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' })}, {new Date(existingInterview.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} - {new Date(existingInterview.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-primary-slate-600 font-medium">Pewawancara:</span>
+                        <span className="font-semibold text-primary-slate-900">{existingInterview.interviewer_name || 'Tim HR Recruiter'}</span>
+                      </div>
+                      {existingInterview.event_id && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-primary-border-100">
+                          <span className="text-primary-slate-600 font-medium font-mono text-[11px]">Event Lock ID:</span>
+                          <span className="font-mono text-[11px] text-primary-info font-bold">{existingInterview.event_id}</span>
                         </div>
-                      );
-                    })
+                      )}
+                    </div>
                   )}
-                </div>
-              </div>
 
-              {/* Deterministic Event ID Preview (preview only — the real ID comes from the backend) */}
-              {selectedSlot && (
-                <div className="p-3 bg-primary-slate-100 rounded-xl border border-primary-border-200 text-xs space-y-1">
-                  <span className="text-[10px] text-primary-slate-600 font-mono uppercase font-bold block">
-                    Deterministic Calendar Event ID Preview:
-                  </span>
-                  <code className="text-primary-info font-mono text-[11px] block truncate font-semibold">
-                    {generateMockEventId(selectedSlot.id, candidateId)}
-                  </code>
-                </div>
-              )}
+                  {/* 1-Click Google Calendar export button */}
+                  {(existingInterview?.export_google_url || notifications?.calendar?.export_google_url) && (
+                    <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                      <a
+                        href={safeUrl(existingInterview?.export_google_url || notifications?.calendar?.export_google_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full sm:w-auto px-5 py-2.5 bg-primary-black text-white hover:bg-primary-blue rounded-full text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2"
+                      >
+                        <span>Buka di Google Calendar Pribadi</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                      <span className="text-[11px] text-primary-slate-500">
+                        1-Klik ekspor langsung tanpa autentikasi OAuth (Zero-Credential).
+                      </span>
+                    </div>
+                  )}
 
-              {/* Decision failure: the slot was NOT locked */}
-              {submitError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
-                  <div>
-                    <p className="font-bold">Jadwal belum tersimpan.</p>
-                    <p className="leading-snug">{submitError}</p>
+                  <div className="pt-3 border-t border-primary-border-100 flex justify-between items-center">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('summary')}
+                      className="px-4 py-2 bg-primary-slate-100 hover:bg-primary-slate-200 text-primary-slate-900 text-xs font-semibold rounded-full transition-colors"
+                    >
+                      Kembali ke Ringkasan
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* If NOT yet scheduled: direct Date & Time Form */
+                <div className="space-y-5">
+                  <div className="p-4 rounded-2xl bg-primary-info-soft border border-primary-info-border flex items-start gap-3">
+                    <Lock className="w-5 h-5 text-primary-info shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <span className="font-bold text-primary-slate-900">
+                        Jadwalkan Wawancara Langsung (Atomic Calendar Lock Protocol):
+                      </span>
+                      <p className="text-primary-slate-700 mt-0.5 leading-relaxed">
+                        Tentukan tanggal dan jam wawancara untuk kandidat <strong>{resolvedIdentity.name} ({candidate.masked_identifier})</strong>. Slot waktu akan dikunci secara ACID di database lokal MariaDB untuk mencegah bentrok jadwal.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* FORM INPUT TANGGAL & JAM */}
+                  <div className="p-5 rounded-2xl bg-white border border-primary-border-200 space-y-4 shadow-2xs">
+                    <h4 className="text-xs font-bold text-primary-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-primary-info" />
+                      <span>Atur Waktu Wawancara</span>
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-primary-slate-800 block mb-1.5">
+                          Tanggal Wawancara
+                        </label>
+                        <input
+                          type="date"
+                          value={interviewDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setInterviewDate(e.target.value)}
+                          className="w-full bg-white border border-primary-border-200 rounded-xl text-xs text-primary-slate-900 p-2.5 focus:outline-none focus:border-primary-info font-medium"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-primary-slate-800 block mb-1.5">
+                          Jam Mulai (WIB)
+                        </label>
+                        <input
+                          type="time"
+                          value={interviewTime}
+                          onChange={(e) => setInterviewTime(e.target.value)}
+                          className="w-full bg-white border border-primary-border-200 rounded-xl text-xs text-primary-slate-900 p-2.5 focus:outline-none focus:border-primary-info font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-primary-slate-800 block mb-1.5">
+                          Durasi Sesi
+                        </label>
+                        <select
+                          value={durationMinutes}
+                          onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                          className="w-full bg-white border border-primary-border-200 rounded-xl text-xs text-primary-slate-900 p-2.5 focus:outline-none focus:border-primary-info font-medium"
+                        >
+                          <option value={30}>30 Menit</option>
+                          <option value={45}>45 Menit</option>
+                          <option value={60}>60 Menit (1 Jam)</option>
+                          <option value={90}>90 Menit (1,5 Jam)</option>
+                          <option value={120}>120 Menit (2 Jam)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-primary-slate-800 block mb-1.5">
+                          Agenda / Topik Sesi
+                        </label>
+                        <input
+                          type="text"
+                          value={interviewAgenda}
+                          onChange={(e) => setInterviewAgenda(e.target.value)}
+                          placeholder="Misal: Technical System Architecture Interview"
+                          className="w-full bg-white border border-primary-border-200 rounded-xl text-xs text-primary-slate-900 p-2.5 focus:outline-none focus:border-primary-info font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Schedule Preview */}
+                    {interviewDate && interviewTime && (
+                      <div className="p-3.5 rounded-xl bg-primary-slate-50 border border-primary-border-200 text-xs space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-primary-slate-500 block">
+                          Ringkasan Jadwal yang Akan Dikunci:
+                        </span>
+                        <p className="font-semibold text-primary-slate-900">
+                          {(() => {
+                            try {
+                              const [y, m, d] = interviewDate.split('-');
+                              const [hr, mn] = interviewTime.split(':');
+                              const s = new Date(Number(y), Number(m) - 1, Number(d), Number(hr), Number(mn));
+                              const e = new Date(s.getTime() + durationMinutes * 60000);
+                              return `${s.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' })}, ${s.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} - ${e.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB (${durationMinutes} Menit)`;
+                            } catch {
+                              return `${interviewDate} pukul ${interviewTime} WIB`;
+                            }
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Decision failure: the slot was NOT locked */}
+                  {submitError && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Jadwal belum tersimpan.</p>
+                        <p className="leading-snug">{submitError}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="pt-4 border-t border-primary-border-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('summary')}
+                      className="px-5 py-2.5 rounded-full bg-primary-slate-100 hover:bg-primary-slate-200 text-primary-black text-xs font-semibold transition-colors text-center"
+                    >
+                      Kembali ke Ringkasan
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isSubmitting || !interviewDate || !interviewTime || isQuarantined || !canReview}
+                      onClick={handleConfirmSchedule}
+                      title={!canReview ? `Role ${roleLabel()} tidak berwenang menyetujui keputusan` : isQuarantined ? 'Kandidat dalam karantina keamanan' : undefined}
+                      className="px-6 py-2.5 bg-primary-orange hover:opacity-90 text-white font-bold text-xs rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-center"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                          <span>Mengunci Jadwal Transaksional...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3.5 h-3.5 text-white" />
+                          <span>Konfirmasi Kunci Jadwal (Atomic Lock)</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               )}
-
-              {/* Action Buttons */}
-              <div className="pt-4 border-t border-primary-border-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('summary')}
-                  className="px-5 py-2.5 rounded-full bg-primary-slate-100 hover:bg-primary-slate-200 text-primary-black text-xs font-semibold transition-colors text-center"
-                >
-                  Kembali ke Ringkasan
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isSubmitting || !selectedSlot || isQuarantined || !canReview}
-                  onClick={handleConfirmSchedule}
-                  title={!canReview ? `Role ${roleLabel()} tidak berwenang menyetujui keputusan` : isQuarantined ? 'Kandidat dalam karantina keamanan' : (!selectedSlot ? 'Pilih slot terlebih dahulu' : undefined)}
-                  className="px-6 py-2.5 bg-primary-orange hover:opacity-90 text-white font-bold text-xs rounded-full shadow-lg shadow-primary-orange/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-center"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                      <span>Mengunci Slot Transaksional...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-3.5 h-3.5 text-white" />
-                      <span>Konfirmasi Kunci Jadwal (Atomic Lock)</span>
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
           )}
 

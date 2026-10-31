@@ -1,7 +1,7 @@
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, BackgroundTasks, Query
 from fastapi.responses import FileResponse, StreamingResponse
@@ -311,6 +311,52 @@ async def get_candidate_dossier(
     )
     assessments = [dict(ass) for ass in ass_res.mappings()]
 
+    # Fetch interview slot if already booked or scheduled
+    slot_res = await db.execute(
+        text("""
+            SELECT s.id, s.start_time, s.end_time, s.status, s.external_calendar_event_id,
+                   u.username as interviewer_name
+            FROM interview_slots s
+            JOIN users u ON s.interviewer_id = u.id
+            WHERE s.candidate_id = :id AND s.status = 'booked'
+            ORDER BY s.id DESC LIMIT 1
+        """),
+        {"id": candidate_id},
+    )
+    scheduled_slot = slot_res.mappings().first()
+    scheduled_interview = None
+    if scheduled_slot:
+        st_dt = scheduled_slot["start_time"]
+        et_dt = scheduled_slot["end_time"]
+        if isinstance(st_dt, str):
+            st_dt = datetime.fromisoformat(st_dt)
+        if isinstance(et_dt, str):
+            et_dt = datetime.fromisoformat(et_dt)
+        cand_label = cand.get("masked_name_hint") or cand.get("masked_identifier") or f"#{cand['id']}"
+        summary = f"Wawancara Teknis - {cand_label}"
+        desc = (
+            f"Kandidat: {cand_label}\n"
+            f"Status: {cand['status']}\n"
+            f"Pewawancara: {scheduled_slot['interviewer_name']}\n"
+            f"Slot ID: {scheduled_slot['id']}\n"
+            "Diselenggarakan melalui TalentOps AI."
+        )
+        google_url = mock_calendar_adapter.generate_google_calendar_url(
+            summary=summary,
+            start_time=st_dt,
+            end_time=et_dt,
+            description=desc,
+        )
+        scheduled_interview = {
+            "slot_id": scheduled_slot["id"],
+            "start_time": st_dt.isoformat(),
+            "end_time": et_dt.isoformat(),
+            "status": scheduled_slot["status"],
+            "interviewer_name": scheduled_slot["interviewer_name"],
+            "event_id": scheduled_slot["external_calendar_event_id"],
+            "export_google_url": google_url,
+        }
+
     return {
         "candidate": {
             "id": cand["id"],
@@ -334,6 +380,7 @@ async def get_candidate_dossier(
         "anomalies": anomalies,
         "evidence": evidence,
         "assessments": assessments,
+        "scheduled_interview": scheduled_interview,
     }
 
 
@@ -542,6 +589,9 @@ async def review_candidate(
     decision: str = Form(...),  # APPROVED_DISPATCH, REQUEST_INFO, OVERRIDE_REJECT, REJECT_CONFIRMED
     notes: Optional[str] = Form(None),
     slot_id: Optional[int] = Form(None),
+    interview_date: Optional[str] = Form(None),
+    interview_time: Optional[str] = Form(None),
+    duration_minutes: int = Form(60),
     reviewer_id: int = Form(1),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
@@ -549,7 +599,8 @@ async def review_candidate(
     """
     HITL Candidate Review Decision Gatekeeper:
     - Enforces strict transactional lock hierarchy: `users` -> `interview_slots` -> `candidates`.
-    - Handles interview slot confirmation if APPROVED_DISPATCH with slot_id.
+    - Handles interview slot confirmation if APPROVED_DISPATCH with slot_id or custom date/time.
+    - Idempotency guard: decisions are final and interview scheduling only allowed once.
     - Updates candidate status & records append-only decision to human_reviews.
     """
     # Authenticated identity is authoritative over client-supplied reviewer_id
@@ -582,8 +633,8 @@ async def review_candidate(
         slot = slot_res.mappings().first()
         if not slot:
             raise HTTPException(status_code=404, detail="INTERVIEW_SLOT_NOT_FOUND")
-        if slot["status"] == "booked" and slot["candidate_id"] != candidate_id:
-            raise HTTPException(status_code=409, detail="SLOT_ALREADY_BOOKED_BY_ANOTHER_CANDIDATE")
+        if slot["status"] == "booked":
+            raise HTTPException(status_code=409, detail="SLOT_ALREADY_BOOKED: Slot wawancara ini sudah dipesan.")
 
     # 3. Lock candidate (no JOIN here: locking job_descriptions would widen the
     #    transaction's lock set beyond the PRD's users -> interview_slots ->
@@ -600,6 +651,76 @@ async def review_candidate(
     cand = cand_res.mappings().first()
     if not cand or cand["is_deleted"]:
         raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_DELETED")
+
+    if cand["status"] in ("approved", "rejected"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"CANDIDATE_DECISION_ALREADY_FINAL: Kandidat sudah berstatus final ('{cand['status']}'). Penjadwalan atau penolakan hanya dapat dilakukan sekali.",
+        )
+
+    # 4. Support direct date & time input without selecting pre-existing slot
+    if decision == "APPROVED_DISPATCH":
+        if slot_id is None and interview_date and interview_time:
+            try:
+                start_dt = datetime.fromisoformat(f"{interview_date.strip()}T{interview_time.strip()}:00")
+            except Exception:
+                raise HTTPException(
+                    status_code=400,
+                    detail="INVALID_DATETIME: Format tanggal (YYYY-MM-DD) atau jam (HH:MM) tidak valid.",
+                )
+            end_dt = start_dt + timedelta(minutes=int(duration_minutes or 60))
+
+            # Check overlap for reviewer
+            overlap_res = await db.execute(
+                text("""
+                    SELECT id FROM interview_slots
+                    WHERE interviewer_id = :uid
+                      AND status IN ('tentative', 'booked')
+                      AND start_time < :end_time
+                      AND end_time > :start_time
+                    FOR UPDATE
+                """),
+                {"uid": reviewer_id, "start_time": start_dt, "end_time": end_dt},
+            )
+            if overlap_res.first():
+                raise HTTPException(
+                    status_code=409,
+                    detail="INTERVIEWER_SCHEDULE_CONFLICT: Terdapat jadwal wawancara lain yang bertabrakan pada rentang waktu ini.",
+                )
+
+            slot_insert = await db.execute(
+                text("""
+                    INSERT INTO interview_slots (
+                        candidate_id, interviewer_id, start_time, end_time, status,
+                        lock_version, tentative_expires_at
+                    ) VALUES (
+                        :cid, :uid, :start_time, :end_time, 'booked', 1, NULL
+                    )
+                """),
+                {
+                    "cid": candidate_id,
+                    "uid": reviewer_id,
+                    "start_time": start_dt,
+                    "end_time": end_dt,
+                },
+            )
+            slot_id = getattr(slot_insert, "lastrowid", None)
+            if not slot_id:
+                fetch_id = await db.execute(
+                    text("SELECT id FROM interview_slots WHERE candidate_id = :cid ORDER BY id DESC LIMIT 1"),
+                    {"cid": candidate_id},
+                )
+                slot_id = fetch_id.scalar()
+
+            if not slot_id:
+                raise HTTPException(status_code=500, detail="FAILED_TO_CREATE_INTERVIEW_SLOT")
+
+            slot_id = int(slot_id)
+            event_id = mock_calendar_adapter.generate_event_id(slot_id, candidate_id)
+            await db.execute(
+                text("UPDATE interview_slots SET external_calendar_event_id = :eid WHERE id = :sid"),
+                {"eid": event_id, "sid": slot_id},
+            )
 
     job_title = "Posisi Rekrutmen"
     try:

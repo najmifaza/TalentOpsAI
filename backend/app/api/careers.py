@@ -341,13 +341,15 @@ async def submit_application(
             {"id": candidate_id},
         )
 
-    # 8b. PDF-specific findings (invisible render mode, white text, micro images)
-    # One row per anomaly type, not per finding: a marker reused across pages would
-    # otherwise insert one row per occurrence and flood the dashboard badges.
+    # 8b. PDF-specific findings (invisible render mode, white text). Cosmetic artifacts
+    # like micro-images or tiny ornaments from generator tools (Canva/Figma) are filtered out.
     if pdf_audit is not None and pdf_audit.findings:
+        cosmetic_types = {"PDF_MICRO_IMAGE", "PDF_TINY_FONT", "PDF_OFFPAGE_TEXT", "PDF_IMAGE_ONLY_PAGE"}
         grouped: dict[str, dict] = {}
         for finding in pdf_audit.findings:
             ftype = finding["type"]
+            if ftype in cosmetic_types:
+                continue
             entry = grouped.setdefault(
                 ftype,
                 {"count": 0, "pages": set(), "severity": finding.get("severity", "MEDIUM"), "excerpt": finding.get("excerpt", "")},

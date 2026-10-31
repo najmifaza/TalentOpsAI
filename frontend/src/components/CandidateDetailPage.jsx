@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { CandidateEvidenceGraph } from './EvidenceGraph';
 import AgentTraceModal from './AgentTraceModal';
-import { recLabel, statusLabel, confidenceLabel, riskLabel, formatScore } from '../lib/labels';
+import { recLabel, statusLabel, confidenceLabel, riskLabel, formatScore, isCosmeticAnomaly } from '../lib/labels';
 import { DIMENSIONS } from '../lib/dimensions';
 import { can, roleLabel, unmaskBlockedReason } from '../lib/roles';
 
@@ -402,6 +402,9 @@ export default function CandidateDetailPage() {
       const list = [];
       for (const a of raw) {
         const typeKey = (a.anomaly_type || '').replace(/_\d+_MONTHS$/, '');
+        if (isCosmeticAnomaly(typeKey) || isCosmeticAnomaly(a.anomaly_type)) {
+          continue;
+        }
         const meta = ANOMALY_DICTIONARY[typeKey] || ANOMALY_DICTIONARY[a.anomaly_type] || {};
         const desc = a.description || meta.defaultDesc || 'Terdeteksi anomali pada riwayat atau format berkas.';
         const key = `${a.anomaly_type}_${desc}`;
@@ -428,6 +431,9 @@ export default function CandidateDetailPage() {
         if (!seen.has(flag)) {
           seen.add(flag);
           const typeKey = flag.replace(/_\d+_MONTHS$/, '');
+          if (isCosmeticAnomaly(typeKey) || isCosmeticAnomaly(flag)) {
+            continue;
+          }
           const meta = ANOMALY_DICTIONARY[typeKey] || ANOMALY_DICTIONARY[flag] || {};
           list.push({
             id: `flag-${list.length}`,

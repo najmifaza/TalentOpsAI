@@ -84,43 +84,92 @@ def _extract_heuristic_fallback(
                 )
             )
 
-    # Timeline extraction: search for years and intervals
+    # Timeline extraction: support both multi-line documents and un-broken single-line PDF streams
     timeline: List[CareerTimelineItem] = []
-    lines = sanitized_text.splitlines()
-    for line in lines:
-        m_range = re.search(
-            r"(\b20\d{2}(?:[-/]\d{1,2})?)\s*(?:[-–—to]|sampai|s/d)\s*(\b20\d{2}(?:[-/]\d{1,2})?|present|sekarang|saat ini|current)\b",
-            line,
-            re.IGNORECASE,
-        )
-        if m_range:
-            start_date = m_range.group(1).replace("/", "-")
-            end_date = m_range.group(2).lower()
-            if end_date in ("sekarang", "saat ini", "current"):
-                end_date = "present"
-            else:
-                end_date = end_date.replace("/", "-")
+    cleaned_stream = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", " ", sanitized_text)
+    cleaned_stream = re.sub(r"[\x03\s]+t[\x03\s]+", " - ", cleaned_stream)
+    cleaned_stream = re.sub(r"[\x03\s]+\{[\x03\s]*", " \n• ", cleaned_stream)
 
-            clean_line = re.sub(m_range.re, "", line).replace(chr(13), " ").replace(chr(10), " ").strip(" \t-•*|:")
-            role_candidate = clean_line if len(clean_line) > 3 else (job_title or "Professional Staff")
-            company_candidate = "Perusahaan Terdaftar"
-            if " at " in clean_line:
-                parts = clean_line.split(" at ", 1)
-                role_candidate, company_candidate = parts[0].strip(), parts[1].strip()
-            elif " - " in clean_line:
-                parts = clean_line.split(" - ", 1)
-                company_candidate, role_candidate = parts[0].strip(), parts[1].strip()
+    months_map = {
+        "jan": "01", "feb": "02", "mar": "03", "apr": "04", "mei": "05", "may": "05",
+        "jun": "06", "jul": "07", "agu": "08", "aug": "08", "sep": "09", "okt": "10", "oct": "10",
+        "nov": "11", "des": "12", "dec": "12"
+    }
 
-            timeline.append(
-                CareerTimelineItem(
-                    role=role_candidate[:60] or (job_title or "Staff"),
-                    company=company_candidate[:60] or "Perusahaan Terdaftar",
-                    is_relevant_role=True,
-                    employment_type="full_time",
-                    start=start_date,
-                    end=end_date,
-                )
+    def _normalize_date_str(d_str: str) -> str:
+        if not d_str:
+            return "present"
+        d = d_str.strip().lower()
+        if d in ("present", "sekarang", "saat ini", "current"):
+            return "present"
+        m_ym = re.search(r"([a-z]{3})[a-z]*\s+(20\d{2})", d)
+        if m_ym:
+            m_num = months_map.get(m_ym.group(1), "01")
+            return f"{m_ym.group(2)}-{m_num}"
+        m_y = re.search(r"20\d{2}(?:[-/]\d{1,2})?", d)
+        if m_y:
+            return m_y.group(0).replace("/", "-")
+        return d
+
+    date_range_pattern = (
+        r"(\b(?:(?:Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des)[a-z]*\s+)?20\d{2}(?:[-/]\d{1,2})?|\b20\d{2})\s*"
+        r"(?:[-–—to]|sampai|s/d)\s*"
+        r"(\b(?:(?:Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des)[a-z]*\s+)?20\d{2}(?:[-/]\d{1,2})?|present|sekarang|saat ini|current)\b"
+    )
+
+    matches = list(re.finditer(date_range_pattern, cleaned_stream, re.IGNORECASE))
+    for m in matches:
+        start_date = _normalize_date_str(m.group(1))
+        end_date = _normalize_date_str(m.group(2))
+
+        l_start = cleaned_stream.rfind("\n", 0, m.start())
+        l_start = 0 if l_start == -1 else l_start + 1
+        l_end = cleaned_stream.find("\n", m.end())
+        l_end = len(cleaned_stream) if l_end == -1 else l_end
+        line = cleaned_stream[l_start:l_end].strip()
+
+        if len(line) > 180:
+            line = cleaned_stream[max(0, m.start() - 30):min(len(cleaned_stream), m.end() + 100)].strip()
+
+        clean_line = re.sub(date_range_pattern, "", line, flags=re.IGNORECASE).strip(" \t-•*|:()")
+        if "•" in clean_line:
+            clean_line = clean_line.split("•")[0].strip()
+
+        if any(w in clean_line.lower() for w in ["education", "pendidikan", "curriculum graduate", "penghargaan", "hackathon"]):
+            continue
+
+        company_candidate = "Perusahaan Terdaftar"
+        role_candidate = clean_line
+        if " | " in clean_line:
+            parts = [p.strip(" \t-•*|:") for p in clean_line.split(" | ") if p.strip(" \t-•*|:")]
+            if len(parts) >= 2:
+                company_candidate = parts[-2]
+                role_candidate = parts[-1]
+            elif len(parts) == 1:
+                role_candidate = parts[0]
+        elif " at " in clean_line:
+            parts = clean_line.split(" at ", 1)
+            role_candidate, company_candidate = parts[0].strip(), parts[1].strip()
+        elif " - " in clean_line:
+            parts = clean_line.split(" - ", 1)
+            company_candidate, role_candidate = parts[0].strip(), parts[1].strip()
+
+        role_clean = re.sub(r"^[|\s\-•:]+", "", role_candidate).strip(" \t-•*|:()")
+        comp_clean = re.sub(r"^[|\s\-•:]+", "", company_candidate).strip(" \t-•*|:()")
+
+        if len(role_clean) < 3 and len(comp_clean) < 3:
+            continue
+
+        timeline.append(
+            CareerTimelineItem(
+                role=role_clean[:60] or (job_title or "Professional Staff"),
+                company=comp_clean[:60] or "Perusahaan Terdaftar",
+                is_relevant_role=True,
+                employment_type="full_time",
+                start=start_date,
+                end=end_date,
             )
+        )
 
     if not timeline:
         timeline.append(
@@ -527,9 +576,35 @@ class AgentTriageService:
 
             # Persist Evidence
             await db.execute(text("DELETE FROM candidate_evidence WHERE candidate_id = :id"), {"id": candidate_id})
-            # Re-triage must replace, not append: without this every run duplicated
-            # the same anomaly rows and the graph showed the same finding N times.
+
+            # Preserve genuine security findings from ingestion, drop cosmetic PDF artifacts
+            existing_security_anoms = [
+                ea for ea in existing_anoms
+                if ea.get("anomaly_type") in (
+                    "PROMPT_INJECTION", "PDF_WHITE_TEXT", "PDF_INVISIBLE_RENDER_MODE",
+                    "SECURITY_INSPECTION_FAILED", "PDF_ENCRYPTED", "PII_RESIDUAL_RISK"
+                ) or str(ea.get("anomaly_type", "")).startswith("SECURITY_")
+            ]
+
+            # Re-triage replaces previous anomaly rows
             await db.execute(text("DELETE FROM candidate_anomalies WHERE candidate_id = :id"), {"id": candidate_id})
+            for sec_a in existing_security_anoms:
+                await db.execute(
+                    text("""
+                        INSERT INTO candidate_anomalies (
+                            candidate_id, anomaly_type, severity, description, suggested_verification
+                        ) VALUES (
+                            :cid, :atype, :sev, :desc, :verify
+                        )
+                    """),
+                    {
+                        "cid": candidate_id,
+                        "atype": sec_a.get("anomaly_type", "SECURITY_ANOMALY"),
+                        "sev": sec_a.get("severity", "HIGH"),
+                        "desc": sec_a.get("description") or "Peringatan keamanan berkas terdeteksi.",
+                        "verify": sec_a.get("suggested_verification") or "Verifikasi manual dokumen fisik pelamar.",
+                    },
+                )
             for ev in assessment["evidence_records"]:
                 await db.execute(
                     text("""

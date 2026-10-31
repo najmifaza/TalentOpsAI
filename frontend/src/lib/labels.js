@@ -21,6 +21,18 @@ const ANOMALY_LABELS = {
   TITLE_INFLATION_DETECTED: 'Indikasi Inflasi Jabatan',
 };
 
+export const COSMETIC_ANOMALIES = new Set([
+  'PDF_MICRO_IMAGE',
+  'PDF_TINY_FONT',
+  'PDF_OFFPAGE_TEXT',
+  'PDF_IMAGE_ONLY_PAGE',
+]);
+
+export const isCosmeticAnomaly = (type) => {
+  const t = String(type || '').toUpperCase();
+  return COSMETIC_ANOMALIES.has(t);
+};
+
 // Predikat karantina disalin dari backend (jobs.py:275-276, triage_service.py:121).
 // CAREER_BREAK_FLAG sengaja tidak termasuk: severity-nya LOW dan scoring.py:516
 // menyebutnya "bukan pelanggaran".

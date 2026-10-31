@@ -15,7 +15,7 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { DIMENSIONS } from '../lib/dimensions';
-import { categorize, isUnscanned, flagLabel, dedupeFlags, formatScore } from '../lib/labels';
+import { categorize, isUnscanned, flagLabel, dedupeFlags, formatScore, isCosmeticAnomaly } from '../lib/labels';
 
 // Two-char badge from the masked identifier ("#TK-A17C9B" -> "9B"). The raw
 // database id was rendered here and overflowed the box past two digits.
@@ -361,7 +361,8 @@ export default function CandidateTable({
                             Backend writes one row per finding, so identical codes are
                             collapsed before the cap and the label is humanised. */}
                         {!isUnscanned && candidate.flags && candidate.flags.length > 0 && (() => {
-                          const flags = dedupeFlags(candidate.flags);
+                          const flags = dedupeFlags(candidate.flags).filter((f) => !isCosmeticAnomaly(f) && !isCosmeticAnomaly(f.replace(/_\d+_MONTHS$/, '')));
+                          if (flags.length === 0) return null;
                           return (
                             <div className="mt-1 flex flex-wrap gap-1">
                               {flags.slice(0, 3).map((flag) => (

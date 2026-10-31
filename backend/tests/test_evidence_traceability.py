@@ -381,3 +381,60 @@ def test_null_dates_do_not_create_false_overlap():
     assert risk == "LOW"
     assert flags == []
     assert details == []
+
+
+def test_concurrent_overlap_from_stream_extraction():
+    """Verify that un-broken PDF text streams with concurrent roles trigger CONCURRENT_FULLTIME_OVERLAP."""
+    from app.core.triage_service import _extract_heuristic_fallback
+
+    cv_text = (
+        "Telepon: 0812345678 Email: user@example.com Portfolio: myweb.dev "
+        "2024 \x03t 2025 | PT Alpha Guru KMI (Tenaga Pengajar) \x03{ Mengajar tatap muka "
+        "2024 \x03t 2025 | Media Group Staff Media \x03{ Mengelola publikasi "
+        "2026-02 \x03t Sekarang | BEM Universitas Staff Web \x03{ Mengembangkan web "
+        "2026-04 \x03t Sekarang | Inovasi Digital IT Coordinator \x03{ Memimpin sistem"
+    )
+
+    schema = _extract_heuristic_fallback(
+        sanitized_text=cv_text,
+        core_competencies=["Python", "FastAPI"],
+        job_title="Backend Engineer",
+        is_tech_role=True,
+    )
+
+    assert len(schema.career_timeline) >= 3
+    risk, flags, details = DeterministicScoringEngine.evaluate_risk(
+        schema.anomalies.model_dump(),
+        [t.model_dump() for t in schema.career_timeline],
+    )
+
+    assert risk == "HIGH"
+    assert any("CONCURRENT_FULLTIME_OVERLAP" in f for f in flags)
+    overlap_item = next(d for d in details if d["type"] == "CONCURRENT_FULLTIME_OVERLAP")
+    assert overlap_item["severity"] == "HIGH"
+    assert overlap_item["overlap_months"] >= 12
+
+
+def test_deterministic_career_break_detection():
+    """Timeline with > 12 months gap between roles triggers CAREER_BREAK_FLAG."""
+    timeline = [
+        {"role": "Dev", "company": "PT A", "is_relevant_role": True, "employment_type": "full_time", "start": "2018-01", "end": "2019-12"},
+        {"role": "Dev", "company": "PT B", "is_relevant_role": True, "employment_type": "full_time", "start": "2022-01", "end": "2024-01"},
+    ]
+    risk, flags, details = DeterministicScoringEngine.evaluate_risk({}, timeline)
+    assert "CAREER_BREAK_FLAG" in flags
+    break_item = next(d for d in details if d["type"] == "CAREER_BREAK_FLAG")
+    assert break_item["severity"] == "LOW"
+
+
+def test_deterministic_title_inflation_detection():
+    """Intern promoted to Head/Lead in under 6 months triggers TITLE_INFLATION_DETECTED."""
+    timeline = [
+        {"role": "Intern Software Engineer", "company": "PT A", "is_relevant_role": True, "employment_type": "full_time", "start": "2023-01", "end": "2023-03"},
+        {"role": "Head of Engineering", "company": "PT B", "is_relevant_role": True, "employment_type": "full_time", "start": "2023-04", "end": "2024-01"},
+    ]
+    risk, flags, details = DeterministicScoringEngine.evaluate_risk({}, timeline)
+    assert "TITLE_INFLATION_DETECTED" in flags
+    inf_item = next(d for d in details if d["type"] == "TITLE_INFLATION_DETECTED")
+    assert inf_item["severity"] == "MEDIUM"
+    assert risk in ("MEDIUM", "HIGH")

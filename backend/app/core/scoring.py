@@ -640,7 +640,31 @@ class DeterministicScoringEngine:
                         ),
                     })
 
-        if anomalies.get("title_inflation_detected"):
+        title_inflation_flagged = bool(anomalies.get("title_inflation_detected"))
+        if not title_inflation_flagged and len(timeline) >= 2:
+            junior_rx = re.compile(r"\b(intern|magang|junior|trainee|fresh graduate)\b", re.IGNORECASE)
+            lead_rx = re.compile(r"\b(lead|head|director|chief|vp|principal|architect|cto|ceo)\b", re.IGNORECASE)
+            for i, t1 in enumerate(timeline):
+                r1_title = str(t1.get("role") or "")
+                if not junior_rx.search(r1_title):
+                    continue
+                s1 = parse_date_to_months(t1.get("start"), as_of=as_of, end_of_period=False)
+                if s1 is None:
+                    continue
+                for j, t2 in enumerate(timeline):
+                    if i == j:
+                        continue
+                    r2_title = str(t2.get("role") or "")
+                    if not lead_rx.search(r2_title):
+                        continue
+                    s2 = parse_date_to_months(t2.get("start"), as_of=as_of, end_of_period=False)
+                    if s2 is not None and 0 <= (s2 - s1) < 6:
+                        title_inflation_flagged = True
+                        break
+                if title_inflation_flagged:
+                    break
+
+        if title_inflation_flagged:
             is_medium = True
             flags.append("TITLE_INFLATION_DETECTED")
             details.append({
@@ -656,15 +680,49 @@ class DeterministicScoringEngine:
                 ),
             })
 
-        if anomalies.get("career_break_detected"):
+        career_break_flagged = bool(anomalies.get("career_break_detected"))
+        gap_duration = 0
+        if not career_break_flagged and len(timeline) >= 2:
+            intervals: List[Tuple[int, int]] = []
+            for item in timeline:
+                if isinstance(item, dict):
+                    s = parse_date_to_months(item.get("start"), as_of=as_of, end_of_period=False)
+                    e = parse_date_to_months(item.get("end") or "present", as_of=as_of, end_of_period=True)
+                    if s is not None and e is not None and e >= s:
+                        intervals.append((s, e))
+            intervals.sort(key=lambda x: x[0])
+            merged: List[Tuple[int, int]] = []
+            for start, end in intervals:
+                if not merged:
+                    merged.append((start, end))
+                else:
+                    prev_start, prev_end = merged[-1]
+                    if start <= prev_end + 1:
+                        merged[-1] = (prev_start, max(prev_end, end))
+                    else:
+                        merged.append((start, end))
+            for k in range(len(merged) - 1):
+                gap = merged[k + 1][0] - merged[k][1] - 1
+                if gap > 12:
+                    career_break_flagged = True
+                    gap_duration = gap
+                    break
+
+        if career_break_flagged:
             flags.append("CAREER_BREAK_FLAG")
+            desc_text = (
+                f"Terdapat jeda {gap_duration} bulan dalam riwayat kerja. Ini bukan pelanggaran, "
+                "hanya perlu konteks agar penilaian pengalaman tidak salah tafsir."
+                if gap_duration > 0
+                else (
+                    "Terdapat jeda lebih dari 12 bulan dalam riwayat kerja. Ini bukan pelanggaran, "
+                    "hanya perlu konteks agar penilaian pengalaman tidak salah tafsir."
+                )
+            )
             details.append({
                 "type": "CAREER_BREAK_FLAG",
                 "severity": "LOW",
-                "description": (
-                    "Terdapat jeda lebih dari 12 bulan dalam riwayat kerja. Ini bukan pelanggaran, "
-                    "hanya perlu konteks agar penilaian pengalaman tidak salah tafsir."
-                ),
+                "description": desc_text,
                 "suggested_verification": (
                     "Tanyakan aktivitas selama jeda (studi, cuti keluarga, proyek mandiri) agar durasi "
                     "pengalaman relevan dihitung dengan tepat."

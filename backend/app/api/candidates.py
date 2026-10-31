@@ -550,6 +550,51 @@ async def hr_direct_upload(
                 {"id": cand_id},
             )
 
+        # Record genuine PDF security findings (white text, invisible mode); cosmetic artifacts filtered out
+        if pdf_audit is not None and pdf_audit.findings:
+            cosmetic_types = {"PDF_MICRO_IMAGE", "PDF_TINY_FONT", "PDF_OFFPAGE_TEXT", "PDF_IMAGE_ONLY_PAGE"}
+            grouped_pdf: dict[str, dict] = {}
+            for finding in pdf_audit.findings:
+                ftype = finding["type"]
+                if ftype in cosmetic_types:
+                    continue
+                entry = grouped_pdf.setdefault(
+                    ftype,
+                    {"count": 0, "pages": set(), "severity": finding.get("severity", "MEDIUM"), "excerpt": finding.get("excerpt", "")},
+                )
+                entry["count"] += finding.get("occurrences", 1)
+                if finding.get("page") is not None:
+                    entry["pages"].add(finding["page"])
+                if entry["severity"] != "HIGH":
+                    entry["severity"] = finding.get("severity", entry["severity"])
+
+            for ftype, entry in grouped_pdf.items():
+                pages = sorted(entry["pages"])
+                await db.execute(
+                    text("""
+                        INSERT INTO candidate_anomalies (
+                            candidate_id, anomaly_type, severity, description, suggested_verification
+                        ) VALUES (
+                            :cand_id, :atype, :sev, :desc, :verify
+                        )
+                    """),
+                    {
+                        "cand_id": cand_id,
+                        "atype": ftype,
+                        "sev": entry["severity"],
+                        "desc": (
+                            f"{entry['count']} occurrence(s) on page(s) "
+                            f"{pages if pages else 'n/a'}: {entry['excerpt']}"
+                        ),
+                        "verify": "Inspect PDF content stream for invisible text or covert image objects.",
+                    },
+                )
+            if not hidden_text_detected and any(entry["severity"] == "HIGH" for entry in grouped_pdf.values()):
+                await db.execute(
+                    text("UPDATE candidates SET triage_priority = 'HIGH_ATTENTION' WHERE id = :id"),
+                    {"id": cand_id},
+                )
+
         # PRD Bab 6.4: when no form metadata was supplied the dropzone must record any
         # residual PII risk as an anomaly rather than silently accepting it.
         if sanitize_result.has_residual_risk:

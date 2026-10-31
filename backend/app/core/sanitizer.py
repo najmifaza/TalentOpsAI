@@ -105,7 +105,7 @@ _RE_EMAIL_OBFUSCATED = re.compile(
 # letting `\s` match it swallows the line break and glues the next field on.
 _RE_PHONE = re.compile(
     r"(?:\+?62|0)8[ \t.\-]?(?:\d[ \t.\-]?){7,12}\b"
-    r"|(?:\+?62|0)2[1-9][ \t.\-]?(?:\d[ \t.\-]?){6,11}\b"
+    r"|(?:\+?62|0)[2-9]\d{1,2}[ \t.\-]?(?:\d[ \t.\-]?){5,11}\b"
     r"|\+\d{1,3}[ \t.\-]?\d{2,4}[ \t.\-]?\d{3,4}[ \t.\-]?\d{3,4}\b"
 )
 

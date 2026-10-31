@@ -96,3 +96,103 @@ async def test_agent_triage_service_pipeline():
     assert result["overall_score"] >= 80.0
     assert result["recommendation"] in ("STRONG_MATCH", "REVIEW_REQUIRED")
     assert result["total_duration_ms"] > 0
+
+
+@pytest.mark.asyncio
+async def test_agent_triage_service_heuristic_fallback_1900s():
+    service = AgentTriageService()
+    mock_db = AsyncMock()
+
+    mock_cand_row = {
+        "id": 2,
+        "job_id": 1,
+        "masked_identifier": "#TK-SENIOR99",
+        "sanitized_resume_text": (
+            "Senior Infrastructure Architect since 1998.\n"
+            "PT Telekomunikasi 1998 - 2005 Senior Sysadmin.\n"
+            "FastAPI, Docker, PostgreSQL, CI/CD, Redis.\n"
+            "Lulus S1 Informatika."
+        ),
+        "file_hash_sha256": "mock_senior_hash",
+        "resume_file_path": "senior.docx",
+        "status": "queued",
+        "job_title": "Infrastructure Architect",
+        "department": "Engineering",
+        "core_competencies": ["FastAPI", "Docker", "PostgreSQL", "CI/CD", "Redis"],
+        "weight_config": {"SKILL": 0.4, "EXPERIENCE": 0.3, "EDUCATION": 0.1, "PORTFOLIO": 0.2},
+    }
+
+    def make_mappings(data):
+        m = MagicMock()
+        m.mappings.return_value.first.return_value = data
+        m.mappings.return_value.__iter__.return_value = [data] if data else []
+        return m
+
+    async def mock_execute(statement, params=None):
+        sql = str(statement).upper()
+        if "FROM CANDIDATES" in sql and "JOIN JOB_DESCRIPTIONS" in sql:
+            return make_mappings(mock_cand_row)
+        if "FROM CANDIDATE_ANOMALIES" in sql:
+            return make_mappings(None)
+        if "FROM INTERVIEW_SLOTS" in sql:
+            return make_mappings({"id": 11, "interviewer_id": 3})
+        return make_mappings(None)
+
+    mock_db.execute = AsyncMock(side_effect=mock_execute)
+
+    # Force LLM Adapter failure to trigger heuristic fallback
+    service.llm_adapter.complete = AsyncMock(side_effect=RuntimeError("LLM Gateway down"))
+    service.github_adapter.verify_repository = AsyncMock(return_value={"valid": True, "verified": True})
+    service.calendar_adapter.reserve_slot = AsyncMock(return_value={"success": True, "slot_id": 11})
+
+    result = await service.execute_triage(candidate_id=2, db=mock_db, use_cache=False)
+    assert result["candidate_id"] == 2
+    assert result["overall_score"] > 0
+
+
+@pytest.mark.asyncio
+async def test_agent_triage_failure_resets_status_to_failed():
+    service = AgentTriageService()
+    mock_db = AsyncMock()
+
+    mock_cand_row = {
+        "id": 3,
+        "job_id": 1,
+        "masked_identifier": "#TK-FAIL01",
+        "sanitized_resume_text": "Backend Engineer with Python",
+        "file_hash_sha256": "mock_fail_hash",
+        "resume_file_path": "fail.docx",
+        "status": "queued",
+        "job_title": "Backend Engineer",
+        "department": "Engineering",
+        "core_competencies": ["FastAPI"],
+        "weight_config": {"SKILL": 1.0},
+    }
+
+    def make_mappings(data):
+        m = MagicMock()
+        m.mappings.return_value.first.return_value = data
+        m.mappings.return_value.__iter__.return_value = [data] if data else []
+        return m
+
+    executed_statements = []
+
+    async def mock_execute(statement, params=None):
+        sql = str(statement).upper()
+        executed_statements.append((sql, params))
+        if "FROM CANDIDATES" in sql and "JOIN JOB_DESCRIPTIONS" in sql:
+            return make_mappings(mock_cand_row)
+        if "FROM CANDIDATE_ANOMALIES" in sql:
+            raise RuntimeError("Database connection lost during anomaly inspection")
+        return make_mappings(None)
+
+    mock_db.execute = AsyncMock(side_effect=mock_execute)
+
+    with pytest.raises(RuntimeError, match="Database connection lost"):
+        await service.execute_triage(candidate_id=3, db=mock_db, use_cache=False)
+
+    failed_update = any(
+        "UPDATE CANDIDATES SET STATUS = 'FAILED'" in s[0] and s[1].get("id") == 3
+        for s in executed_statements
+    )
+    assert failed_update, "Expected status to be reset to 'failed' on unhandled triage exception"

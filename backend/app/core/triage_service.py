@@ -390,6 +390,7 @@ class AgentTriageService:
                     messages=prompt_msgs,
                     file_hash=file_hash,
                     use_cache=use_cache,
+                    response_format={"type": "json_object"},
                 )
                 clean_json_str = clean_llm_json_response(llm_resp["content"])
                 extracted_dict = json.loads(clean_json_str)

@@ -99,6 +99,32 @@ def test_substring_guard_drops_unverified_narrative():
     assert k8s_claim.metric_string is None
 
 
+def test_substring_guard_tolerates_punctuation_differences():
+    """Punctuation or quotes variation must not cause false-positive claim downgrade."""
+    cv_text = "Backend Engineer. Built high-scale microservices, handling 2,000 rps!"
+    payload = {
+        "github_url": None,
+        "portfolio_url": None,
+        "claims": [
+            {
+                "dimension": "SKILL",
+                "technology": "Python",
+                "has_implementation_detail": True,
+                "context_narrative": "built high scale microservices handling 2000 rps",
+                "metric_string": None,
+                "repo_url": None,
+                "source_location": "Pengalaman",
+            }
+        ],
+        "career_timeline": [],
+        "education": None,
+        "anomalies": {},
+    }
+    schema = CandidateExtractionSchema.model_validate(payload)
+    schema.apply_substring_guard(cv_text)
+    assert schema.claims[0].has_implementation_detail is True
+
+
 def test_overlap_anomaly_explains_which_jobs_collided():
     """An anomaly row must name both roles/companies, not just echo a flag code."""
     timeline = [

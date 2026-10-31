@@ -102,19 +102,19 @@ def _extract_heuristic_fallback(
         d = d_str.strip().lower()
         if d in ("present", "sekarang", "saat ini", "current"):
             return "present"
-        m_ym = re.search(r"([a-z]{3})[a-z]*\s+(20\d{2})", d)
+        m_ym = re.search(r"([a-z]{3})[a-z]*\s+((?:19|20)\d{2})", d)
         if m_ym:
             m_num = months_map.get(m_ym.group(1), "01")
             return f"{m_ym.group(2)}-{m_num}"
-        m_y = re.search(r"20\d{2}(?:[-/]\d{1,2})?", d)
+        m_y = re.search(r"(?:19|20)\d{2}(?:[-/]\d{1,2})?", d)
         if m_y:
             return m_y.group(0).replace("/", "-")
         return d
 
     date_range_pattern = (
-        r"(\b(?:(?:Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des)[a-z]*\s+)?20\d{2}(?:[-/]\d{1,2})?|\b20\d{2})\s*"
+        r"(\b(?:(?:Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des)[a-z]*\s+)?(?:19|20)\d{2}(?:[-/]\d{1,2})?|\b(?:19|20)\d{2})\s*"
         r"(?:[-–—to]|sampai|s/d)\s*"
-        r"(\b(?:(?:Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des)[a-z]*\s+)?20\d{2}(?:[-/]\d{1,2})?|present|sekarang|saat ini|current)\b"
+        r"(\b(?:(?:Jan|Feb|Mar|Apr|Mei|Jun|Jul|Agu|Sep|Okt|Nov|Des)[a-z]*\s+)?(?:19|20)\d{2}(?:[-/]\d{1,2})?|present|sekarang|saat ini|current)\b"
     )
 
     matches = list(re.finditer(date_range_pattern, cleaned_stream, re.IGNORECASE))
@@ -316,6 +316,41 @@ class AgentTriageService:
             )
             await db.commit()
 
+            return await self._execute_triage_core(
+                candidate_id=candidate_id,
+                candidate=candidate,
+                masked_id=masked_id,
+                sanitized_text=sanitized_text,
+                file_hash=file_hash,
+                is_tech_role=is_tech_role,
+                comp_tax=comp_tax,
+                job_title=job_title,
+                core_competencies=core_competencies,
+                weights=weights,
+                run_id=run_id,
+                start_total=start_total,
+                use_cache=use_cache,
+                db=db,
+            )
+
+    async def _execute_triage_core(
+        self,
+        candidate_id: int,
+        candidate: Any,
+        masked_id: str,
+        sanitized_text: str,
+        file_hash: str,
+        is_tech_role: bool,
+        comp_tax: Any,
+        job_title: str,
+        core_competencies: List[str],
+        weights: Dict[str, float],
+        run_id: str,
+        start_total: float,
+        use_cache: bool,
+        db: AsyncSession,
+    ) -> Dict[str, Any]:
+        try:
             # Broadcast start
             await sse_broadcaster.publish(
                 candidate_id,
@@ -781,6 +816,18 @@ class AgentTriageService:
                 "calendar_reserved": calendar_reserved,
                 "total_duration_ms": total_ms,
             }
+        except Exception as exc:
+            logger.error(f"Triage execution failed for candidate {candidate_id}: {exc}", exc_info=True)
+            try:
+                await db.rollback()
+                await db.execute(
+                    text("UPDATE candidates SET status = 'failed' WHERE id = :id"),
+                    {"id": candidate_id},
+                )
+                await db.commit()
+            except Exception as db_err:
+                logger.error(f"Failed to reset candidate {candidate_id} status to failed: {db_err}")
+            raise
 
     async def _record_step(
         self,

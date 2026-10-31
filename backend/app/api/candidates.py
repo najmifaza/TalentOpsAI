@@ -1013,6 +1013,14 @@ async def _run_triage_background(candidate_id: int):
         except Exception as exc:
             logger.error(f"Background triage failed for candidate {candidate_id}: {exc}")
             try:
+                await session.execute(
+                    text("UPDATE candidates SET status = 'failed' WHERE id = :id"),
+                    {"id": candidate_id},
+                )
+                await session.commit()
+            except Exception as db_err:
+                logger.error(f"Failed to update candidate {candidate_id} status to failed: {db_err}")
+            try:
                 await sse_broadcaster.publish(
                     candidate_id, "triage_completed", "failed",
                     {

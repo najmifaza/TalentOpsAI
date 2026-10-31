@@ -497,6 +497,15 @@ export default function CandidateDetailPage() {
     await loadCandidateDetail();
   };
 
+  const traceCandidate = useMemo(() => {
+    if (!candidateId) return null;
+    return {
+      id: candidateId,
+      masked_identifier: activeCandidateObj?.masked_identifier || `CAN-${candidateId}`,
+      job_title: activeCandidateObj?.job_title || 'Posisi Terkait',
+    };
+  }, [candidateId, activeCandidateObj?.masked_identifier, activeCandidateObj?.job_title]);
+
   const isApproved = (activeCandidateObj.status || '').toLowerCase() === 'approved';
   const isRejected = (activeCandidateObj.status || '').toLowerCase() === 'rejected';
   const isDecisionFinal = isApproved || isRejected;
@@ -1804,11 +1813,7 @@ export default function CandidateDetailPage() {
 
       {/* Live Agentic Trace & AI Reasoning SSE Modal */}
       <AgentTraceModal
-        candidate={{
-          id: candidateId,
-          masked_identifier: candidate?.masked_identifier || `CAN-${candidateId}`,
-          job_title: candidate?.job_title || 'Posisi Terkait',
-        }}
+        candidate={traceCandidate}
         isOpen={isTraceModalOpen}
         onClose={() => setIsTraceModalOpen(false)}
         onTriageComplete={handleTraceComplete}

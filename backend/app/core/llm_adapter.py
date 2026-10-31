@@ -95,12 +95,14 @@ class LLMAdapter:
             models_to_try.append(settings.LLM_FALLBACK_MODEL)
 
         last_err: Exception | None = None
+        call_timeout = min(settings.LLM_TIMEOUT, 12.0)
+        max_retries = min(settings.LLM_MAX_RETRIES, 2)
 
         # trust_env=False prevents local loopback calls from being intercepted by global SOCKS/HTTP proxies
-        async with httpx.AsyncClient(timeout=settings.LLM_TIMEOUT, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=call_timeout, trust_env=False) as client:
             for current_model in models_to_try:
                 payload["model"] = current_model
-                for attempt in range(1, settings.LLM_MAX_RETRIES + 1):
+                for attempt in range(1, max_retries + 1):
                     try:
                         resp = await client.post(
                             f"{self.base_url}/chat/completions",
@@ -117,6 +119,15 @@ class LLMAdapter:
                                 "content": content,
                                 "raw": data,
                             }
+                        if resp.status_code in (401, 403, 404):
+                            logger.warning(
+                                "LLM Gateway auth/model error %s on %s: %s",
+                                resp.status_code,
+                                current_model,
+                                resp.text[:200],
+                            )
+                            # Auth and model-not-found errors won't resolve on retry; break early to fallback
+                            break
                         logger.warning(
                             "Attempt %s (%s) returned status %s: %s",
                             attempt,
@@ -128,7 +139,7 @@ class LLMAdapter:
                         last_err = exc
                         logger.warning("Attempt %s (%s) failed: %s", attempt, current_model, exc)
 
-                    if attempt < settings.LLM_MAX_RETRIES:
+                    if attempt < max_retries:
                         await asyncio.sleep(0.5 * (2 ** (attempt - 1)))
 
         # 3. Gateway failed: check pre-cached fallback

@@ -175,3 +175,51 @@ async def test_unrecoverable_failure_raises_adapter_error_when_no_cache():
                 use_cache=False,
             )
     print("Unrecoverable Gateway Failure: Cleanly raises LLMAdapterError.")
+
+
+def test_heuristic_fallback_extraction_engine():
+    """
+    Verify that _extract_heuristic_fallback successfully parses real competencies,
+    surrounding sentence quotes, metrics, timeline, and education from resume text.
+    """
+    from app.core.triage_service import _extract_heuristic_fallback
+
+    sample_cv = (
+        "Budi Santoso - Senior Frontend Engineer\n"
+        "Jakarta | github.com/budisantoso | https://budisantoso.dev\n"
+        "Frontend Engineer berpengalaman 4+ tahun dalam membangun web apps dengan React, TypeScript, Tailwind CSS, dan Next.js.\n"
+        "Mampu meningkatkan performa web hingga 45% dan memimpin deployment CI/CD.\n"
+        "PENGALAMAN KERJA\n"
+        "PT Solusi Digital - Senior Frontend Developer (2021-01 s/d present)\n"
+        "- Memimpin arsitektur antarmuka React dan Next.js untuk jutaan user harian.\n"
+        "PT Inovasi Kode - Frontend Developer (2019-06 s/d 2020-12)\n"
+        "- Mengembangkan dashboard visualisasi React Flow.\n"
+        "PENDIDIKAN\n"
+        "S1 Teknik Informatika - Lulus"
+    )
+
+    core_comp = ["React", "TypeScript", "Tailwind CSS", "Next.js", "CI/CD"]
+    schema = _extract_heuristic_fallback(
+        sanitized_text=sample_cv,
+        core_competencies=core_comp,
+        job_title="Senior Frontend Engineer",
+        is_tech_role=True,
+    )
+
+    assert len(schema.claims) >= 4
+    techs = [c.technology for c in schema.claims]
+    assert "React" in techs
+    assert "TypeScript" in techs
+    assert "Next.js" in techs
+
+    # Substring guard must pass verbatim match for extracted claims
+    schema.apply_substring_guard(sample_cv)
+    verified = [c for c in schema.claims if c.has_implementation_detail]
+    assert len(verified) >= 3
+
+    assert len(schema.career_timeline) >= 2
+    assert schema.education is not None
+    assert schema.education.degree == "S1"
+    assert "Informatika" in schema.education.field_of_study
+    assert schema.github_url == "https://github.com/budisantoso"
+    assert schema.portfolio_url == "https://budisantoso.dev"

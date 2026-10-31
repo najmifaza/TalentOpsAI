@@ -84,7 +84,10 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
   const queueRef = useRef([]);
   const isPlayingRef = useRef(false);
   const playTimerRef = useRef(null);
+  const startedRef = useRef(false);
+  const isCompletedRef = useRef(false);
 
+  const candidateId = candidate?.id;
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
 
   // Auto-scroll logs to bottom
@@ -131,9 +134,15 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
       setStreamStatus('COMPLETED');
       setIsStreaming(false);
       isPlayingRef.current = false;
+      isCompletedRef.current = true;
 
-      if (onTriageComplete && candidate) {
-        onTriageComplete(candidate.id, item.triageResult);
+      if (sseRef.current) {
+        try { sseRef.current.close(); } catch (e) {}
+        sseRef.current = null;
+      }
+
+      if (onTriageComplete && candidateId) {
+        onTriageComplete(candidateId, item.triageResult);
       }
       return;
     }
@@ -202,7 +211,13 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
           const stepInfo = stepIdx >= 0 ? BACKEND_STEPS[stepIdx] : null;
           const stepTitle = stepInfo ? stepInfo.title : (parsed.step || 'Execution Trace');
 
-          const isFinalStep = (stepKey === 'triage_completed');
+          const isFinalStep = (
+            stepKey === 'triage_completed' || 
+            stepKey === 'triage_failed' || 
+            parsed.status === 'failed' || 
+            parsed.event === 'failed' ||
+            parsed.event === 'completed'
+          );
           let triageResult = null;
 
           if (isFinalStep) {
@@ -247,6 +262,10 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
       };
 
       sseSource.onerror = (err) => {
+        if (isCompletedRef.current) {
+          try { sseSource.close(); } catch (e) {}
+          return;
+        }
         console.error('SSE Error occurred:', err);
         if (!hasReceivedEvent && !isPlayingRef.current) {
           setStreamStatus('ERROR');
@@ -263,11 +282,18 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
   };
 
   useEffect(() => {
-    if (isOpen && candidate) {
-      startStream();
+    if (isOpen && candidateId) {
+      if (!startedRef.current) {
+        startedRef.current = true;
+        isCompletedRef.current = false;
+        startStream();
+      }
+    } else if (!isOpen) {
+      startedRef.current = false;
+      isCompletedRef.current = false;
+      cleanupConnections();
     }
-    return () => cleanupConnections();
-  }, [isOpen, candidate]);
+  }, [isOpen, candidateId]);
 
   if (!isOpen || !candidate) return null;
 
@@ -308,7 +334,11 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
 
           <div className="flex items-center gap-2">
             <button
-              onClick={startStream}
+              onClick={() => {
+                startedRef.current = true;
+                isCompletedRef.current = false;
+                startStream();
+              }}
               disabled={isStreaming}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-all border border-white/10 disabled:opacity-50"
               title="Jalankan Ulang Penyaringan Berkas"

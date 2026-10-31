@@ -967,6 +967,18 @@ async def _run_triage_background(candidate_id: int):
             )
         except Exception as exc:
             logger.error(f"Background triage failed for candidate {candidate_id}: {exc}")
+            try:
+                await sse_broadcaster.publish(
+                    candidate_id, "triage_completed", "failed",
+                    {
+                        "error": str(exc),
+                        "recommendation": "REVIEW_REQUIRED",
+                        "overall_score": 50.0,
+                    },
+                    is_terminal=True,
+                )
+            except Exception:
+                pass
 
 
 @router.post("/{candidate_id}/triage")

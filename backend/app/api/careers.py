@@ -458,7 +458,7 @@ async def track_application_status(tracking_token: str, db: AsyncSession = Depen
     """
     res = await db.execute(
         text("""
-            SELECT c.masked_identifier, c.status, c.recommendation, c.created_at,
+            SELECT c.id, c.masked_identifier, c.status, c.recommendation, c.created_at,
                    c.overall_score, c.confidence_level, c.unresolved_risk, c.dimension_scores,
                    j.title as job_title, j.department, j.weight_config
             FROM candidates c
@@ -503,6 +503,26 @@ async def track_application_status(tracking_token: str, db: AsyncSession = Depen
             has_prompt_injection=False,
         )
 
+    # Ambil jadwal wawancara jika ada slot yang sudah dibooking untuk kandidat ini
+    interview_schedule = None
+    slot_res = await db.execute(
+        text("""
+            SELECT start_time, end_time
+            FROM interview_slots
+            WHERE candidate_id = :cid AND status = 'booked'
+            ORDER BY id DESC LIMIT 1
+        """),
+        {"cid": row["id"]},
+    )
+    slot_row = slot_res.mappings().first()
+    if slot_row:
+        st = slot_row["start_time"]
+        et = slot_row["end_time"]
+        interview_schedule = {
+            "start_time": st.isoformat() if hasattr(st, "isoformat") else str(st),
+            "end_time": et.isoformat() if hasattr(et, "isoformat") else str(et),
+        }
+
     return {
         "masked_identifier": row["masked_identifier"],
         "job_title": row["job_title"],
@@ -510,6 +530,7 @@ async def track_application_status(tracking_token: str, db: AsyncSession = Depen
         "status": row["status"],
         "recommendation": recommendation,
         "submitted_at": row["created_at"].isoformat() if row["created_at"] else None,
+        "interview_schedule": interview_schedule,
         # Null selama masih queued/analyzing: jangan tampilkan 0.0 seolah sudah dinilai.
         "assessment": (
             {

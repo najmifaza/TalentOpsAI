@@ -127,6 +127,7 @@ async def _notify_candidate_decision(
     decision: str,
     slot_id: Optional[int],
     notes: Optional[str],
+    db: Optional[AsyncSession] = None,
 ) -> dict:
     """
     Emails the applicant about a final human decision.
@@ -150,11 +151,28 @@ async def _notify_candidate_decision(
     masked = candidate["masked_identifier"]
 
     if decision == "APPROVED_DISPATCH" and slot_id is not None:
+        start_str = "(lihat detail di portal)"
+        end_str = "(lihat detail di portal)"
+        if db is not None:
+            try:
+                slot_res = await db.execute(
+                    text("SELECT start_time, end_time FROM interview_slots WHERE id = :sid"),
+                    {"sid": slot_id},
+                )
+                slot_row = slot_res.mappings().first()
+                if slot_row:
+                    st = slot_row["start_time"]
+                    et = slot_row["end_time"]
+                    start_str = st.strftime("%Y-%m-%d %H:%M") if hasattr(st, "strftime") else str(st)
+                    end_str = et.strftime("%H:%M") if hasattr(et, "strftime") else str(et)
+            except Exception as exc:
+                logger.warning("Failed to fetch slot times for email template: %s", type(exc).__name__)
+
         subject, html, text_body = interview_scheduled(
             masked_identifier=masked,
             job_title=job_title,
-            start_time="(lihat detail di portal)",
-            end_time="(lihat detail di portal)",
+            start_time=start_str,
+            end_time=end_str,
             meeting_note=notes or "",
         )
     else:
@@ -863,6 +881,7 @@ async def review_candidate(
         decision=decision,
         slot_id=slot_id,
         notes=notes,
+        db=db,
     )
 
     return {

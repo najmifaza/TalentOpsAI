@@ -1,10 +1,10 @@
 // Satu sumber label untuk seluruh UI. Enum backend tidak boleh tampil ke user.
 const RECOMMENDATION_LABELS = {
   STRONG_MATCH: 'Sangat Sesuai',
-  REVIEW_REQUIRED: 'Perlu Review HR',
+  REVIEW_REQUIRED: 'Perlu Keputusan HR',
   WEAK_FIT: 'Kurang Sesuai',
-  SECURITY_QUARANTINE: 'Karantina Keamanan',
-  PENDING_SCAN: 'Menunggu Scan',
+  SECURITY_QUARANTINE: 'Ditahan (Perlu Verifikasi)',
+  PENDING_SCAN: 'Menunggu Penilaian AI',
 };
 
 const PRIORITY_LABELS = {
@@ -15,10 +15,10 @@ const PRIORITY_LABELS = {
 // Anomali berasal dari parser ingestion dan scoring engine (scoring.py:422-511).
 // Sebelumnya kode ini tercetak mentah di tabel kandidat.
 const ANOMALY_LABELS = {
-  PROMPT_INJECTION: 'Indikasi Prompt Injection',
+  PROMPT_INJECTION: 'Manipulasi Teks CV',
   HIDDEN_TEXT: 'Teks Tersembunyi',
-  CAREER_BREAK_FLAG: 'Jeda Karier > 12 Bulan',
-  TITLE_INFLATION_DETECTED: 'Indikasi Inflasi Jabatan',
+  CAREER_BREAK_FLAG: 'Jeda Riwayat Kerja > 12 Bulan',
+  TITLE_INFLATION_DETECTED: 'Kenaikan Jabatan Tidak Wajar',
 };
 
 export const COSMETIC_ANOMALIES = new Set([
@@ -46,8 +46,8 @@ export const isSecurityFlag = (flag) => {
 export const flagLabel = (flag) => {
   const f = String(flag || '');
   if (ANOMALY_LABELS[f]) return ANOMALY_LABELS[f];
-  if (f.startsWith('CONCURRENT_FULLTIME_OVERLAP')) return 'Tumpang Tindih Kerja Penuh Waktu';
-  if (f.startsWith('SECURITY_QUARANTINE')) return 'Karantina Keamanan';
+  if (f.startsWith('CONCURRENT_FULLTIME_OVERLAP')) return 'Riwayat Dua Pekerjaan Bersamaan';
+  if (f.startsWith('SECURITY_QUARANTINE')) return 'Ditahan (Perlu Verifikasi)';
   return f;
 };
 
@@ -99,7 +99,7 @@ export const priorityLabel = (key) => PRIORITY_LABELS[key] || key || '—';
 const STATUS_LABELS = {
   queued: 'Dalam Antrean',
   analyzing: 'Sedang Dianalisis',
-  waiting_approval: 'Menunggu Keputusan HR',
+  waiting_approval: 'Menunggu Keputusan',
   approved: 'Disetujui',
   rejected: 'Tidak Dilanjutkan',
   request_info: 'Butuh Klarifikasi',

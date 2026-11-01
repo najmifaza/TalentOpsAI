@@ -255,11 +255,11 @@ export default function DashboardOverview() {
         <div aria-hidden="true" className="absolute inset-0 opacity-[0.03] bg-dot-matrix pointer-events-none"></div>
         <div className="space-y-1 max-w-2xl relative z-10">
           <h2 className="text-xl sm:text-2xl font-extrabold text-primary-black tracking-tight leading-tight">
-            Antrean Evaluasi Kandidat
+            Antrean Evaluasi Pelamar
           </h2>
           <p className="text-xs sm:text-sm text-primary-slate-600 leading-relaxed font-normal">
-            Skor deterministik 4D dengan bukti kutipan CV dan audit repositori GitHub.
-            <span className="hidden sm:inline text-primary-slate-400"> Identitas pelamar tersanitasi sesuai UU PDP No. 27/2022.</span>
+            Penilaian objektif berbasis 4 kriteria dengan rujukan kalimat CV dan verifikasi portofolio.
+            <span className="hidden sm:inline text-primary-slate-400"> Identitas pelamar disamarkan sesuai UU PDP No. 27/2022.</span>
           </p>
         </div>
 
@@ -285,8 +285,8 @@ export default function DashboardOverview() {
             onClick={handleBatchTriage}
             disabled={isBatchRunning || unscannedCandidates.length === 0 || !canBatchTriage}
             title={canBatchTriage
-              ? 'Jalankan penyaringan otomatis untuk seluruh berkas yang belum dipindai'
-              : 'Role Anda tidak berwenang menjalankan penyaringan massal'}
+              ? 'Jalankan evaluasi otomatis untuk seluruh berkas yang belum dinilai'
+              : 'Role Anda tidak berwenang menjalankan penilaian massal'}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold transition-all shadow-xs ${
               unscannedCandidates.length > 0 && !isBatchRunning
                 ? 'bg-primary-black hover:bg-primary-black/90 text-white'
@@ -296,8 +296,8 @@ export default function DashboardOverview() {
             <Zap className={`w-3.5 h-3.5 ${isBatchRunning ? 'animate-spin text-primary-orange' : 'text-primary-orange fill-current'}`} />
             <span>
               {isBatchRunning 
-                ? 'Memproses Batch...' 
-                : `Penyaringan Massal AI (${unscannedCandidates.length})`}
+                ? 'Memproses Penilaian...' 
+                : `Penilaian Massal AI (${unscannedCandidates.length})`}
             </span>
           </button>
 
@@ -305,7 +305,7 @@ export default function DashboardOverview() {
             onClick={fetchCandidates}
             disabled={isLoading}
             className="p-2.5 rounded-full bg-white border border-primary-border-200 text-primary-slate-700 hover:border-primary-orange hover:text-primary-orange transition-all shadow-xs"
-            title="Sinkronkan data kandidat dari basis data MariaDB"
+            title="Segarkan data antrean pelamar"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin text-primary-orange' : ''}`} />
           </button>
@@ -338,11 +338,11 @@ export default function DashboardOverview() {
       {/* 2. Pipeline Stage Cards (WebEkspor Cards) — lima kategori, satu kartu per
           kategori supaya jumlahnya bisa dijumlahkan ke total berkas. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {/* Stage 1: Menunggu Penyaringan AI */}
+        {/* Stage 1: Menunggu Penilaian AI */}
         <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-primary-slate-500">
-              <span className="uppercase tracking-wider text-[11px]">Menunggu Penyaringan AI</span>
+              <span className="uppercase tracking-wider text-[11px]">Menunggu Penilaian AI</span>
               <div className="w-7 h-7 rounded-lg bg-primary-orange/10 text-primary-orange flex items-center justify-center">
                 <Clock className="w-4 h-4" />
               </div>
@@ -352,10 +352,10 @@ export default function DashboardOverview() {
             </div>
             <p className="text-xs text-primary-slate-600 mt-1 leading-snug font-normal">
               {unscannedCandidates.length > 0
-                ? 'Berkas pelamar siap diekstrak AI'
+                ? 'Berkas pelamar siap dievaluasi AI'
                 : candidates.length === 0
                   ? 'Belum ada berkas yang diunggah'
-                  : 'Semua berkas telah dipindai'}
+                  : 'Semua berkas telah dinilai'}
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs">
@@ -468,7 +468,7 @@ export default function DashboardOverview() {
         <div className="bg-white p-5 rounded-2xl border border-primary-border-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-bold text-primary-slate-500">
-              <span className="uppercase tracking-wider text-[11px]">Karantina Keamanan</span>
+              <span className="uppercase tracking-wider text-[11px]">Ditahan (Perlu Verifikasi)</span>
               <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
                 <ShieldCheck className="w-4 h-4" />
               </div>
@@ -478,10 +478,10 @@ export default function DashboardOverview() {
             </div>
             <p className="text-xs text-primary-slate-600 mt-1 leading-snug font-normal">
               {quarantined > 0
-              ? 'Berkas ber-flag integritas, wajib audit manual'
+              ? 'Berkas memerlukan verifikasi manual'
               : candidates.length === 0
                 ? 'Belum ada berkas untuk disaring'
-                : 'Tidak ada berkas ber-flag'}
+                : 'Tidak ada berkas yang ditahan'}
             </p>
           </div>
           <div className="mt-4 pt-3 border-t border-primary-border-100 flex items-center justify-between text-xs">

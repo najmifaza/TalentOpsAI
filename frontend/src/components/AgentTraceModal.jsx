@@ -23,37 +23,37 @@ const BACKEND_STEPS = [
   {
     key: 'hidden_text_audit',
     title: '2. Uji Integritas Dokumen Resume',
-    subtitle: 'Pemindaian teks tersembunyi, font putih siluman, dan manipulasi DOCX',
+    subtitle: 'Pemindaian teks tersembunyi, font siluman, dan integritas berkas DOCX',
     timeTarget: '< 15 ms',
   },
   {
     key: 'llm_extraction',
-    title: '3. Ekstraksi Kompetensi LLM Gemini',
-    subtitle: 'Ekstraksi klaim keahlian terstruktur suhu 0.0 deterministik',
+    title: '3. Analisis Riwayat & Kompetensi',
+    subtitle: 'Ekstraksi klaim keahlian terstruktur dari riwayat kerja',
     timeTarget: '~ 1.2 s',
   },
   {
     key: 'substring_guard_audit',
-    title: '4. Validasi Substring Guard Bukti Resume',
+    title: '4. Pencocokan Bukti Kalimat Asli CV',
     subtitle: 'Verifikasi klaim keahlian langsung ke kutipan teks asli resume',
     timeTarget: '< 10 ms',
   },
   {
     key: 'github_repo_verification',
-    title: '5. Audit Portofolio & Repositori GitHub',
-    subtitle: 'Pemeriksaan repositori publik, bahasa kode, dan status commit GitHub',
+    title: '5. Verifikasi Portofolio & Kode Publik',
+    subtitle: 'Pemeriksaan repositori publik, bahasa kode, dan keaktifan berkontribusi',
     timeTarget: '~ 85 ms',
   },
   {
     key: 'deterministic_scoring',
-    title: '6. Perhitungan Skor Obyektif 4 Dimensi',
-    subtitle: 'Penilaian formula deterministik: S_comp, S_port, S_conf, S_risk',
+    title: '6. Perhitungan Skor Kriteria Objektif',
+    subtitle: 'Penilaian 4 kriteria: Keahlian, Pengalaman, Pendidikan, Portofolio',
     timeTarget: '< 2 ms',
   },
   {
     key: 'triage_completed',
-    title: '7. Keputusan Akhir & Kunci Kalender',
-    subtitle: 'Penetapan status rekomendasi & reservasi kalender wawancara',
+    title: '7. Keputusan Akhir & Jadwal Wawancara',
+    subtitle: 'Penetapan status rekomendasi & penyiapan jadwal wawancara',
     timeTarget: '< 5 ms',
   }
 ];
@@ -310,10 +310,10 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white tracking-tight">
-                  Transparansi Proses Kerja AI (Live Trace)
+                  Alur Evaluasi AI Secara Langsung
                 </h3>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-primary-info text-white">
-                  REAL-TIME SSE
+                  PROSES AKTIF
                 </span>
                 {streamStatus === 'COMPLETED' && (
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary-info/20 text-primary-info-border border border-primary-info/30">
@@ -350,10 +350,10 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
           <div className="md:col-span-5 bg-primary-slate-100 border-r border-primary-border-200 flex flex-col overflow-y-auto p-4 sm:p-5 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-primary-border-200">
               <span className="text-[11px] font-bold uppercase tracking-wider text-primary-slate-600">
-                Alur Transparansi 7 Tahap
+                Alur Penilaian 7 Tahap
               </span>
               <span className="text-[10px] font-semibold text-primary-info">
-                Deterministik • 0 Halusinasi
+                Berbasis Bukti Nyata
               </span>
             </div>
 

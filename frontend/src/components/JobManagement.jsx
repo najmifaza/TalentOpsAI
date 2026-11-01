@@ -273,13 +273,13 @@ export default function JobManagement() {
         <div className="relative z-10 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-orange/10 text-primary-black text-xs font-semibold mb-2 border border-primary-orange/30">
             <Sliders className="w-3.5 h-3.5 text-primary-orange" />
-            <span className="font-bold tracking-wider uppercase text-[11px]">Job Intelligence &amp; 4D Weights</span>
+            <span className="font-bold tracking-wider uppercase text-[11px]">Pengaturan Kriteria Lowongan</span>
           </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-primary-black tracking-tight leading-tight">
-            Kelola Lowongan &amp; Konfigurasi Bobot 4D
+            Kelola Lowongan &amp; Kriteria Penilaian
           </h2>
           <p className="text-xs text-primary-slate-600 mt-1 leading-relaxed">
-            Tiap lowongan kerja memiliki daftar kualifikasi kompetensi inti serta formula pembobotan deterministik 
+            Tiap lowongan kerja memiliki daftar kualifikasi kompetensi inti serta formula pembobotan kriteria
             (Keahlian, Pengalaman, Pendidikan, Portofolio) yang tersimpan permanen di basis data.
           </p>
         </div>
@@ -370,7 +370,7 @@ export default function JobManagement() {
                     <button
                       onClick={() => openEditModal(job)}
                       className="p-1.5 rounded-full bg-primary-slate-50 hover:bg-primary-orange/10 hover:text-primary-orange text-primary-slate-600 border border-primary-border-200 transition-colors"
-                      title="Edit Lowongan & Ubah Bobot 4D"
+                      title="Ubah Lowongan & Kriteria Penilaian"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
@@ -412,7 +412,7 @@ export default function JobManagement() {
                 <div className="flex items-center justify-between text-xs mb-2">
                   <span className="font-bold text-primary-black flex items-center gap-1">
                     <Sliders className="w-3 h-3 text-primary-orange" />
-                    <span>Formula Bobot 4 Dimensi</span>
+                    <span>Proporsi Bobot Penilaian</span>
                   </span>
                   <span className="font-mono text-[11px] font-bold text-primary-orange">Total 100%</span>
                 </div>
@@ -437,7 +437,7 @@ export default function JobManagement() {
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-primary-black">
-                    {editingJob ? 'Edit Lowongan & Bobot 4D' : 'Buat Lowongan Pekerjaan Baru'}
+                    {editingJob ? 'Edit Lowongan & Bobot Penilaian' : 'Buat Lowongan Pekerjaan Baru'}
                   </h3>
                   <p className="text-xs text-primary-slate-500">
                     Pengaturan tersimpan permanen per lowongan pada basis data

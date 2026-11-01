@@ -247,7 +247,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
                 </span>
               </div>
               <div className="flex justify-between gap-3 py-1">
-                <span className="text-primary-slate-600">Sumber nama</span>
+                <span className="text-primary-slate-600">Deteksi Nama</span>
                 <span className="font-mono font-bold text-primary-info">{uploadResult.name_source || '—'}</span>
               </div>
             </div>
@@ -255,7 +255,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
             {Array.isArray(uploadResult.limitations) && uploadResult.limitations.length > 0 && (
               <div className="space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-primary-slate-600">
-                  Batasan yang dilaporkan sanitizer
+                  Catatan Pemeriksaan Berkas Otomatis
                 </span>
                 <ul className="space-y-1">
                   {uploadResult.limitations.map((lim, idx) => (
@@ -297,7 +297,7 @@ export default function UploadCandidateModal({ isOpen, onClose, onUploadSuccess 
                 Upload CV Pelamar Baru
               </h3>
               <p className="text-xs text-primary-slate-600">
-                Berkas akan masuk antrean dalam status <strong>Belum Di-scan</strong>
+                Berkas akan masuk antrean dalam status <strong>Menunggu Penilaian AI</strong>
               </p>
             </div>
           </div>

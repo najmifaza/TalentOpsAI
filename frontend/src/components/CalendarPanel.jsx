@@ -556,7 +556,7 @@ export default function CalendarPanel() {
                       onClick={() => navigate(`/admin/candidates/${selectedSlot.candidate_id}`)}
                       className="w-full py-2.5 px-3 rounded-xl bg-primary-slate-100 hover:bg-primary-slate-200 text-primary-slate-900 text-xs font-bold transition-all flex items-center justify-center gap-2 text-center"
                     >
-                      <span>Buka Dossier Kandidat</span>
+                      <span>Buka Profil Pelamar</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   )}

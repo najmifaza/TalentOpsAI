@@ -80,7 +80,7 @@ export default function CandidateTable({
         return {
           bg: 'bg-primary-blue/10 text-primary-black border-primary-blue/30',
           icon: AlertTriangle,
-          label: 'Perlu Review HR'
+          label: 'Perlu Keputusan HR'
         };
       case 'WEAK_FIT':
         return {
@@ -92,14 +92,14 @@ export default function CandidateTable({
         return {
           bg: 'bg-rose-50 text-rose-800 border-rose-200',
           icon: ShieldAlert,
-          label: 'Karantina Keamanan'
+          label: 'Ditahan (Perlu Verifikasi)'
         };
       case 'PENDING_SCAN':
       default:
         return {
           bg: 'bg-primary-orange/10 text-primary-orange border-primary-orange/30',
           icon: Clock,
-          label: 'Menunggu Scan'
+          label: 'Menunggu Penilaian AI'
         };
     }
   };
@@ -463,7 +463,7 @@ export default function CandidateTable({
                                   onSelectCandidate(candidate);
                                 }}
                                 className="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-white hover:border-primary-orange text-primary-black border border-primary-border-200 text-xs font-semibold transition-colors"
-                                title="Lihat Rincian Dossier"
+                                title="Lihat Detail Profil Pelamar"
                               >
                                 <Eye className="w-3.5 h-3.5 text-primary-orange" />
                                 <span>Detail</span>

@@ -41,43 +41,43 @@ const safeUrl = (u) => {
 
 const ANOMALY_DICTIONARY = {
   CONCURRENT_FULLTIME_OVERLAP: {
-    title: 'Tumpang Tindih Pekerjaan Purnawaktu (Concurrent Overlap)',
+    title: 'Riwayat Dua Pekerjaan Bersamaan',
     severity: 'HIGH',
-    defaultDesc: 'Kandidat tercatat memegang lebih dari satu posisi pekerjaan purnawaktu (full-time) secara bersamaan dalam periode waktu yang sama (> 3 bulan).',
+    defaultDesc: 'Kandidat tercatat memegang lebih dari satu posisi pekerjaan purnawaktu secara bersamaan dalam periode waktu yang sama (> 3 bulan).',
     defaultAction: 'Klarifikasi pada sesi wawancara apakah salah satu peran sebenarnya paruh waktu, freelance, atau terjadi komitmen waktu ganda.',
   },
   PROMPT_INJECTION: {
-    title: 'Indikasi Manipulasi Teks / Prompt Injection',
+    title: 'Manipulasi Format Teks (Teks Tersembunyi)',
     severity: 'HIGH',
-    defaultDesc: 'Terdeteksi instruksi manipulatif atau teks tersembunyi (font 0pt/putih) yang mencoba memanipulasi evaluasi kecerdasan buatan.',
-    defaultAction: 'Lakukan audit manual pada berkas CV fisik mentah. Batalkan proses jika terbukti memuat manipulasi format.',
+    defaultDesc: 'Terdeteksi instruksi manipulatif atau teks tersembunyi (font 0pt/putih) yang mencoba mempengaruhi hasil evaluasi sistem.',
+    defaultAction: 'Lakukan verifikasi manual pada berkas CV fisik mentah. Batalkan proses jika terbukti memuat manipulasi format.',
   },
   SECURITY_INSPECTION_FAILED: {
-    title: 'Karantina Keamanan Berkas (Security Quarantine)',
+    title: 'Berkas Ditahan (Perlu Verifikasi)',
     severity: 'HIGH',
-    defaultDesc: 'Struktur biner atau konten berkas terindikasi abnormal, korup, atau tidak lolos inspeksi keamanan dokumen.',
+    defaultDesc: 'Struktur biner atau konten berkas terindikasi abnormal, korup, atau tidak lolos inspeksi berkas.',
     defaultAction: 'Minta pelamar mengunggah ulang dokumen dalam format PDF atau DOCX standar.',
   },
   TITLE_INFLATION: {
-    title: 'Lonjakan Jabatan Ekstrem (Title Inflation)',
+    title: 'Kenaikan Jabatan Tidak Wajar',
     severity: 'MEDIUM',
     defaultDesc: 'Kenaikan jenjang jabatan terjadi secara instan (< 6 bulan) dari level awal/magang langsung ke level pimpinan/arsitek tanpa masa transisi wajar.',
     defaultAction: 'Uji kedalaman tanggung jawab teknis dan manajerial kandidat melalui studi kasus arsitektur sistem.',
   },
   TITLE_INFLATION_DETECTED: {
-    title: 'Lonjakan Jabatan Ekstrem (Title Inflation)',
+    title: 'Kenaikan Jabatan Tidak Wajar',
     severity: 'MEDIUM',
     defaultDesc: 'Kenaikan jenjang jabatan terjadi secara instan (< 6 bulan) dari level awal/magang langsung ke level pimpinan/arsitek tanpa masa transisi wajar.',
     defaultAction: 'Uji kedalaman tanggung jawab teknis dan manajerial kandidat melalui studi kasus arsitektur sistem.',
   },
   CAREER_BREAK_FLAG: {
-    title: 'Jeda Riwayat Karier (Career Break)',
+    title: 'Jeda Riwayat Kerja (> 1 Tahun)',
     severity: 'LOW',
     defaultDesc: 'Terdeteksi kesenjangan waktu tanpa riwayat kerja aktif lebih dari 12 bulan.',
     defaultAction: 'Tanyakan secara santun aktivitas pengembangan kompetensi, studi lanjutan, atau proyek independen selama masa jeda tersebut.',
   },
   PDF_MICRO_IMAGE: {
-    title: 'Deteksi Elemen Grafis Mikro (Micro-Image / Marker)',
+    title: 'Deteksi Pola Garis/Bawaan Desain CV',
     severity: 'MEDIUM',
     defaultDesc: 'Berkas PDF memuat gambar berukuran sangat kecil (<= 2x2 piksel). Umumnya berupa ornamen desain dari pembuat CV (Canva, Word, Figma) seperti pola garis/bayangan latar berulang, atau sisa marker template.',
     defaultAction: 'Periksa tampilan visual CV. Jika tata letak terbaca normal dan bersih, temuan ini dapat diabaikan karena merupakan bawaan software ekspor PDF.',
@@ -712,10 +712,10 @@ export default function CandidateDetailPage() {
     } else {
       return {
         isTemplate: true,
-        summary: 'Berkas kandidat belum dievaluasi. Jalankan analisis AI untuk memicu ekstraksi kompetensi dan perhitungan skor 4D.',
+        summary: 'Berkas kandidat belum dievaluasi. Jalankan analisis AI untuk memicu ekstraksi kompetensi dan penilaian kriteria.',
         strengths: ['Menunggu hasil ekstraksi.'],
         risks: 'Menunggu audit integritas berkas.',
-        recommendation: 'Jalankan analisis AI untuk mengevaluasi dossier ini.',
+        recommendation: 'Jalankan analisis AI untuk mengevaluasi berkas ini.',
       };
     }
   }, [
@@ -744,7 +744,7 @@ export default function CandidateDetailPage() {
           !
         </div>
         <div>
-          <h3 className="text-base font-extrabold text-primary-black">Dossier Tidak Dapat Dimuat</h3>
+          <h3 className="text-base font-extrabold text-primary-black">Data Pelamar Tidak Dapat Dimuat</h3>
           <p className="text-xs text-primary-slate-600 mt-1">{loadError || 'Data kandidat tidak tersedia.'}</p>
         </div>
         <button
@@ -923,8 +923,8 @@ export default function CandidateDetailPage() {
           {/* TAB NAVIGATION BAR */}
           <div className="mt-4 flex items-center gap-1 border-b border-primary-border-100 pt-1 overflow-x-auto scrollbar-none sticky top-16 z-20 bg-white">
             {[
-              { key: 'summary', Icon: Sparkles, label: 'Penjelasan & Evaluasi AI' },
-              { key: 'graph', Icon: GitBranch, label: 'Evidence Graph Flow' },
+              { key: 'summary', Icon: Sparkles, label: 'Ringkasan Evaluasi AI' },
+              { key: 'graph', Icon: GitBranch, label: 'Penelusuran Bukti CV' },
               { key: 'cv', Icon: FileText, label: 'Dokumen CV / Resume' },
               { key: 'schedule', Icon: Calendar, label: isApproved ? 'Jadwal Wawancara (Terkunci)' : 'Jadwalkan Wawancara' },
             ].map(({ key, Icon, label }) => (
@@ -966,11 +966,11 @@ export default function CandidateDetailPage() {
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary-info" />
                     <h4 className="text-xs font-bold uppercase tracking-wider text-primary-slate-900">
-                      Rasional Evaluasi {aiExplanation.isTemplate ? '(Template Kategori Rekomendasi)' : '(Dari Hasil Penyaringan Backend)'}
+                      Rasional Evaluasi {aiExplanation.isTemplate ? '(Kategori Rekomendasi)' : '(Penilaian Sistem)'}
                     </h4>
                   </div>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-primary-info font-semibold border border-primary-info-border">
-                    {aiExplanation.isTemplate ? 'TEMPLATE' : 'BACKEND RATIONALE'}
+                    {aiExplanation.isTemplate ? 'TEMPLATE' : 'ANALISIS SISTEM'}
                   </span>
                 </div>
 
@@ -1145,11 +1145,11 @@ export default function CandidateDetailPage() {
                     <div className="flex items-center gap-2">
                       <ShieldAlert className="w-4 h-4 text-rose-600" />
                       <h4 className="text-xs font-bold text-rose-800 uppercase tracking-wider">
-                        Peringatan Anomali &amp; Manipulasi Dokumen ({resolvedAnomalies.length})
+                        Peringatan Pemeriksaan Berkas ({resolvedAnomalies.length})
                       </h4>
                     </div>
                     <span className="text-[11px] text-primary-slate-500 font-medium">
-                      Perlu Klarifikasi HR (HITL)
+                      Perlu Tinjauan Manual HR
                     </span>
                   </div>
 
@@ -1230,7 +1230,7 @@ export default function CandidateDetailPage() {
                     className="px-3.5 py-2.5 bg-primary-info-soft hover:bg-primary-info-border text-primary-info font-semibold text-xs rounded-xl border border-primary-info-border transition-colors flex items-center gap-1.5"
                   >
                     <GitBranch className="w-3.5 h-3.5 text-primary-info" />
-                    <span>Evidence Graph Flow</span>
+                    <span>Penelusuran Bukti CV</span>
                   </button>
                   <button
                     type="button"
@@ -1250,13 +1250,13 @@ export default function CandidateDetailPage() {
                         : !canReview && !isApproved
                         ? `Role ${roleLabel()} tidak berwenang mereview keputusan`
                         : isQuarantined
-                        ? 'Kandidat dalam karantina keamanan — tidak dapat dijadwalkan'
+                        ? 'Kandidat dalam verifikasi keamanan — tidak dapat dijadwalkan'
                         : undefined
                     }
                     className="px-4 py-2.5 bg-primary-info hover:bg-primary-info-dark text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <Calendar className="w-3.5 h-3.5 text-white" />
-                    <span>{isApproved ? 'Lihat Jadwal Wawancara' : 'Approve & Schedule'}</span>
+                    <span>{isApproved ? 'Lihat Jadwal Wawancara' : 'Loloskan & Jadwalkan'}</span>
                   </button>
                   <button
                     type="button"
@@ -1271,7 +1271,7 @@ export default function CandidateDetailPage() {
                     }
                     className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs rounded-xl border border-rose-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Reject
+                    Tolak Pelamar
                   </button>
                 </div>
               </div>
@@ -1361,7 +1361,7 @@ export default function CandidateDetailPage() {
                 <div>
                   <h4 className="text-sm font-bold text-primary-slate-900 flex items-center gap-2">
                     <GitBranch className="w-4 h-4 text-primary-info" />
-                    <span>Interactive Evidence Graph &bull; Grounding Substring Guard</span>
+                    <span>Penelusuran Bukti CV Asli</span>
                   </h4>
                   <p className="text-[11px] text-primary-slate-600 mt-0.5">
                     Menghubungkan klaim keahlian kandidat langsung ke kutipan kalimat asli resume di database dan audit portofolio GitHub.

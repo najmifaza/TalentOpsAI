@@ -2,10 +2,10 @@ import hashlib
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, BackgroundTasks, Query
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text, bindparam
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,7 +48,16 @@ STATUS_LABELS = {
     "REQUEST_INFO": "Menunggu Informasi Tambahan",
     "OVERRIDE_REJECT": "Tidak Dilanjutkan",
     "REJECT_CONFIRMED": "Tidak Dilanjutkan",
+    "hire": "Diterima (Hired)",
+    "reject": "Tidak Lolos Wawancara (Rejected)",
 }
+
+
+class InterviewScorecardRequest(BaseModel):
+    interviewer_id: Optional[int] = None
+    feedback_notes: Optional[str] = None
+    recommendation: Literal["hire", "reject"]
+    technical_score: float = Field(..., ge=0, le=100)
 
 
 async def _sync_calendar_booking(
@@ -329,6 +338,31 @@ async def get_candidate_dossier(
     )
     assessments = [dict(ass) for ass in ass_res.mappings()]
 
+    # Fetch scorecards
+    sc_res = await db.execute(
+        text("""
+            SELECT s.id, s.interviewer_id, u.username as interviewer_name,
+                   s.feedback_notes, s.recommendation, s.technical_score, s.created_at
+            FROM interview_scorecards s
+            JOIN users u ON s.interviewer_id = u.id
+            WHERE s.candidate_id = :id
+            ORDER BY s.id DESC
+        """),
+        {"id": candidate_id},
+    )
+    scorecards = [
+        {
+            "id": r["id"],
+            "interviewer_id": r["interviewer_id"],
+            "interviewer_name": r["interviewer_name"],
+            "feedback_notes": r["feedback_notes"],
+            "recommendation": r["recommendation"],
+            "technical_score": float(r["technical_score"]),
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+        }
+        for r in sc_res.mappings()
+    ]
+
     # Fetch interview slot if already booked or scheduled
     slot_res = await db.execute(
         text("""
@@ -406,6 +440,7 @@ async def get_candidate_dossier(
         "anomalies": anomalies,
         "evidence": evidence,
         "assessments": assessments,
+        "scorecards": scorecards,
         "scheduled_interview": scheduled_interview,
     }
 
@@ -892,6 +927,129 @@ async def review_candidate(
         "new_candidate_status": next_status,
         "booked_slot_id": slot_id if decision == "APPROVED_DISPATCH" else None,
         "notifications": notifications,
+    }
+
+
+@router.post("/{candidate_id}/interview-scorecard")
+async def submit_interview_scorecard(
+    candidate_id: int,
+    payload: InterviewScorecardRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
+):
+    """
+    Submits post-interview technical evaluation scorecard and transitions candidate status.
+    Updates candidate status to 'hired' or 'rejected' based on final recommendation.
+    """
+    # 1. Authoritative reviewer/interviewer determination
+    auth_user_id = int(current_user["id"]) if isinstance(current_user, dict) and current_user.get("id") else 1
+    interviewer_id = payload.interviewer_id or auth_user_id
+
+    # 2. Verify interviewer exists
+    user_res = await db.execute(
+        text("SELECT id, role, username FROM users WHERE id = :uid"),
+        {"uid": interviewer_id},
+    )
+    user_row = user_res.first()
+    if not user_row:
+        raise HTTPException(status_code=404, detail="INTERVIEWER_USER_NOT_FOUND")
+
+    # 3. Lock candidate row
+    cand_res = await db.execute(
+        text("""
+            SELECT id, job_id, masked_identifier, status, is_deleted, version,
+                   encrypted_email, encrypted_dek
+            FROM candidates
+            WHERE id = :cid FOR UPDATE
+        """),
+        {"cid": candidate_id},
+    )
+    cand = cand_res.mappings().first()
+    if not cand or cand["is_deleted"]:
+        raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_DELETED")
+
+    # 4. Map recommendation to candidate status
+    target_status = "hired" if payload.recommendation == "hire" else "rejected"
+
+    # 5. Insert scorecard
+    scorecard_insert = await db.execute(
+        text("""
+            INSERT INTO interview_scorecards (
+                candidate_id, interviewer_id, feedback_notes,
+                recommendation, technical_score
+            ) VALUES (
+                :cid, :uid, :notes, :rec, :score
+            )
+        """),
+        {
+            "cid": candidate_id,
+            "uid": interviewer_id,
+            "notes": payload.feedback_notes,
+            "rec": payload.recommendation,
+            "score": payload.technical_score,
+        },
+    )
+    scorecard_id = getattr(scorecard_insert, "lastrowid", None)
+
+    # 6. Update candidate status
+    await db.execute(
+        text("""
+            UPDATE candidates
+            SET status = :st,
+                version = version + 1
+            WHERE id = :cid
+        """),
+        {"st": target_status, "cid": candidate_id},
+    )
+
+    # 7. Record to human_reviews audit trail (compatible with review gatekeeper history)
+    review_decision = "APPROVED_DISPATCH" if payload.recommendation == "hire" else "REJECT_CONFIRMED"
+    await db.execute(
+        text("""
+            INSERT INTO human_reviews (
+                candidate_id, reviewer_id, decision, notes, version
+            ) VALUES (
+                :cid, :rid, :dec, :notes, :ver
+            )
+        """),
+        {
+            "cid": candidate_id,
+            "rid": interviewer_id,
+            "dec": review_decision,
+            "notes": f"Scorecard: score={payload.technical_score:.2f}, recommendation={payload.recommendation}. Notes: {payload.feedback_notes or '-'}",
+            "ver": (cand["version"] or 1),
+        },
+    )
+
+    await db.commit()
+
+    # 8. Post-commit notifications (best-effort)
+    job_res = await db.execute(
+        text("SELECT title FROM job_descriptions WHERE id = :jid"),
+        {"jid": cand["job_id"]},
+    )
+    job_row = job_res.mappings().first()
+    job_title = job_row["title"] if job_row else "Posisi Terkait"
+
+    email_notification = await _notify_candidate_decision(
+        candidate=dict(cand),
+        job_title=job_title,
+        decision=payload.recommendation,
+        slot_id=None,
+        notes=payload.feedback_notes,
+    )
+
+    return {
+        "status": "success",
+        "scorecard_id": scorecard_id,
+        "candidate_id": candidate_id,
+        "masked_identifier": cand["masked_identifier"],
+        "interviewer_id": interviewer_id,
+        "recommendation": payload.recommendation,
+        "technical_score": payload.technical_score,
+        "feedback_notes": payload.feedback_notes,
+        "new_candidate_status": target_status,
+        "notifications": {"email": email_notification},
     }
 
 

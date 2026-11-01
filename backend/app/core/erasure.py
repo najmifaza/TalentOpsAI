@@ -72,6 +72,7 @@ async def execute_talentops_erasure(
     # 2. Clean candidate evidence & assessments
     await db.execute(text("DELETE FROM candidate_evidence WHERE candidate_id = :id"), {"id": candidate_id})
     await db.execute(text("DELETE FROM candidate_assessments WHERE candidate_id = :id"), {"id": candidate_id})
+    await db.execute(text("DELETE FROM interview_scorecards WHERE candidate_id = :id"), {"id": candidate_id})
 
     # 3. Release any tentative interview slot held by candidate
     await db.execute(

@@ -11,7 +11,11 @@ import {
   ArrowLeft,
   Sparkles,
   RefreshCw,
-  Cpu
+  Cpu,
+  Video,
+  MapPin,
+  ExternalLink,
+  UserCheck
 } from 'lucide-react';
 import { recLabel } from '../lib/labels';
 import { formatDateTime } from '../lib/format';
@@ -33,6 +37,16 @@ const RISK_LABELS = {
 
 const confidenceLabel = (key) => CONFIDENCE_LABELS[key] || key || '—';
 const riskLabel = (key) => RISK_LABELS[key] || key || '—';
+
+const safeUrl = (u) => {
+  if (!u || typeof u !== 'string') return null;
+  try {
+    const parsed = new URL(u);
+    return ['http:', 'https:'].includes(parsed.protocol) ? u : null;
+  } catch {
+    return null;
+  }
+};
 
 
 export default function ApplicationTracker({ initialToken = '', onBackToPortal }) {
@@ -84,6 +98,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
           recommendation: data.recommendation,
           submitted_at: data.submitted_at,
           assessment: data.assessment || null,
+          interview: data.interview || data.scheduled_interview || null,
           source: 'LIVE_DATABASE'
         });
         setLastChecked(new Date().toLocaleTimeString('id-ID'));
@@ -142,28 +157,28 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
         id: 2,
         title: 'Audit Integritas Berkas',
         desc: 'Pemeriksaan berkas rusak, teks tak terlihat, dan instruksi tersembunyi',
-        done: ['analyzing', 'in_review', 'waiting_approval', 'interview_scheduled', 'shortlisted'].includes(status),
+        done: ['analyzing', 'in_review', 'waiting_approval', 'interview_scheduled', 'approved', 'shortlisted'].includes(status),
         current: status === 'queued',
       },
       {
         id: 3,
         title: 'Ekstraksi Keahlian & Validasi Bukti Resume',
         desc: 'Pencocokan kompetensi dengan kutipan teks asli dokumen resume',
-        done: ['waiting_approval', 'interview_scheduled', 'shortlisted'].includes(status),
+        done: ['waiting_approval', 'interview_scheduled', 'approved', 'shortlisted'].includes(status),
         current: ['analyzing', 'in_review'].includes(status),
       },
       {
         id: 4,
         title: 'Evaluasi 4 Dimensi & Audit Portofolio',
         desc: 'Keahlian inti, pengalaman kerja, pendidikan, dan portofolio dinilai terpisah lalu digabung dengan bobot lowongan',
-        done: ['waiting_approval', 'interview_scheduled', 'shortlisted'].includes(status),
+        done: ['waiting_approval', 'interview_scheduled', 'approved', 'shortlisted'].includes(status),
         current: false,
       },
       {
         id: 5,
         title: 'Keputusan Penyaringan & Peninjauan Tim HR',
         desc: 'Rekomendasi otomatis & reservasi kalender wawancara',
-        done: ['interview_scheduled', 'shortlisted'].includes(status),
+        done: ['interview_scheduled', 'approved', 'shortlisted'].includes(status),
         current: ['waiting_approval'].includes(status),
       }
     ];
@@ -194,6 +209,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
           </span>
         );
       case 'interview_scheduled':
+      case 'approved':
       case 'shortlisted':
         return (
           <span className="px-3 py-1 rounded-full text-xs font-jkt font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
@@ -423,6 +439,142 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
               ))}
             </div>
           </div>
+
+          {/* Interview Schedule Card if Available */}
+          {trackingData.interview && (
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50/80 via-white to-primary-slate-50 border border-emerald-200 shadow-xs space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-emerald-600 text-white">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-950">
+                      Informasi Jadwal Wawancara
+                    </h4>
+                    <span className="text-[10px] text-emerald-700 font-medium">
+                      Undangan sesi wawancara resmi bersama tim penilai
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase tracking-wide">
+                  {trackingData.interview.status ? `Status: ${trackingData.interview.status}` : 'Terkonfirmasi'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                {/* Tanggal & Jam */}
+                <div className="p-3 rounded-xl bg-white border border-emerald-100/80 space-y-1 shadow-xs">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-primary-slate-500 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                    Waktu Pelaksanaan
+                  </span>
+                  <div className="font-semibold text-primary-black">
+                    {trackingData.interview.start_time ? (
+                      <>
+                        <div>
+                          {new Date(trackingData.interview.start_time).toLocaleDateString('id-ID', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            timeZone: 'Asia/Jakarta'
+                          })}
+                        </div>
+                        <div className="text-primary-slate-600 font-normal text-[11px] mt-0.5">
+                          {new Date(trackingData.interview.start_time).toLocaleTimeString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            timeZone: 'Asia/Jakarta'
+                          })}
+                          {trackingData.interview.end_time && (
+                            <> - {new Date(trackingData.interview.end_time).toLocaleTimeString('id-ID', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              timeZone: 'Asia/Jakarta'
+                            })}</>
+                          )} WIB
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-primary-slate-500">
+                        {trackingData.interview.date || '-'} {trackingData.interview.time ? `(${trackingData.interview.time})` : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pewawancara / Agenda */}
+                <div className="p-3 rounded-xl bg-white border border-emerald-100/80 space-y-1 shadow-xs">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-primary-slate-500 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    Pewawancara & Agenda
+                  </span>
+                  <div className="font-semibold text-primary-black">
+                    {trackingData.interview.interviewer_name || 'Tim HR & Technical Lead'}
+                  </div>
+                  <div className="text-primary-slate-600 text-[11px]">
+                    {trackingData.interview.agenda || trackingData.interview.notes || 'Wawancara Teknis & Verifikasi Portofolio'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tautan Google Meet / Lokasi */}
+              {(trackingData.interview.meet_url || trackingData.interview.location || trackingData.interview.export_google_url) && (
+                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-emerald-100/70">
+                  <div className="flex items-center gap-2 text-xs text-primary-slate-700 min-w-0">
+                    {trackingData.interview.meet_url ? (
+                      <Video className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                    )}
+                    <span className="truncate">
+                      <strong className="text-primary-black">Lokasi / Tautan: </strong>
+                      {trackingData.interview.meet_url ? (
+                        <a
+                          href={safeUrl(trackingData.interview.meet_url) || '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-700 underline font-medium hover:text-emerald-800 ml-1"
+                        >
+                          {trackingData.interview.meet_url}
+                        </a>
+                      ) : (
+                        <span className="ml-1">{trackingData.interview.location || 'Online via Google Meet'}</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {trackingData.interview.meet_url && safeUrl(trackingData.interview.meet_url) && (
+                      <a
+                        href={safeUrl(trackingData.interview.meet_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                      >
+                        <Video className="w-3.5 h-3.5" />
+                        <span>Gabung Rapat</span>
+                        <ExternalLink className="w-3 h-3 ml-0.5" />
+                      </a>
+                    )}
+                    {trackingData.interview.export_google_url && safeUrl(trackingData.interview.export_google_url) && (
+                      <a
+                        href={safeUrl(trackingData.interview.export_google_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 rounded-full bg-primary-black hover:bg-primary-blue text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                      >
+                        <Calendar className="w-3.5 h-3.5 text-primary-orange" />
+                        <span>Simpan Kalender</span>
+                        <ExternalLink className="w-3 h-3 ml-0.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Assessment Breakdown: skor per dimensi + alasan keputusan.
               Backend hanya mengirim ini setelah penyaringan benar-benar berjalan

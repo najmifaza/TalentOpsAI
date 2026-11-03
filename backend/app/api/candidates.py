@@ -1069,6 +1069,21 @@ async def submit_interview_scorecard(
     if cand["status"] != "approved":
         raise HTTPException(status_code=422, detail="CANDIDATE_NOT_IN_APPROVED_STATUS")
 
+    # 3b. Verify interviewer assignment against booked slot if present
+    slot_res = await db.execute(
+        text("SELECT id, interviewer_id FROM interview_slots WHERE candidate_id = :cid AND status = 'booked' LIMIT 1"),
+        {"cid": candidate_id},
+    )
+    slot = slot_res.mappings().first()
+    if slot and payload.interviewer_id:
+        slot_interviewer_id = slot.get("interviewer_id") if hasattr(slot, "get") else getattr(slot, "interviewer_id", None)
+        user_role = current_user.get("role") if isinstance(current_user, dict) else getattr(current_user, "role", None)
+        if payload.interviewer_id != slot_interviewer_id and user_role != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="INTERVIEWER_MISMATCH: only assigned interviewer or admin can submit scorecard",
+            )
+
     # 4. Map recommendation to candidate status
     target_status = "hired" if payload.recommendation == "hire" else "rejected"
 

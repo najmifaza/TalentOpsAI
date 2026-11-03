@@ -37,7 +37,11 @@ from app.core.file_parser import (
 from app.core.erasure import execute_talentops_erasure
 from app.core.broadcaster import sse_broadcaster
 from app.core.email import email_service
-from app.core.email_templates import interview_scheduled, application_status_update
+from app.core.email_templates import (
+    interview_scheduled,
+    application_status_update,
+    request_additional_info,
+)
 from app.adapters.calendar import mock_calendar_adapter
 
 logger = logging.getLogger(__name__)
@@ -51,6 +55,11 @@ STATUS_LABELS = {
     "hire": "Diterima (Hired)",
     "reject": "Tidak Lolos Wawancara (Rejected)",
 }
+
+
+class ResubmitInfoRequest(BaseModel):
+    tracking_token: str
+    additional_info: str
 
 
 class InterviewScorecardRequest(BaseModel):
@@ -183,6 +192,12 @@ async def _notify_candidate_decision(
             start_time=start_str,
             end_time=end_str,
             meeting_note=notes or "",
+        )
+    elif decision == "REQUEST_INFO":
+        subject, html, text_body = request_additional_info(
+            masked_identifier=masked,
+            job_title=job_title,
+            note=notes or "",
         )
     else:
         subject, html, text_body = application_status_update(
@@ -927,6 +942,90 @@ async def review_candidate(
         "new_candidate_status": next_status,
         "booked_slot_id": slot_id if decision == "APPROVED_DISPATCH" else None,
         "notifications": notifications,
+    }
+
+
+@router.post("/{candidate_id}/resubmit")
+async def resubmit_candidate_info(
+    candidate_id: int,
+    payload: ResubmitInfoRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Public candidate resubmission endpoint:
+    - Authenticates via secret tracking_token.
+    - Requires candidate to be in 'request_info' status.
+    - Transitions candidate back to 'waiting_approval'.
+    - Appends an audit record to human_reviews with decision='RESUBMIT'.
+    - Returns { status: 'resubmitted', masked_identifier }.
+    """
+    cand_res = await db.execute(
+        text("""
+            SELECT id, masked_identifier, tracking_token, status, version, is_deleted
+            FROM candidates
+            WHERE id = :cid FOR UPDATE
+        """),
+        {"cid": candidate_id},
+    )
+    cand = cand_res.mappings().first()
+    if not cand or cand["is_deleted"]:
+        raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_DELETED")
+
+    if cand["tracking_token"] != payload.tracking_token:
+        raise HTTPException(status_code=403, detail="INVALID_TRACKING_TOKEN: Token pelacak tidak cocok.")
+
+    if cand["status"] != "request_info":
+        raise HTTPException(
+            status_code=400,
+            detail=f"INVALID_STATUS_FOR_RESUBMISSION: Kandidat berstatus '{cand['status']}', hanya status 'request_info' yang dapat mengirimkan informasi tambahan.",
+        )
+
+    # Resolve reviewer_id: attribute to last human reviewer or fallback to active user
+    rev_res = await db.execute(
+        text("SELECT reviewer_id FROM human_reviews WHERE candidate_id = :cid ORDER BY id DESC LIMIT 1"),
+        {"cid": candidate_id},
+    )
+    last_rev = rev_res.mappings().first()
+    reviewer_id = last_rev["reviewer_id"] if last_rev and last_rev.get("reviewer_id") else None
+
+    if not reviewer_id:
+        user_res = await db.execute(text("SELECT id FROM users ORDER BY id ASC LIMIT 1"))
+        user_row = user_res.mappings().first()
+        reviewer_id = user_row["id"] if user_row else 1
+
+    # Update candidate status back to waiting_approval
+    await db.execute(
+        text("""
+            UPDATE candidates
+            SET status = 'waiting_approval',
+                version = version + 1
+            WHERE id = :cid
+        """),
+        {"cid": candidate_id},
+    )
+
+    # Insert human review record for resubmit
+    await db.execute(
+        text("""
+            INSERT INTO human_reviews (
+                candidate_id, reviewer_id, decision, notes, version
+            ) VALUES (
+                :cid, :rid, 'RESUBMIT', :notes, :ver
+            )
+        """),
+        {
+            "cid": candidate_id,
+            "rid": reviewer_id,
+            "notes": payload.additional_info,
+            "ver": (cand["version"] or 1) + 1,
+        },
+    )
+
+    await db.commit()
+
+    return {
+        "status": "resubmitted",
+        "masked_identifier": cand["masked_identifier"],
     }
 
 

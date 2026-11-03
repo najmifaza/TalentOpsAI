@@ -16,7 +16,7 @@
    - _Focus Area:_ Enterprise & Industry (AI Recruitment Agent)
    - _Deliverables:_ Proposal 15 Halaman + Video Demo 3–5 Menit + Live Interface & Repo
 
-**Document Version:** 2.6.0 (Universal Recruitment Architecture: Dynamic Taxonomies, Non-IT Adaptive Scoring, and Domain-Agnostic Flow)  
+**Document Version:** 2.7.0 (Security & Lifecycle Hardening: Interview Scorecard, Brute-Force Protection, JWT Blacklist, Slot CRUD, Resubmit Flow)  
 **Status:** Approved for Implementation & Competition Submission  
 **Authors:** Tim Pengembang TalentOps AI (System Architecture, AI Engineering, Full-Stack Web & Compliance)
 
@@ -36,6 +36,7 @@
 | **v2.5.2** | 2026-10-17 | Core Team | **Implementation Consistency Lock:** <br>1. Harmonisasi urutan kunci transaksional baku (`users` -> `interview_slots` -> `candidates`) pada seluruh alur termasuk `POST /api/candidates/{id}/review`.<br>2. Integrasi endpoint `DELETE /api/candidates/{id}` ke service terpadu `talentops_erasure`.<br>3. Penegasan soft deletion kriptografis (`is_deleted = TRUE` tanpa physical delete).<br>4. Perapian visual diagram arsitektur Bab 3.1. |
 | **v2.5.3** | 2026-10-18 | Core Team | **Production Deployment & Driver Compatibility Hardening:** <br>1. Integrasi Vercel Edge Serverless Proxy Rewrite (`/api/(.*)` -> VPS Backend `https://api.talentops.ai.id`) untuk mengeliminasi latensi CORS preflight pada domain produksi `https://talentops.ai.id`.<br>2. Resolusi kompatibilitas driver biner `aiomysql` + `pymysql<=1.1.1` dengan runtime adapter `escape_bytes_prefixed` untuk penanganan parameter biner AES-256-GCM (`VARBINARY(255)`).<br>3. Penegakan format baku RFC 4122 UUIDv4 36-karakter untuk `tracking_token` dengan mekanisme client auto-healing.<br>4. Resiliensi modal Live SSE Agent Trace via Watchdog Timer 1.5s dengan auto-fallback deterministik.<br>5. Integrasi langsung tata kelola privasi UU PDP No. 27/2022 pada Public Career Portal (`/careers/apply` & `/careers/track`) dan Candidate Dossier modal. |
 | **v2.5.4** | 2026-10-22 | Core Team | **Full Codebase Synchronization & Portal Expansion:** <br>1. Integrasi tabel `blog_posts` (13 tabel inti) dan RBAC endpoint Blog CMS (`/api/blog`) serta portal publik artikel.<br>2. Harmonisasi skema `job_descriptions` (+12 kolom profil publik migrasi 005), `candidates` (`masked_name_hint` migrasi 004), dan `candidate_evidence` (`matched_requirement`, `verified` migrasi 003).<br>3. Sinkronisasi alur Dropzone HR dengan form `applicant_meta` (nama & email asli) dan dictionary PII sanitization.<br>4. Dokumentasi endpoint OAuth & status kalender (`/api/calendar/*`).<br>5. Transparansi status flag `DEMO_PURGE_ENABLED=False` (default nonaktif demi integritas dataset golden penjurian) dan penempatan banner data sintetis di dashboard. |
+| **v2.7.0** | 2026-11-03 | Core Team | **Security & Lifecycle Hardening:** <br>1. Tambah tabel `interview_scorecards` (tabel ke-14) dengan `UNIQUE(candidate_id)` constraint. <br>2. Status kandidat diperluas: +`hired`. <br>3. `human_reviews.decision` diperluas: +`RESUBMIT` untuk flow resubmit kandidat `request_info`. <br>4. Endpoint baru: `POST /auth/logout`, `POST /slots`, `DELETE /slots/{id}`, `POST /candidates/{id}/resubmit`, `POST /candidates/{id}/interview-scorecard`. <br>5. JWT in-memory token blacklist dengan TTL cleanup (`[MVP]`). <br>6. Brute-force login protection: lock 15 menit setelah 5x gagal. <br>7. Koreksi hash password: PBKDF2-HMAC-SHA256 (bukan Argon2id). <br>8. Pagination `limit`/`offset` pada `GET /audit-trail`, `GET /slots`, `GET /slots/available`. <br>9. Validasi `interviewer_id` vs assigned slot pada scorecard submission. |
 | **v2.6.0** | 2026-10-31 | Core Team | **Universal Recruitment Expansion & Domain-Agnostic Engine:** <br>1. Transformasi sistem dari IT-only menjadi Universal Domain Rekrutmen (Finance, HR, Legal, Marketing, Sales, Medis, dll).<br>2. Integrasi kolom `is_tech_role` (TINYINT) dan kamus sinonim dinamis `competency_taxonomies` (JSON) pada `job_descriptions` (Migrasi 007).<br>3. Auto-detection domain pekerjaan (`infer_is_tech_role`) dan generator taksonomi dinamis per lowongan (`generate_dynamic_taxonomies`).<br>4. Scoring adaptif non-IT: portofolio dinilai dari tautan universal (Drive, Notion, Behance, LinkedIn) tanpa penalti 0 GitHub; pengakuan jenjang pendidikan (S1, S2, D3) tanpa pemaksaan rumpun komputer.<br>5. Ekspansi metrik kuantitatif ke domain bisnis & operasional (`omzet`, `revenue`, `closing`, `leads`, `sla`, `turnover`, `kepatuhan`, dll).<br>6. Generator skenario wawancara adaptif kontekstual sesuai posisi jabatan pelamar.<br>7. Kondisional input frontend: Input GitHub otomatis disembunyikan pada formulir pelamar posisi non-IT (`JobApplyPage` & `CareerPortal`), dan node audit GitHub disembunyikan pada `EvidenceGraph`. |
 
 ---
@@ -84,7 +85,7 @@ Untuk memastikan keberhasilan ganda—menghasilkan **Live Web Demo yang 100% sta
 | **Orkestrator LLM**       | **9router Gateway (Provider: Antigravity, Model: Gemini 3.8)** + **Safe Pre-Cached Fallback Mode**                                                 | Multi-Provider Dynamic Fallback Router dengan failover lintas-region & SLA enterprise ber-DPA    |
 | **Antrean & Asinkronus**  | **100% In-Memory Python Core:** FastAPI `BackgroundTasks` + `asyncio.Queue` (Live SSE Stream) + `cachetools.LRUCache`                              | Redis Cluster HA terdistribusi dengan Celery/ARQ Worker nodes mandiri                            |
 | **Sanitasi PII**          | **High-Performance In-Memory Regex & Rule-Based Sanitizer** (0 MB model overhead, latensi < 20 ms, aman RAM 1 GB)                                  | Microsoft Presidio / Enterprise NER Pipeline terdistribusi dengan Custom Indonesian Entity Model |
-| **Autentikasi Pengguna**  | JWT Stateless Authentication (Role: Admin, Recruiter, Hiring Manager, Compliance Officer)                                                          | SSO SAML 2.0 / OAuth2 Enterprise + MFA (TOTP RFC 6238) + Session Blacklisting                    |
+| **Autentikasi Pengguna**  | JWT Stateless Authentication + In-Memory Token Blacklist (logout/revoke) + Brute-Force Lock (5x gagal = 15 menit) (Role: Admin, Recruiter, Hiring Manager, Compliance Officer)                                                          | SSO SAML 2.0 / OAuth2 Enterprise + MFA (TOTP RFC 6238) + Session Blacklisting                    |
 
 ---
 
@@ -446,7 +447,7 @@ Target evaluasi end-to-end $\le 15.000\text{ ms}$ per berkas:
 
 ---
 
-## 7. SKEMA BASIS DATA RELASIONAL (13 TABEL INTI LIVE DEMO MVP)
+## 7. SKEMA BASIS DATA RELASIONAL (14 TABEL INTI LIVE DEMO MVP)
 
 Skema 3NF MariaDB/InnoDB di bawah ini merupakan fondasi yang diimplementasikan pada **Live Demo MVP** (dengan _Single Default Tenant_ `tenant_id=1`). Skema ini dapat dikembangkan langsung ke 15 tabel multi-tenant penuh pada target arsitektur enterprise `[TARGET]`:
 
@@ -456,7 +457,7 @@ CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL, -- Argon2id
+    password_hash VARCHAR(255) NOT NULL, -- PBKDF2-HMAC-SHA256 (100.000 iterasi)
     role ENUM('admin', 'recruiter', 'hiring_manager', 'compliance_officer') NOT NULL,
     failed_logins INT DEFAULT 0,
     locked_until DATETIME NULL,
@@ -527,7 +528,7 @@ CREATE TABLE candidates (
     unresolved_risk ENUM('LOW', 'MEDIUM', 'HIGH') NULL,
     recommendation ENUM('STRONG_MATCH', 'REVIEW_REQUIRED', 'WEAK_FIT') NULL,
     triage_priority ENUM('HIGH_ATTENTION', 'STANDARD') DEFAULT 'STANDARD',
-    status ENUM('queued', 'analyzing', 'waiting_approval', 'approved', 'rejected', 'request_info', 'failed') DEFAULT 'queued',
+    status ENUM('queued', 'analyzing', 'waiting_approval', 'approved', 'rejected', 'request_info', 'failed', 'hired') DEFAULT 'queued',
     is_deleted BOOLEAN DEFAULT FALSE,
     version INT DEFAULT 1,                  -- Optimistic Locking
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -635,7 +636,7 @@ CREATE TABLE human_reviews (
     id INT AUTO_INCREMENT PRIMARY KEY,
     candidate_id INT NOT NULL,
     reviewer_id INT NOT NULL,
-    decision ENUM('APPROVED_DISPATCH', 'REQUEST_INFO', 'OVERRIDE_REJECT', 'REJECT_CONFIRMED') NOT NULL,
+    decision ENUM('APPROVED_DISPATCH', 'REQUEST_INFO', 'OVERRIDE_REJECT', 'REJECT_CONFIRMED', 'RESUBMIT') NOT NULL,
     notes TEXT NULL,
     version INT DEFAULT 1,                  -- Optimistic Locking
     reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -676,6 +677,22 @@ CREATE TABLE blog_posts (
     INDEX idx_blog_category (category),
     INDEX idx_blog_published_created (is_published, created_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 14. Evaluasi Pasca-Wawancara (Interview Scorecard)
+CREATE TABLE interview_scorecards (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    candidate_id INT NOT NULL,
+    interviewer_id INT NOT NULL,
+    feedback_notes TEXT NULL,
+    recommendation ENUM('hire', 'reject') NOT NULL,
+    technical_score DECIMAL(5,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_scorecard_candidate (candidate_id),
+    INDEX idx_scorecard_candidate (candidate_id),
+    INDEX idx_scorecard_interviewer (interviewer_id),
+    FOREIGN KEY (candidate_id) REFERENCES candidates(id) ON DELETE CASCADE,
+    FOREIGN KEY (interviewer_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ---
@@ -714,6 +731,11 @@ CREATE TABLE blog_posts (
 | `/api/candidates/{id}/sse-ticket`     | POST      | Tidak  |       Ya        |           Ya           |         Ya          |         Ya         |
 | `/api/candidates/{id}/trace-stream`   | GET (SSE) | Ticket |     Ticket      |         Ticket         |       Ticket        |       Ticket       |
 | `/api/audit-trail`                    | GET       | Tidak  |      Penuh      | Milik Lowongan Sendiri |        Tidak        |       Penuh        |
+| `/api/auth/logout`                    | POST      | Tidak  |       Ya        |           Ya           |         Ya          |         Ya         |
+| `/api/slots`                          | POST      | Tidak  |       Ya        |           Ya           |         Ya          |       Tidak        |
+| `/api/slots/{id}`                     | DELETE    | Tidak  |       Ya        |           Ya           |         Ya          |       Tidak        |
+| `/api/candidates/{id}/resubmit`       | POST      | Ya (tracking_token) | Tidak | Tidak            |       Tidak        |       Tidak        |
+| `/api/candidates/{id}/interview-scorecard` | POST | Tidak  |       Ya        |           Ya           |         Ya          |       Tidak        |
 
 ### 8.2 Spesifikasi Detail Endpoint Utama
 

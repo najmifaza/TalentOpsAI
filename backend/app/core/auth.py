@@ -4,6 +4,7 @@ import hmac
 import json
 import os
 import time
+import uuid
 from typing import Any, Dict, Optional, Tuple
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -15,6 +16,29 @@ from app.core.database import get_db
 
 # HTTPBearer security scheme for OpenAPI and FastAPI
 security = HTTPBearer(auto_error=False)
+
+# In-memory token blacklist: jti -> exp_timestamp
+_REVOKED_TOKENS: Dict[str, float] = {}
+
+
+def revoke_token(token_jti: str, exp: Optional[int] = None) -> None:
+    """Revokes token by jti until expiry."""
+    if not token_jti:
+        return
+    # ponytail: in-memory dict with TTL cleanup; upgrade to Redis if scaled across workers
+    expiry = float(exp) if exp is not None else time.time() + (settings.JWT_EXPIRE_MINUTES * 60)
+    _REVOKED_TOKENS[token_jti] = expiry
+
+
+def is_token_revoked(token_jti: Optional[str]) -> bool:
+    """Checks if jti is revoked. Cleans up expired entries."""
+    if not token_jti:
+        return False
+    now = time.time()
+    for k, exp in list(_REVOKED_TOKENS.items()):
+        if exp <= now:
+            _REVOKED_TOKENS.pop(k, None)
+    return token_jti in _REVOKED_TOKENS
 
 
 def _b64url_encode(data: bytes) -> str:
@@ -34,6 +58,8 @@ def create_access_token(data: Dict[str, Any], expires_seconds: Optional[int] = N
     exp = int(time.time()) + (expires_seconds if expires_seconds is not None else settings.JWT_EXPIRE_MINUTES * 60)
     payload["exp"] = exp
     payload["iat"] = int(time.time())
+    if "jti" not in payload:
+        payload["jti"] = str(uuid.uuid4())
 
     header = {"alg": settings.JWT_ALGORITHM, "typ": "JWT"}
     h_bytes = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
@@ -85,6 +111,13 @@ def decode_access_token(token: str) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="TOKEN_EXPIRED",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if is_token_revoked(payload.get("jti")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="TOKEN_REVOKED",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

@@ -206,6 +206,39 @@ def application_status_update(masked_identifier: str, job_title: str, status_lab
     return subject, _layout(subject, body), text
 
 
+def request_additional_info(
+    masked_identifier: str,
+    job_title: str,
+    note: str = "",
+) -> Tuple[str, str, str]:
+    """Sent when HR requests additional information from candidate."""
+    subject = f"Permintaan Informasi Tambahan - {job_title}"
+    note_block = (
+        f"<p style=\"margin:16px 0 0;padding:12px;background:#F8FAFC;border-radius:8px;font-size:13px;\">"
+        f"<strong>Catatan Tim Rekruter:</strong><br>{_esc(note)}</p>"
+        if note
+        else ""
+    )
+    body = f"""
+      <p style="margin:0 0 12px;">Halo,</p>
+      <p style="margin:0 0 16px;">Tim rekruter kami membutuhkan informasi tambahan terkait lamaran Anda untuk posisi
+      <strong>{_esc(job_title)}</strong>.</p>
+      <p style="margin:0 0 16px;">
+        Silakan lengkapi atau tanggapi permintaan informasi ini melalui portal pelacakan lamaran menggunakan tracking token Anda.
+      </p>
+      <p style="margin:0;font-size:13px;color:#64748B;">ID Lamaran: <strong>{_esc(masked_identifier)}</strong></p>
+      {note_block}
+    """
+    text = (
+        f"Permintaan Informasi Tambahan - {job_title}\n\n"
+        f"Tim rekruter kami membutuhkan informasi tambahan terkait lamaran Anda untuk posisi {job_title}.\n\n"
+        f"Silakan lengkapi atau tanggapi permintaan informasi ini melalui portal pelacakan lamaran menggunakan tracking token Anda.\n"
+        f"ID Lamaran: {masked_identifier}\n"
+        + (f"\nCatatan Tim Rekruter:\n{note}\n" if note else "")
+    )
+    return subject, _layout(subject, body), text
+
+
 def erasure_confirmation(masked_identifier: str, job_title: str = "") -> Tuple[str, str, str]:
     """Confirms a Right to Erasure request was honoured (UU PDP No. 27/2022)."""
     subject = "Konfirmasi Penghapusan Data Lamaran"

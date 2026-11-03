@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Response
 from pydantic import BaseModel, Field
@@ -13,6 +13,12 @@ from app.adapters.calendar import mock_calendar_adapter
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/slots", tags=["Calendar & Scheduling"])
+
+
+class CreateSlotRequest(BaseModel):
+    interviewer_id: int = Field(..., description="ID pewawancara pemilik slot")
+    start_time: datetime = Field(..., description="Waktu mulai wawancara (ISO8601)")
+    end_time: datetime = Field(..., description="Waktu selesai wawancara (ISO8601)")
 
 
 class ReserveSlotRequest(BaseModel):
@@ -228,3 +234,141 @@ async def reserve_interview_slot(
 
     await db.commit()
     return result
+
+
+@router.post("")
+async def create_interview_slot(
+    payload: CreateSlotRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
+):
+    """
+    Membuat slot wawancara baru berstatus 'available'.
+    Validasi rentang waktu, eksistensi interviewer, dan pencegahan overlap jadwal.
+    """
+    start_dt = payload.start_time
+    end_dt = payload.end_time
+
+    if start_dt.tzinfo is not None:
+        start_dt = start_dt.astimezone(timezone.utc).replace(tzinfo=None)
+    if end_dt.tzinfo is not None:
+        end_dt = end_dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+    if end_dt <= start_dt:
+        raise HTTPException(
+            status_code=400,
+            detail="INVALID_TIME_RANGE: end_time harus lebih besar dari start_time",
+        )
+
+    # Validasi interviewer ada di tabel users
+    user_res = await db.execute(
+        text("SELECT id FROM users WHERE id = :uid"),
+        {"uid": payload.interviewer_id},
+    )
+    if not user_res.first():
+        raise HTTPException(
+            status_code=404,
+            detail="INTERVIEWER_NOT_FOUND: Pewawancara tidak ditemukan di tabel users",
+        )
+
+    # Cek overlap: tidak boleh ada slot lain untuk interviewer_id yang sama dengan waktu overlap (hanya booked/tentative)
+    overlap_res = await db.execute(
+        text("""
+            SELECT id FROM interview_slots
+            WHERE interviewer_id = :interviewer_id
+              AND status IN ('tentative', 'booked')
+              AND start_time < :end_time
+              AND end_time > :start_time
+        """),
+        {
+            "interviewer_id": payload.interviewer_id,
+            "start_time": start_dt,
+            "end_time": end_dt,
+        },
+    )
+    if overlap_res.first():
+        raise HTTPException(
+            status_code=409,
+            detail="INTERVIEWER_SCHEDULE_CONFLICT: Slot bertabrakan dengan jadwal wawancara lain untuk interviewer ini",
+        )
+
+    # INSERT ke interview_slots dengan status='available'
+    insert_res = await db.execute(
+        text("""
+            INSERT INTO interview_slots (
+                interviewer_id, start_time, end_time, status, lock_version
+            ) VALUES (
+                :interviewer_id, :start_time, :end_time, 'available', 0
+            )
+        """),
+        {
+            "interviewer_id": payload.interviewer_id,
+            "start_time": start_dt,
+            "end_time": end_dt,
+        },
+    )
+    slot_id = getattr(insert_res, "lastrowid", None)
+    if not slot_id:
+        fetch_id = await db.execute(
+            text("SELECT id FROM interview_slots WHERE interviewer_id = :uid AND start_time = :st ORDER BY id DESC LIMIT 1"),
+            {"uid": payload.interviewer_id, "st": start_dt},
+        )
+        slot_id = fetch_id.scalar()
+
+    await db.commit()
+
+    return {
+        "id": int(slot_id) if slot_id is not None else None,
+        "interviewer_id": payload.interviewer_id,
+        "candidate_id": None,
+        "start_time": start_dt.isoformat(),
+        "end_time": end_dt.isoformat(),
+        "status": "available",
+    }
+
+
+@router.delete("/{slot_id}")
+async def delete_interview_slot(
+    slot_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager")),
+):
+    """
+    Membatalkan dan menghapus slot wawancara.
+    Jika slot berstatus 'booked', kembalikan status kandidat terkait ke 'waiting_approval'.
+    """
+    slot_res = await db.execute(
+        text("SELECT id, candidate_id, status FROM interview_slots WHERE id = :slot_id"),
+        {"slot_id": slot_id},
+    )
+    slot = slot_res.mappings().first()
+    if not slot:
+        raise HTTPException(
+            status_code=404,
+            detail="INTERVIEW_SLOT_NOT_FOUND: Slot wawancara tidak ditemukan",
+        )
+
+    # Jika slot status='booked': update kandidat terkait kembali ke status='waiting_approval'
+    if slot["status"] == "booked" and slot["candidate_id"]:
+        await db.execute(
+            text("""
+                UPDATE candidates
+                SET status = 'waiting_approval',
+                    version = version + 1
+                WHERE id = :cid
+            """),
+            {"cid": slot["candidate_id"]},
+        )
+
+    # DELETE slot dari interview_slots
+    await db.execute(
+        text("DELETE FROM interview_slots WHERE id = :slot_id"),
+        {"slot_id": slot_id},
+    )
+    await db.commit()
+
+    return {
+        "status": "deleted",
+        "slot_id": slot_id,
+    }
+

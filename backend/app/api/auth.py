@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -45,7 +46,7 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     """
     ident = payload.username.strip()
     query = text("""
-        SELECT id, username, email, password_hash, role, locked_until
+        SELECT id, username, email, password_hash, role, locked_until, failed_logins
         FROM users
         WHERE username = :ident OR email = :ident
     """)
@@ -59,12 +60,74 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    now = datetime.utcnow()
+    locked_until = user.get("locked_until")
+    if locked_until:
+        if isinstance(locked_until, str):
+            try:
+                locked_until = datetime.fromisoformat(locked_until)
+            except ValueError:
+                locked_until = None
+        if locked_until:
+            now_cmp = datetime.now(timezone.utc) if locked_until.tzinfo is not None else now
+            if locked_until > now_cmp:
+                remaining_seconds = max(1, int((locked_until - now_cmp).total_seconds()))
+                remaining_minutes = max(1, (remaining_seconds + 59) // 60)
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=f"ACCOUNT_LOCKED: Akun terkunci. Sisa waktu lock: {remaining_seconds} detik ({remaining_minutes} menit).",
+                    headers={"Retry-After": str(remaining_seconds)},
+                )
+
     if not verify_password(payload.password, user["password_hash"]):
+        now_cmp = datetime.now(timezone.utc) if (locked_until and getattr(locked_until, "tzinfo", None) is not None) else now
+        is_expired_lock = bool(locked_until and locked_until <= now_cmp)
+        current_failed = 0 if is_expired_lock else (user.get("failed_logins") or 0)
+        failed_logins = current_failed + 1
+
+        if failed_logins >= 5:
+            lock_until = now + timedelta(minutes=15)
+            await db.execute(
+                text("""
+                    UPDATE users
+                    SET failed_logins = :failed, locked_until = :locked_until
+                    WHERE id = :user_id
+                """),
+                {
+                    "failed": failed_logins,
+                    "locked_until": lock_until,
+                    "user_id": user["id"],
+                },
+            )
+        else:
+            await db.execute(
+                text("""
+                    UPDATE users
+                    SET failed_logins = :failed, locked_until = NULL
+                    WHERE id = :user_id
+                """),
+                {
+                    "failed": failed_logins,
+                    "user_id": user["id"],
+                },
+            )
+        await db.commit()
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="INVALID_CREDENTIALS",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    await db.execute(
+        text("""
+            UPDATE users
+            SET failed_logins = 0, locked_until = NULL
+            WHERE id = :user_id
+        """),
+        {"user_id": user["id"]},
+    )
+    await db.commit()
 
     token_data = {
         "sub": str(user["id"]),

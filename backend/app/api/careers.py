@@ -419,6 +419,7 @@ async def submit_application(
             subject, html_body, text_body = application_received(
                 masked_identifier=masked_id,
                 job_title=job_title,
+                tracking_token=tracking_token,
             )
             send_result = await email_service.send(email, subject, html_body, text_body)
             notification = {

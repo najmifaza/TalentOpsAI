@@ -102,6 +102,7 @@ const STATUS_LABELS = {
   waiting_approval: 'Menunggu Keputusan',
   approved: 'Disetujui',
   rejected: 'Tidak Dilanjutkan',
+  hired: 'Diterima (Hired)',
   request_info: 'Butuh Klarifikasi',
   failed: 'Gagal Diproses',
 };

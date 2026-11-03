@@ -276,6 +276,17 @@ def test_application_received_template_has_plain_text():
     assert "<" not in text  # plain-text alternative must not carry markup
 
 
+def test_application_received_template_includes_tracking_url_with_token():
+    token = "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+    subject, html, text = application_received("#TK-001122", "Backend Engineer", tracking_token=token)
+    expected_url = f"https://talentops.ai.id/track/{token}"
+    assert expected_url in html
+    assert expected_url in text
+    assert token in html
+    assert token in text
+    assert "<" not in text
+
+
 def test_status_update_template_includes_label():
     subject, html, text = application_status_update(
         "#TK-FFEE00", "Backend Engineer", "Tidak Dilanjutkan", "Terima kasih atas waktu Anda."

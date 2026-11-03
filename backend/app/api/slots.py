@@ -26,6 +26,8 @@ class ReserveSlotRequest(BaseModel):
 async def list_interview_slots(
     status: Optional[str] = Query(None, description="Filter status: available, tentative, booked"),
     interviewer_id: Optional[int] = Query(None, description="Filter berdasarkan ID pewawancara"),
+    limit: int = Query(50, ge=1, le=200, description="Jumlah maksimal slot"),
+    offset: int = Query(0, ge=0, description="Offset paginasi"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
 ):
@@ -35,6 +37,19 @@ async def list_interview_slots(
     """
     await mock_calendar_adapter.release_expired_tentative_slots(db)
     await db.commit()
+
+    count_query = "SELECT COUNT(*) as total FROM interview_slots s WHERE 1=1"
+    count_params = {}
+    if status:
+        count_query += " AND s.status = :status"
+        count_params["status"] = status
+    if interviewer_id is not None:
+        count_query += " AND s.interviewer_id = :interviewer_id"
+        count_params["interviewer_id"] = interviewer_id
+
+    count_res = await db.execute(text(count_query), count_params)
+    total_row = count_res.mappings().first()
+    total = int(total_row["total"]) if total_row else 0
 
     query_str = """
         SELECT s.id, s.interviewer_id, u.username as interviewer_name,
@@ -54,7 +69,9 @@ async def list_interview_slots(
         query_str += " AND s.interviewer_id = :interviewer_id"
         params["interviewer_id"] = interviewer_id
 
-    query_str += " ORDER BY s.start_time ASC LIMIT 100"
+    query_str += " ORDER BY s.start_time ASC LIMIT :limit OFFSET :offset"
+    params["limit"] = limit
+    params["offset"] = offset
 
     res = await db.execute(text(query_str), params)
     slots = []
@@ -102,7 +119,9 @@ async def list_interview_slots(
 
     return {
         "status": "success",
-        "total": len(slots),
+        "total": total,
+        "limit": limit,
+        "offset": offset,
         "data": slots,
         "tag": mock_calendar_adapter.TAG,
     }
@@ -111,6 +130,8 @@ async def list_interview_slots(
 @router.get("/available")
 async def get_available_slots(
     interviewer_id: Optional[int] = Query(None, description="Filter berdasarkan ID pewawancara"),
+    limit: int = Query(50, ge=1, le=200, description="Jumlah maksimal slot"),
+    offset: int = Query(0, ge=0, description="Offset paginasi"),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(require_roles("admin", "recruiter", "hiring_manager", "compliance_officer")),
 ):
@@ -122,6 +143,16 @@ async def get_available_slots(
     # Auto-release expired tentative slots
     await mock_calendar_adapter.release_expired_tentative_slots(db)
     await db.commit()
+
+    count_query = "SELECT COUNT(*) as total FROM interview_slots s WHERE s.status = 'available'"
+    count_params = {}
+    if interviewer_id is not None:
+        count_query += " AND s.interviewer_id = :interviewer_id"
+        count_params["interviewer_id"] = interviewer_id
+
+    count_res = await db.execute(text(count_query), count_params)
+    total_row = count_res.mappings().first()
+    total = int(total_row["total"]) if total_row else 0
 
     query_str = """
         SELECT s.id, s.interviewer_id, u.username as interviewer_name,
@@ -135,7 +166,9 @@ async def get_available_slots(
         query_str += " AND s.interviewer_id = :interviewer_id"
         params["interviewer_id"] = interviewer_id
 
-    query_str += " ORDER BY s.start_time ASC LIMIT 50"
+    query_str += " ORDER BY s.start_time ASC LIMIT :limit OFFSET :offset"
+    params["limit"] = limit
+    params["offset"] = offset
 
     res = await db.execute(text(query_str), params)
     slots = []
@@ -152,7 +185,10 @@ async def get_available_slots(
 
     return {
         "status": "success",
-        "total_available": len(slots),
+        "total": total,
+        "total_available": total,
+        "limit": limit,
+        "offset": offset,
         "data": slots,
         "tag": mock_calendar_adapter.TAG,
     }

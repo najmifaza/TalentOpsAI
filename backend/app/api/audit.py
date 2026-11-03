@@ -26,7 +26,36 @@ async def get_system_audit_trail(
     Retrieves tamper-evident append-only audit trail logs.
     Aggregates autonomous agent steps, human review decisions, and PII access/erasure audits.
     """
-    # 1. Fetch Agent Execution Steps
+    # 1. Fetch Total Counts
+    count_params = {}
+    where_cand = ""
+    if candidate_id is not None:
+        where_cand = " WHERE candidate_id = :candidate_id"
+        count_params["candidate_id"] = candidate_id
+
+    agent_cnt_res = await db.execute(text(f"SELECT COUNT(*) as total FROM agent_steps{where_cand}"), count_params)
+    row_agent = agent_cnt_res.mappings().first()
+    total_agent = int(row_agent["total"]) if row_agent else 0
+
+    rev_where = " WHERE r.candidate_id = :candidate_id" if candidate_id is not None else ""
+    rev_cnt_res = await db.execute(
+        text(f"SELECT COUNT(*) as total FROM human_reviews r JOIN candidates c ON r.candidate_id = c.id JOIN users u ON r.reviewer_id = u.id{rev_where}"),
+        count_params,
+    )
+    row_rev = rev_cnt_res.mappings().first()
+    total_rev = int(row_rev["total"]) if row_rev else 0
+
+    pii_where = " WHERE p.candidate_id = :candidate_id" if candidate_id is not None else ""
+    pii_cnt_res = await db.execute(
+        text(f"SELECT COUNT(*) as total FROM pii_access_logs p JOIN users u ON p.user_id = u.id{pii_where}"),
+        count_params,
+    )
+    row_pii = pii_cnt_res.mappings().first()
+    total_pii = int(row_pii["total"]) if row_pii else 0
+
+    total = total_agent + total_rev + total_pii
+
+    # 2. Fetch Agent Execution Steps
     agent_query = """
         SELECT id, run_id, candidate_id, masked_identifier, step_name,
                model_id, thinking_level, status, duration_ms, created_at
@@ -57,7 +86,7 @@ async def get_system_audit_trail(
             "timestamp": r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
         })
 
-    # 2. Fetch Human Review Decisions
+    # 3. Fetch Human Review Decisions
     rev_query = """
         SELECT r.id, r.candidate_id, c.masked_identifier, r.reviewer_id,
                u.username as reviewer_name, r.decision, r.notes, r.reviewed_at
@@ -70,8 +99,9 @@ async def get_system_audit_trail(
         rev_query += " WHERE r.candidate_id = :candidate_id"
         rev_params["candidate_id"] = candidate_id
 
-    rev_query += " ORDER BY r.id DESC LIMIT :limit"
+    rev_query += " ORDER BY r.id DESC LIMIT :limit OFFSET :offset"
     rev_params["limit"] = limit
+    rev_params["offset"] = offset
 
     rev_res = await db.execute(text(rev_query), rev_params)
     review_logs = []
@@ -87,7 +117,7 @@ async def get_system_audit_trail(
             "timestamp": r["reviewed_at"].isoformat() if hasattr(r["reviewed_at"], "isoformat") else str(r["reviewed_at"]),
         })
 
-    # 3. Fetch PII Access / Erasure Logs
+    # 4. Fetch PII Access / Erasure Logs
     pii_query = """
         SELECT p.id, p.user_id, u.username as authorized_user,
                p.candidate_id, p.masked_identifier, p.reason, p.ip_address, p.accessed_at
@@ -99,8 +129,9 @@ async def get_system_audit_trail(
         pii_query += " WHERE p.candidate_id = :candidate_id"
         pii_params["candidate_id"] = candidate_id
 
-    pii_query += " ORDER BY p.id DESC LIMIT :limit"
+    pii_query += " ORDER BY p.id DESC LIMIT :limit OFFSET :offset"
     pii_params["limit"] = limit
+    pii_params["offset"] = offset
 
     pii_res = await db.execute(text(pii_query), pii_params)
     pii_logs = []
@@ -116,12 +147,22 @@ async def get_system_audit_trail(
             "timestamp": r["accessed_at"].isoformat() if hasattr(r["accessed_at"], "isoformat") else str(r["accessed_at"]),
         })
 
+    all_logs = sorted(
+        agent_logs + review_logs + pii_logs,
+        key=lambda x: x.get("timestamp", ""),
+        reverse=True,
+    )
+
     return {
         "status": "success",
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "data": all_logs,
         "summary": {
-            "total_agent_steps": len(agent_logs),
-            "total_human_reviews": len(review_logs),
-            "total_pii_access_logs": len(pii_logs),
+            "total_agent_steps": total_agent,
+            "total_human_reviews": total_rev,
+            "total_pii_access_logs": total_pii,
         },
         "logs": {
             "agent_steps": agent_logs,

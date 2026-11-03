@@ -55,8 +55,74 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
   const [error, setError] = useState(null);
   const [trackingData, setTrackingData] = useState(null);
   const [lastChecked, setLastChecked] = useState(null);
+  const [showErasureModal, setShowErasureModal] = useState(false);
+  const [erasureLoading, setErasureLoading] = useState(false);
+  const [erasureFeedback, setErasureFeedback] = useState(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops.ai.id';
+
+  const handleConfirmErasure = async () => {
+    const raw = (tokenInput || '').trim();
+    if (!raw) {
+      setErasureFeedback({
+        type: 'error',
+        message: 'Token pelacakan tidak valid atau kosong.',
+      });
+      return;
+    }
+
+    setErasureLoading(true);
+    setErasureFeedback(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('tracking_token', raw);
+
+      const res = await fetch(`${API_BASE_URL}/api/careers/withdraw`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res && res.ok) {
+        setErasureFeedback({
+          type: 'success',
+          message: data?.message || 'Berkas lamaran dan data pribadi Anda telah berhasil dihapus secara permanen (Crypto-Shredded) sesuai UU PDP No. 27/2022.',
+        });
+        try {
+          localStorage.removeItem(`talentops_app_${raw.toLowerCase()}`);
+        } catch (_) {}
+        setTrackingData((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'withdrawn',
+                interview: null,
+                assessment: null,
+              }
+            : null
+        );
+      } else {
+        const errorDetail = data?.detail || `Gagal mencabut berkas: server merespons ${res.status}.`;
+        setErasureFeedback({
+          type: 'error',
+          message:
+            errorDetail === 'APPLICATION_NOT_FOUND_OR_ALREADY_WITHDRAWN'
+              ? 'Token tidak ditemukan atau berkas lamaran telah dihapus sebelumnya.'
+              : errorDetail,
+        });
+      }
+    } catch (err) {
+      console.warn('Error during erasure request:', err);
+      setErasureFeedback({
+        type: 'error',
+        message: 'Koneksi ke server gagal. Pastikan jaringan internet aktif lalu coba lagi.',
+      });
+    } finally {
+      setErasureLoading(false);
+    }
+  };
 
   const fetchStatus = async (tokenToFetch) => {
     const raw = (tokenToFetch || tokenInput).trim();
@@ -98,7 +164,7 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
           recommendation: data.recommendation,
           submitted_at: data.submitted_at,
           assessment: data.assessment || null,
-          interview: data.interview || data.scheduled_interview || null,
+          interview: data.interview || data.interview_schedule || data.scheduled_interview || null,
           source: 'LIVE_DATABASE'
         });
         setLastChecked(new Date().toLocaleTimeString('id-ID'));
@@ -119,7 +185,11 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
         const localCached = localStorage.getItem(`talentops_app_${token}`);
         if (localCached) {
           const parsed = JSON.parse(localCached);
-          setTrackingData({ ...parsed, source: 'LOCAL_CACHE' });
+          setTrackingData({
+            ...parsed,
+            interview: parsed.interview || parsed.interview_schedule || parsed.scheduled_interview || null,
+            source: 'LOCAL_CACHE',
+          });
           setLastChecked(new Date().toLocaleTimeString('id-ID'));
           setLoading(false);
           return;
@@ -222,6 +292,13 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
           <span className="px-3 py-1 rounded-full text-xs font-jkt font-bold bg-rose-50 text-rose-800 border border-rose-200 flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
             Belum Memenuhi Kualifikasi
+          </span>
+        );
+      case 'withdrawn':
+        return (
+          <span className="px-3 py-1 rounded-full text-xs font-jkt font-bold bg-rose-50 text-rose-800 border border-rose-200 flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-rose-600" />
+            Berkas Dicabut (Erasure)
           </span>
         );
       default:
@@ -685,11 +762,135 @@ export default function ApplicationTracker({ initialToken = '', onBackToPortal }
             </span>
             <button
               type="button"
-              onClick={() => alert(`Pengajuan Right to Erasure untuk token ${tokenInput} berhasil dicatat. Sesuai UU PDP No. 27/2022, DEK kriptografis kandidat akan dihancurkan (Crypto-Shredding).`)}
-              className="text-rose-700 hover:text-rose-800 font-semibold underline text-[11px] transition-colors"
+              onClick={() => {
+                setErasureFeedback(null);
+                setShowErasureModal(true);
+              }}
+              className="text-rose-700 hover:text-rose-800 font-semibold underline text-[11px] transition-colors cursor-pointer"
             >
               Ajukan Pencabutan Berkas (Erasure)
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Erasure Confirmation & Feedback Modal */}
+      {showErasureModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="erasure-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-black/60 backdrop-blur-xs"
+        >
+          <div className="bg-white rounded-2xl border border-primary-border-200 shadow-2xl max-w-lg w-full p-6 space-y-4 font-jkt relative">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 shrink-0">
+                  <ShieldCheck className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 id="erasure-modal-title" className="text-base font-extrabold text-primary-black">
+                    Pencabutan Berkas & Hak Hapus (UU PDP)
+                  </h3>
+                  <p className="text-xs text-primary-slate-500">
+                    Pelaksanaan Hak Subjek Data &bull; UU PDP No. 27/2022
+                  </p>
+                </div>
+              </div>
+              {!erasureLoading && (
+                <button
+                  type="button"
+                  onClick={() => setShowErasureModal(false)}
+                  className="p-1 rounded-lg text-primary-slate-400 hover:text-primary-black hover:bg-primary-slate-100 transition-colors"
+                  aria-label="Tutup modal"
+                >
+                  <span className="text-lg leading-none font-bold">&times;</span>
+                </button>
+              )}
+            </div>
+
+            {/* Body */}
+            {erasureFeedback ? (
+              <div className="space-y-4 pt-2">
+                <div
+                  className={`p-4 rounded-xl border text-xs flex items-start gap-3 ${
+                    erasureFeedback.type === 'success'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-rose-50 border-rose-200 text-rose-900'
+                  }`}
+                >
+                  {erasureFeedback.type === 'success' ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-1">
+                    <p className="font-bold">
+                      {erasureFeedback.type === 'success' ? 'Permohonan Berhasil Diproses' : 'Permohonan Gagal'}
+                    </p>
+                    <p className="leading-relaxed">{erasureFeedback.message}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowErasureModal(false);
+                      setErasureFeedback(null);
+                    }}
+                    className="px-5 py-2.5 rounded-full bg-primary-black hover:bg-primary-slate-800 text-white text-xs font-bold transition-all shadow-xs"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-1">
+                <p className="text-xs text-primary-slate-600 leading-relaxed">
+                  Apakah Anda yakin ingin mengajukan pencabutan berkas lamaran ini?
+                  Tindakan ini akan memicu proses <strong className="text-primary-black font-semibold">Crypto-Shredding</strong>,
+                  di mana kunci enkripsi (DEK) data pribadi Anda dihancurkan secara permanen sehingga dokumen dan identitas Anda tidak dapat dipulihkan lagi oleh sistem.
+                </p>
+
+                <div className="p-3 bg-primary-slate-50 rounded-xl border border-primary-border-200 text-xs space-y-1 font-mono">
+                  <span className="text-[10px] text-primary-slate-500 uppercase font-bold tracking-wider font-jkt block">
+                    Token yang akan dicabut:
+                  </span>
+                  <span className="text-primary-black font-bold break-all select-all">
+                    {tokenInput}
+                  </span>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-3 border-t border-primary-border-100">
+                  <button
+                    type="button"
+                    disabled={erasureLoading}
+                    onClick={() => setShowErasureModal(false)}
+                    className="w-full sm:w-auto px-4 py-2 rounded-full border border-primary-border-200 bg-white hover:bg-primary-slate-50 text-xs font-semibold text-primary-black transition-colors disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={erasureLoading}
+                    onClick={handleConfirmErasure}
+                    className="w-full sm:w-auto px-5 py-2 rounded-full bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2"
+                  >
+                    {erasureLoading ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                        <span>Menghancurkan Data...</span>
+                      </>
+                    ) : (
+                      <span>Ya, Cabut & Hancurkan Berkas</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

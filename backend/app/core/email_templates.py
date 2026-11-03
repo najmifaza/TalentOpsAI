@@ -104,25 +104,77 @@ def interview_scheduled(
     return subject, _layout(subject, body), text
 
 
-def application_received(masked_identifier: str, job_title: str, tracking_hint: str = "") -> Tuple[str, str, str]:
+def application_received(
+    masked_identifier: str,
+    job_title: str,
+    tracking_token: str = "",
+    tracking_hint: str = "",
+    base_url: str = "https://talentops.ai.id",
+) -> Tuple[str, str, str]:
     """Acknowledgement sent after a public portal application is accepted."""
+    if tracking_token and (" " in tracking_token or len(tracking_token) > 100) and not tracking_hint:
+        tracking_hint = tracking_token
+        tracking_token = ""
+
     subject = f"Lamaran Diterima - {job_title}"
+
+    if tracking_token:
+        tracking_url = f"{base_url.rstrip('/')}/track/{tracking_token}"
+        token_block_html = f"""
+      <p style="margin:16px 0 6px;font-size:13px;color:#64748B;">Secret Tracking Token (UUID):</p>
+      <div style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:8px;padding:10px 14px;font-family:monospace;font-size:13px;font-weight:700;color:#0F172A;word-break:break-all;">
+        {_esc(tracking_token)}
+      </div>
+      <div style="margin:20px 0 16px;">
+        <a href="{_esc(tracking_url)}"
+           style="display:inline-block;padding:12px 24px;border-radius:999px;background:{ORANGE};color:#FFFFFF;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:-0.2px;">
+          Pantau Status Lamaran
+        </a>
+      </div>
+      <p style="margin:0 0 16px;font-size:12px;color:#64748B;line-height:1.5;">
+        Tautan pelacakan langsung: <a href="{_esc(tracking_url)}" style="color:{ACCENT};word-break:break-all;">{_esc(tracking_url)}</a>
+      </p>
+        """
+        token_block_text = (
+            f"Token Pelacakan: {tracking_token}\n"
+            f"URL Pelacakan: {tracking_url}\n"
+        )
+    else:
+        tracking_url = f"{base_url.rstrip('/')}/track"
+        token_block_html = f"""
+      <div style="margin:20px 0 16px;">
+        <a href="{_esc(tracking_url)}"
+           style="display:inline-block;padding:12px 24px;border-radius:999px;background:{ORANGE};color:#FFFFFF;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:-0.2px;">
+          Buka Portal Pelacakan
+        </a>
+      </div>
+      <p style="margin:0 0 16px;font-size:12px;color:#64748B;line-height:1.5;">
+        Tautan pelacakan: <a href="{_esc(tracking_url)}" style="color:{ACCENT};word-break:break-all;">{_esc(tracking_url)}</a>
+      </p>
+        """
+        token_block_text = f"URL Pelacakan: {tracking_url}\n"
+
+    hint_text = tracking_hint or "Simpan ID dan token pelacakan di atas untuk memantau status seleksi atau mengajukan pencabutan data (UU PDP No. 27/2022)."
+
     body = f"""
       <p style="margin:0 0 12px;">Halo,</p>
       <p style="margin:0 0 16px;">Lamaran Anda untuk posisi <strong>{_esc(job_title)}</strong>
       telah kami terima dan sedang dalam proses evaluasi.</p>
-      <p style="margin:0 0 8px;font-size:13px;">ID Lamaran Anda:</p>
+      <p style="margin:0 0 8px;font-size:13px;color:#64748B;">ID Lamaran Anda:</p>
       <p style="margin:0 0 16px;font-size:18px;font-weight:700;color:{ACCENT};letter-spacing:0.5px;">
         {_esc(masked_identifier)}
       </p>
+      {token_block_html}
       <p style="margin:0;font-size:13px;color:#64748B;">
-        {_esc(tracking_hint) or "Gunakan ID di atas pada halaman pelacakan untuk memantau status."}
+        {_esc(hint_text)}
       </p>
     """
     text = (
         f"Lamaran Diterima - {job_title}\n\n"
         f"Lamaran Anda sedang dalam proses evaluasi.\n"
         f"ID Lamaran: {masked_identifier}\n"
+        f"{token_block_text}"
+        f"{hint_text}\n"
     )
     return subject, _layout(subject, body), text
 

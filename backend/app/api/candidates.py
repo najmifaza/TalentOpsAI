@@ -1066,9 +1066,20 @@ async def submit_interview_scorecard(
     cand = cand_res.mappings().first()
     if not cand or cand["is_deleted"]:
         raise HTTPException(status_code=404, detail="CANDIDATE_NOT_FOUND_OR_DELETED")
+    if cand["status"] != "approved":
+        raise HTTPException(status_code=422, detail="CANDIDATE_NOT_IN_APPROVED_STATUS")
 
     # 4. Map recommendation to candidate status
     target_status = "hired" if payload.recommendation == "hire" else "rejected"
+
+    # Check for existing scorecard
+    sc_check = await db.execute(
+        text("SELECT COUNT(*) FROM interview_scorecards WHERE candidate_id = :cid"),
+        {"cid": candidate_id},
+    )
+    sc_count = sc_check.scalar()
+    if isinstance(sc_count, (int, float)) and sc_count > 0:
+        raise HTTPException(status_code=409, detail="SCORECARD_ALREADY_EXISTS")
 
     # 5. Insert scorecard
     scorecard_insert = await db.execute(

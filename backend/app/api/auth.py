@@ -1,14 +1,18 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any, Dict, Optional
+from fastapi import APIRouter, Depends, HTTPException, Security, status
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import (
     create_access_token,
+    decode_access_token,
     get_current_user,
+    revoke_token,
+    security,
     verify_password,
 )
 from app.core.database import get_db
@@ -161,3 +165,25 @@ async def get_my_profile(current_user: Dict[str, Any] = Depends(get_current_user
         "email": current_user["email"],
         "role": current_user["role"],
     }
+
+
+@router.post("/logout")
+async def logout(
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(security),
+):
+    """
+    Revokes access token and invalidates session.
+    """
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="NOT_AUTHENTICATED_MISSING_TOKEN",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = decode_access_token(credentials.credentials)
+    jti = payload.get("jti")
+    if jti:
+        revoke_token(jti, exp=payload.get("exp"))
+
+    return {"status": "logged_out"}

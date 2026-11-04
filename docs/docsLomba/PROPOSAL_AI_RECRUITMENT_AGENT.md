@@ -40,8 +40,7 @@
 
 <br>
 
-## **TALENTOPS AI: AUTONOMOUS RECRUITMENT OPERATING SYSTEM**
-### *From Probabilistic Resume Screening to Evidence-Based Hiring Decisions with Cryptographic Privacy Guarantees*
+## **TALENTOPS AI : SISTEM REKRUTMEN MANDIRI BERBASIS KECERDASAN BUATAN**
 
 <br><br>
 
@@ -68,7 +67,7 @@
   <tr style="border: none;">
     <td style="padding: 3px 15px; border: none;"><strong>Adridinan Najmi Faza</strong></td>
     <td style="padding: 3px 5px; border: none;"></td>
-    <td style="padding: 3px 15px; border: none;">H1D025059 </td>
+    <td style="padding: 3px 15px; border: none;">H1D025059</td>
   </tr>
   <tr style="border: none;">
     <td style="padding: 3px 15px; border: none;"><strong>Fardizza Vinda Rahman</strong></td>
@@ -102,18 +101,17 @@
 ## IDENTITAS KARYA DAN TIM PENGEMBANG
 
 * **Judul Karya:**  
-  **TalentOps AI: Autonomous Recruitment Operating System**  
-  *Sub-title:* *From Probabilistic Resume Screening to Evidence-Based Hiring Decisions with Cryptographic Privacy Guarantees*
-* **Nama Tim:** TalentOps Team  
+  **TalentOps AI : Sistem Rekrutmen Mandiri Berbasis Kecerdasan Buatan**
+* **Nama Tim:** Doa Ibu  
 * **Asal Instansi:** Universitas Jenderal Soedirman (UNSOED)  
 * **Susunan Tim Pengembang:**
-  1. **Timotius Willy Narendra** (Ketua Tim / Project Manager & Fullstack Engineer)
-  2. **Adridinan Najmi Faza** (Anggota 1 / Backend & AI Systems Engineer)
-  3. **Fardizza** (Anggota 2 / Frontend & UI/UX Interaction Engineer)
+  1. **Adridinan Najmi Faza** (Ketua Tim / H1D025059)
+  2. **Timotius Willy Narendra** (Anggota 1 / H1D025052)
+  3. **Fardizza Vinda Rahman** (Anggota 2 / H1D025067)
 * **Tautan Sistem & Repositori:**
-  * **Live Interface Web:** `https://talentops.ai.id` (Mirror: `https://talentops-ai.vercel.app`)
-  * **Repositori GitHub Publik:** `https://github.com/WillyNaren/TalentOpsAI`
-  * **Video Demo Walkthrough (3-5 Menit):** `https://youtu.be/talentops-ai-demo` *(atau tautan Google Drive)*
+  * **Live Interface Web:** `https://talentops.ai.id/`
+  * **Repositori GitHub Publik:** `https://github.com/najmifaza/TalentOpsAI`
+  * **Video Demo (3–5 menit):** `-`
 * **Format Pengumpulan Berkas:** `GTNIC2026_AIAgent_TalentOpsTeam.pdf`  
 * **Standar Tipografi Dokumen:** Kertas A4, Times New Roman 12 pt, Spasi 1.5, Margin Kiri 4 cm, Atas/Bawah/Kanan 3 cm, Maksimal 15 Halaman (termasuk Sampul Berlogo Resmi GTNIC 2026).
 
@@ -124,10 +122,10 @@
 ---
 
 ## 1. JUDUL KARYA DAN IDENTITAS TIM
-* **Judul:** TalentOps AI: Autonomous Recruitment Operating System
-* **Tim:** TalentOps Team (Universitas Jenderal Soedirman)
-* **Ketua Tim:** Timotius Willy Narendra (NIM: H1D025052)
-* **Anggota:** Adridinan Najmi Faza, Fardizza
+* **Judul:** TalentOps AI : Sistem Rekrutmen Mandiri Berbasis Kecerdasan Buatan
+* **Tim:** Doa Ibu (Universitas Jenderal Soedirman)
+* **Ketua Tim:** Adridinan Najmi Faza (NIM: H1D025059)
+* **Anggota:** Timotius Willy Narendra (NIM: H1D025052), Fardizza Vinda Rahman (NIM: H1D025067)
 * **Penempatan Logo:** Logo Resmi GARDA TECH NATIONAL INNOVATION COMPETITION (GTNIC) 2026 dan Logo Universitas tersemat pada halaman sampul utama.
 
 ---

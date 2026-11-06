@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS interview_scorecards (
     recommendation ENUM('hire', 'reject') NOT NULL,
     technical_score DECIMAL(5,2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_scorecard_candidate (candidate_id),
     INDEX idx_scorecard_candidate (candidate_id),
     INDEX idx_scorecard_interviewer (interviewer_id),
     FOREIGN KEY (candidate_id) REFERENCES candidates(id) ON DELETE CASCADE,

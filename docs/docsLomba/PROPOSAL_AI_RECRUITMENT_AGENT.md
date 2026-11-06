@@ -54,7 +54,7 @@
 <br><br>
 
 **Disusun oleh:**  
-**TalentOps Team**
+**Tim Doa Ibu**
 
 <br>
 
@@ -112,7 +112,7 @@
   * **Live Interface Web:** `https://talentops.ai.id/`
   * **Repositori GitHub Publik:** `https://github.com/najmifaza/TalentOpsAI`
   * **Video Demo (3–5 menit):** `-`
-* **Format Pengumpulan Berkas:** `GTNIC2026_AIAgent_TalentOpsTeam.pdf`  
+* **Format Pengumpulan Berkas:** `GTNIC2026_AIAgent_DoaIbu.pdf`  
 * **Standar Tipografi Dokumen:** Kertas A4, Times New Roman 12 pt, Spasi 1.5, Margin Kiri 4 cm, Atas/Bawah/Kanan 3 cm, Maksimal 15 Halaman (termasuk Sampul Berlogo Resmi GTNIC 2026).
 
 ---
@@ -224,7 +224,7 @@ Agen tidak mengeksekusi instruksi linier buta, melainkan bekerja melalui **Agent
 
 ### 5.2. Skema Basis Data Relasional 14 Tabel (Kualitas Rekayasa Sistem 15%)
 Implementasi basis data MariaDB InnoDB 3NF menjamin *data integrity* dan auditabilitas menyeluruh:
-1. `users`: Manajemen pengguna dan otentikasi RBAC (`admin`, `recruiter`, `hiring_manager`, `compliance_officer`) berbasis hash Argon2id.
+1. `users`: Manajemen pengguna dan otentikasi RBAC (`admin`, `recruiter`, `hiring_manager`, `compliance_officer`) berbasis hash PBKDF2-HMAC-SHA256 (100.000 iterasi, salt per pengguna) dengan proteksi brute-force (kunci 15 menit setelah 5 kali gagal).
 2. `oauth_tokens`: Kredensial integrasi kalender terenkripsi (Google Calendar / Mock Calendar).
 3. `job_descriptions`: Definisi kualifikasi, bobot 4 dimensi, dan taksonomi peran (*Universal Domain IT vs Non-IT* via Migrasi 007).
 4. `candidates`: Master data kandidat dengan enkripsi amplop (*Envelope Encryption* AES-256-GCM), DEK terenkripsi KEK, *Blind Index* email, identitas tersamar `#TK-[6-HEX]`, dan status siklus hidup.

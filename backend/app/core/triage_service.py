@@ -26,6 +26,52 @@ from app.adapters.calendar import MockCalendarAdapter
 
 logger = logging.getLogger(__name__)
 
+# How many alternative slots the agent may try when a concurrent booking steals the
+# one it picked (PRD Bab 5.3 Siklus 6). Bounded on purpose: a slot war must not turn
+# one triage run into an unbounded loop.
+CALENDAR_RECOVERY_ATTEMPTS = 5
+
+
+def _flag_severity(flag: str) -> str:
+    """Maps a bare anomaly flag code to its severity class.
+
+    Only used on the fallback path (no structured `anomaly_details` from the scoring
+    engine). Security findings and concurrent full-time roles are HIGH, a career break
+    is informational LOW (PRD Bab 5.2 butir 5), everything else MEDIUM.
+    """
+    upper = (flag or "").upper()
+    if "SECURITY" in upper or upper.startswith(("PROMPT_INJECTION", "CONCURRENT_FULLTIME_OVERLAP")):
+        return "HIGH"
+    if "CAREER_BREAK" in upper:
+        return "LOW"
+    return "MEDIUM"
+
+
+async def reserve_with_recovery(adapter, db, candidate_id: int, slot_rows, attempts: int = CALENDAR_RECOVERY_ATTEMPTS):
+    """Locks the first slot that is still free, walking past slots lost to a race.
+
+    Returns (reserved, slot_id, conflicts, last_reason). A slot that fails for a
+    non-conflict reason stops the walk: retrying a broken slot is pointless, only a
+    concurrent booking is worth another attempt (PRD Bab 5.3 Siklus 6).
+    """
+    conflicts = 0
+    last_reason = None
+    for slot_row in list(slot_rows)[:attempts]:
+        result = await adapter.reserve_slot(
+            db=db,
+            slot_id=slot_row["id"],
+            candidate_id=candidate_id,
+            interviewer_id=slot_row["interviewer_id"],
+        )
+        if result.get("success"):
+            return True, slot_row["id"], conflicts, last_reason
+        last_reason = result.get("reason") or "RESERVE_FAILED"
+        if "CONFLICT" in last_reason or "ALREADY" in last_reason:
+            conflicts += 1
+            continue
+        break
+    return False, None, conflicts, last_reason
+
 
 def _extract_heuristic_fallback(
     sanitized_text: str,
@@ -688,22 +734,25 @@ class AgentTriageService:
                         },
                     )
             else:
-                for a_flag in assessment["anomaly_flags"]:
-                    await db.execute(
-                        text("""
-                            INSERT INTO candidate_anomalies (
-                                candidate_id, anomaly_type, severity, description, suggested_verification
-                            ) VALUES (
-                                :cid, :atype, :sev, :desc, 'Review during HR interview.'
-                            )
-                        """),
-                        {
-                            "cid": candidate_id,
-                            "atype": a_flag,
-                            "sev": "HIGH" if "SECURITY" in a_flag or "OVERLAP" in a_flag else "MEDIUM",
-                            "desc": f"Automated risk detection flag: {a_flag}",
-                        },
-                    )
+                            for a_flag in assessment["anomaly_flags"]:
+                                await db.execute(
+                                    text("""
+                                        INSERT INTO candidate_anomalies (
+                                            candidate_id, anomaly_type, severity, description, suggested_verification
+                                        ) VALUES (
+                                            :cid, :atype, :sev, :desc, 'Review during HR interview.'
+                                        )
+                                    """),
+                                    {
+                                        "cid": candidate_id,
+                                        "atype": a_flag,
+                                        # Severity comes from the flag class, not from a blanket rule.
+                                        # A career break is informational (PRD Bab 5.2 butir 5) and must
+                                        # stay LOW, otherwise it re-escalates the candidate it explains.
+                                        "sev": _flag_severity(a_flag),
+                                        "desc": f"Automated risk detection flag: {a_flag}",
+                                    },
+                                )
 
             # Persist Adaptive Assessments
             await db.execute(text("DELETE FROM candidate_assessments WHERE candidate_id = :id"), {"id": candidate_id})
@@ -725,23 +774,48 @@ class AgentTriageService:
                     },
                 )
 
-            # Tentative Calendar Lock for STRONG_MATCH candidates
+            # Tentative Calendar Lock for STRONG_MATCH candidates.
+            # PRD Bab 5.3 Siklus 6: a slot lost to a concurrent booking must not end the
+            # run. The agent re-queries alternative slots and retries, so a 409 never
+            # reaches the UI as a hard failure.
             if assessment["recommendation"] == "STRONG_MATCH":
-                # Find available slot
                 avail_res = await db.execute(
-                    text("SELECT id, interviewer_id FROM interview_slots WHERE status = 'available' ORDER BY start_time ASC LIMIT 1")
+                    text("""
+                        SELECT id, interviewer_id FROM interview_slots
+                        WHERE status = 'available'
+                        ORDER BY start_time ASC
+                        LIMIT :lim
+                    """),
+                    {"lim": CALENDAR_RECOVERY_ATTEMPTS},
                 )
-                slot_row = avail_res.mappings().first()
-                if slot_row:
-                    reserve_result = await self.calendar_adapter.reserve_slot(
-                        db=db,
-                        slot_id=slot_row["id"],
-                        candidate_id=candidate_id,
-                        interviewer_id=slot_row["interviewer_id"],
+                calendar_conflicts = 0
+                last_reason = None
+                calendar_reserved, reserved_slot_id, calendar_conflicts, last_reason = await reserve_with_recovery(
+                    self.calendar_adapter, db, candidate_id, avail_res.mappings().all()
+                )
+
+                if calendar_conflicts:
+                    recovery_status = "recovered" if calendar_reserved else "failed"
+                    await self._record_step(
+                        db, run_id, candidate_id, masked_id, "calendar_slot_recovery",
+                        recovery_status, int((time.time() - t0) * 1000), {
+                            "conflicts": calendar_conflicts,
+                            "last_reason": last_reason,
+                            "recovered_slot_id": reserved_slot_id,
+                        },
                     )
-                    if reserve_result.get("success"):
-                        calendar_reserved = True
-                        reserved_slot_id = slot_row["id"]
+                    await sse_broadcaster.publish(
+                        candidate_id, "calendar_slot_recovery", recovery_status,
+                        {
+                            "backend_action": (
+                                f"Slot bentrok {calendar_conflicts}x, agen mengunci slot alternatif #{reserved_slot_id}."
+                                if calendar_reserved else
+                                f"Bentrok kalender {calendar_conflicts}x pada seluruh slot kandidat, bukan kegagalan pipeline."
+                            ),
+                            "conflicts": calendar_conflicts,
+                            "recovered_slot_id": reserved_slot_id,
+                        },
+                    )
 
             # Final Candidate Status Update
             next_status = "waiting_approval"

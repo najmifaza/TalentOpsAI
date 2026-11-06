@@ -889,7 +889,10 @@ class DeterministicScoringEngine:
                 unmastered = [c for c in core_competencies if req_scores.get(c, 0.0) < 100.0]
             target_skill = unmastered[0] if unmastered else core_competencies[0]
 
-            difficulty = "L2_CASE_STUDY" if risk == "HIGH" else "L1_FUNDAMENTAL"
+            # difficulty_level must stay inside candidate_assessments ENUM
+            # ('L1_FUNDAMENTAL','L2_SYSTEM_DESIGN','L3_EDGE_CASE'); MariaDB runs with
+            # STRICT_TRANS_TABLES, so an out-of-enum value aborts the whole triage.
+            difficulty = "L2_SYSTEM_DESIGN" if risk == "HIGH" else "L1_FUNDAMENTAL"
             if is_programmer_role:
                 scenario_q = f"Explain concurrency control, state management, and edge-case error recovery when implementing {target_skill}."
                 eval_crit = "Assesses system design depth, race condition prevention, and fault tolerance."

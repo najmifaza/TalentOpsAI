@@ -78,7 +78,7 @@ Untuk memastikan keberhasilan ganda—menghasilkan **Live Web Demo yang 100% sta
 
 | Komponen Arsitektur       | Lintasan 1: Live Demo MVP `[MVP]` (Fokus Demo & Video)                                                                                             | Lintasan 2: Target Arsitektur Enterprise `[TARGET]` (Cetak Biru Proposal)                        |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Lingkup Database**      | 13 Tabel Relasional Inti (Single Default Tenant `tenant_id=1`, MariaDB/InnoDB ACID, termasuk `blog_posts`)                                        | 15 Tabel Relasional Multi-Tenant Penuh dengan Metering Kuota & Tabel `tenants`                   |
+| **Lingkup Database**      | 14 Tabel Relasional Inti (Single Default Tenant `tenant_id=1`, MariaDB/InnoDB ACID, termasuk `blog_posts` & `interview_scorecards`)                                        | 15 Tabel Relasional Multi-Tenant Penuh dengan Metering Kuota & Tabel `tenants`                   |
 | **Manajemen Kunci (KMS)** | Master KEK tersimpan di `.env` aman; Envelope Encryption AES-256-GCM lokal via Python `cryptography`                                               | Dedicated HashiCorp Vault / AWS KMS Cluster dengan isolasi DEK transit engine                    |
 | **Integrasi Kalender**    | **Lock atomik di database + Google Calendar OAuth2** (kode terpasang, menunggu kredensial; `MockCalendarAdapter` menangani reservasi slot)                                    | Google Calendar API OAuth2 Two-Way Sync langsung dengan Webhook Push Notification Watch Channel  |
 | **Inbound ATS Ingestion** | **Dual-Ingestion UI:** Public Career Portal (`/careers/apply`) + Direct Multi-File Dropzone di HR Dashboard (PDF/DOCX) dengan status awal `queued` | Inbound Webhook Gateway berautentikasi HMAC-SHA256 untuk integrasi Greenhouse/Lever              |
@@ -244,7 +244,7 @@ Untuk melindungi sistem dari _deprecation lifecycle_ model komersial tertutup, T
 
   _(Catatan Keadilan: Field `accreditation` dan nama institusi dilarang dalam skema ekstraksi guna mencegah bias prestise almamater. Nilai `has_implementation_detail` diekstraksi LLM dan divalidasi oleh Substring Guard: jika klaim narasi tidak terverifikasi ada di dalam teks CV tersanitasi, field otomatis diturunkan ke `false`)_.
 
-- **Deterministic Backend Engine (Python 3.12 Core):**
+- **Deterministic Backend Engine (Python 3.11 Core — `3.11.9` pada venv pengembangan & produksi):**
   - **Verifikasi Integritas Teks (Anti-Hallucination Substring Guard):** `context_narrative` dan `metric_string` divalidasi terhadap **teks resume yang telah disanitasi (teks yang dikirim ke LLM)** dengan normalisasi spasi (_whitespace collapsing_) dan _lowercase_. Klaim yang gagal dicocokkan otomatis diturunkan ke Tier 1.
   - **Pencegahan Double-Counting Portofolio & Skill:** Jika URL repositori GitHub telah digunakan untuk menaikkan klaim SKILL ke Tier 3, repositori tersebut pada dimensi PORTFOLIO dievaluasi hanya berdasarkan metrik repositori (star, struktur modular, branch cleanliness), bukan menambah poin skill kembali.
   - **Aturan Penjenjangan Bukti (Tiering Rubric):**
@@ -335,7 +335,7 @@ Untuk melindungi sistem dari _deprecation lifecycle_ model komersial tertutup, T
 | **1. Dokumen Ingestion**      | Memvalidasi integritas berkas & mengekstraksi teks | Parsing PDF/DOCX, deteksi font 0pt, alpha channel, `w:vanish` | Tolak payload $> 10\text{ MB}$, hapus teks mencurigakan, log anomali      | Tandai `INSPECTION_FAILED`, eskalasi ke manual review         |
 | **2. Ekstraksi Informasi**    | Mengelompokkan riwayat ke skema terstruktur        | Panggilan via Model Adapter Layer (9router / Gemini 3.8)      | Suhu 0.0, output skema Pydantic tertutup, dilarang beri skor numerik      | Gunakan Safe Pre-Cached Mode atau fallback model              |
 | **3. Audit Substring**        | Memverifikasi fakta klaim terhadap teks asli       | Validasi verbatim teks tersanitasi                            | Menolak halusinasi; jika substring tidak cocok, turunkan ke Tier 1        | Fallback ke Tier 1 (klaim dasar)                              |
-| **4. Investigasi Portofolio** | Menentukan kebutuhan verifikasi repositori | Panggil GitHub REST API jika URL repositori valid (khusus role programmer/IT) | Timeout 2.5s, SSRF guard (hanya `api.github.com`), verifikasi bahasa repo; lewati otomatis untuk role non-programmer | Lewati verifikasi eksternal, beri flag `PORTFOLIO_UNVERIFIED` (atau `NOT_APPLICABLE` untuk non-dev) |
+| **4. Investigasi Portofolio** | Menentukan kebutuhan verifikasi repositori | Panggil GitHub REST API jika URL repositori valid (khusus role programmer/IT) | Timeout 10.0s (`adapters/github.py`), SSRF guard regex `^https://github.com/owner/repo$` (hanya `api.github.com`), verifikasi bahasa repo; lewati otomatis untuk role non-programmer | Lewati verifikasi eksternal, beri flag `PORTFOLIO_UNVERIFIED` (atau `NOT_APPLICABLE` untuk non-dev) |
 | **5. Sintesis Asesmen**       | Memutuskan perlunya soal teknis adaptif            | Generate 1-2 soal teknis terarah jika gap skill kritis        | Hanya dipicu jika kompetensi kunci memiliki keyakinan rendah              | Gunakan bank soal standar lowongan terkait                    |
 | **6. Penjadwalan Kalender**   | Memilih slot wawancara tentative                   | Kunci slot kalender pewawancara via atomic lock DB            | Non-overlapping constraint, client-generated event ID                     | Transaksi kompensasi (lepas slot), coba slot berikutnya       |
 | **7. Gatekeeper HITL**        | Menghentikan eksekusi sebelum tindakan berdampak   | Tahan status hingga persetujuan HR diterima                   | Dilarang mengirim email dispatch atau unmask PII tanpa aksi HR            | Tetap dalam antrean `waiting_approval`                        |
@@ -352,7 +352,7 @@ Target evaluasi end-to-end $\le 15.000\text{ ms}$ per berkas:
 | ----------------------------------------------------- | ------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 1. Ingestion, Hidden-Text Audit & PII Sanitizer       | 150 ms       | 280 ms        | Ekstraksi in-memory PDF/DOCX (pypdf/pdfplumber), High-Performance Regex Sanitizer (Nama, Kontak, Almamater)              |
 | 2. Structured LLM Extraction (Gemini 3.8 via 9router) | 3.500 ms     | 5.200 ms      | Model Adapter via 9router (Antigravity), single-turn schema, file_hash cache (dinonaktifkan saat benchmark determinisme) |
-| 3. GitHub API Portfolio Verification                  | 850 ms       | 2.100 ms      | Async REST ke api.github.com (timeout 2.5s, in-memory LRU cache)                                                         |
+| 3. GitHub API Portfolio Verification                  | 850 ms       | 2.100 ms      | Async REST ke api.github.com (timeout 10.0s, satu panggilan per URL per triage, tanpa cache)                              |
 | 4. Deterministic 4D Scoring & Timeline Audit          | 45 ms        | 80 ms         | Perhitungan matematis lokal Python & taksonomi mapping                                                                   |
 | 5. Adaptive Assessment Synthesis                      | 1.100 ms     | 2.200 ms      | Dipicu selektif jika terdeteksi gap kompetensi kunci                                                                     |
 | 6. DB ACID Commit & SSE Event Broadcast               | 85 ms        | 150 ms        | aiomysql transaction pool + in-memory asyncio.Queue stream                                                               |
@@ -372,8 +372,9 @@ Target evaluasi end-to-end $\le 15.000\text{ ms}$ per berkas:
    - DOCX: Memeriksa tag XML `w:vanish`, `w:hidden`, teks di luar margin halaman, dan ukuran font minimalis. Seluruh teks tersembunyi dihapus dari proses evaluasi dan otomatis memicu pencatatan ke `candidate_anomalies` dengan flag risiko `HIGH`.
 3. **Pencegahan Stored XSS & Aman Rendering:** Seluruh teks yang berasal dari resume maupun hasil ekstraksi LLM di-render pada UI sebagai teks murni (_plain text DOM node_ / sanitized markdown). Penggunaan `dangerouslySetInnerHTML` dilarang. Header HTTP Content Security Policy dikonfigurasi di sisi frontend edge (`vercel.json`) untuk lingkungan produksi:
    ```http
-   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.talentops.ai.id;
+   Content-Security-Policy: default-src 'self'; connect-src 'self' https://api.talentops.ai.id https://api-talentops.fawt.biz.id; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:;
    ```
+   _(Catatan kejujuran: nilai di atas adalah kebijakan yang benar-benar berlaku di `frontend/vercel.json`. Dua pelonggaran disengaja — `'unsafe-inline'`/`'unsafe-eval'` pada `script-src` untuk bundle Vite dan `style-src 'unsafe-inline'` untuk style runtime; `connect-src` memuat domain cadangan `api-talentops.fawt.biz.id` selama `talentops.ai.id` masih tertahan di sisi Vercel (lihat `docs/STATUS_PEKERJAAN_BELUM_SELESAI.md` §5). Pengetatan ke `script-src 'self'` hanya boleh dilakukan setelah diuji di browser sungguhan, bukan diasumsikan.)_
    _(Catatan Lingkungan Dev: `connect-src` ditambahkan `http://127.0.0.1:8002` khusus pada profil pengembangan lokal)_.
 4. **SSRF Guard pada Repo URL:** URL repositori diparsing ketat dengan regex format `^https:\/\/github\.com\/[a-zA-Z0-9_\-\.]+\/[a-zA-Z0-9_\-\.]+$`. Host selain `github.com` dan IP privat ditolak seketika. Pemanggilan GitHub REST API dilakukan murni oleh backend (bukan browser frontend).
 5. **Proteksi Endpoint Ingestion Publik (`/api/careers/{id}/apply`) & Jalur Dropzone:**
@@ -776,9 +777,9 @@ CREATE TABLE interview_scorecards (
 3. **Kasus 3: Kandidat Non-Relevan (Citra Lestari - Weak Fit)**
    - _Karakteristik:_ Resume desain grafis untuk posisi Backend Engineer ($N_{skill} = 0$).
    - _Target Evaluasi:_ Skor $< 60.0$, Rekomendasi `WEAK_FIT`, masuk ke antrean penolakan yang membutuhkan konfirmasi `REJECT_CONFIRMED` satu klik HR.
-4. **Kasus 4: Concurrency Self-Healing Demo**
-   - _Karakteristik:_ Parameter `simulate_conflict: true` (pada konfigurasi `DEMO_MODE=true`).
-   - _Target Evaluasi:_ Backend mendeteksi kegagalan `rowcount == 0`, otomatis mengunci slot kalender kosong berikutnya, mencatat status `RECOVERED` di tabel audit, tanpa melempar eror 409 ke UI.
+4. **Kasus 4: Concurrency Self-Healing (slot direbut transaksi lain)**
+   - _Karakteristik:_ Dua proses triase berjalan berdekatan; slot pilihan agen pertama sudah dikunci proses lain (`SLOT_ALREADY_TENTATIVE` / `INTERVIEWER_SCHEDULE_CONFLICT_OVERLAP`).
+   - _Target Evaluasi:_ `reserve_with_recovery()` (`app/core/triage_service.py`) mencoba slot alternatif berikutnya hingga `CALENDAR_RECOVERY_ATTEMPTS = 5`. Bentrok tercatat sebagai langkah audit `calendar_slot_recovery` berstatus `recovered` (slot pengganti didapat) atau `failed` (seluruh slot habis), disiarkan ke UI lewat SSE, dan **tidak** pernah muncul sebagai HTTP 409 ke pengguna. Dijaga `backend/tests/test_triage_contracts.py`.
 
 ### 9.2 Metodologi Pengujian Mini-Evaluasi Riil (Hari 9)
 

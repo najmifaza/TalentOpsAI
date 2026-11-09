@@ -83,6 +83,30 @@ async def reserve_with_recovery(adapter, db, candidate_id: int, slot_rows, attem
     return False, None, conflicts, last_reason
 
 
+HEURISTIC_EXCERPT_CHARS = 240
+
+
+def _excerpt_around(text: str, start: int, end: int) -> str:
+    """Returns a sentence-sized excerpt around a match.
+
+    PDFs exported without line breaks arrive as one long string, so the old "
+" based
+    line lookup returned the whole document as the claim's quote. The substring guard now
+    rejects oversized quotes, which turned every heuristic claim into Tier 1 — the score
+    collapsed instead of being inflated. Slicing around the match fixes the root cause.
+    """
+    window_start = max(0, start - HEURISTIC_EXCERPT_CHARS // 2)
+    window_end = min(len(text), end + HEURISTIC_EXCERPT_CHARS // 2)
+    snippet = text[window_start:window_end]
+
+    if len(snippet) > HEURISTIC_EXCERPT_CHARS:
+        keep_from = max(0, start - window_start - HEURISTIC_EXCERPT_CHARS // 2)
+        snippet = snippet[keep_from:keep_from + HEURISTIC_EXCERPT_CHARS]
+
+    snippet = " ".join(snippet.replace(chr(13), " ").replace(chr(10), " ").split())
+    return snippet.strip(" \t-•*|,;")
+
+
 def _extract_heuristic_fallback(
     sanitized_text: str,
     core_competencies: List[str],
@@ -122,6 +146,10 @@ def _extract_heuristic_fallback(
             line = raw_line.replace(chr(13), " ").replace(chr(10), " ").strip(" \t-•*")
             if len(line) < 15:
                 line = sanitized_text[max(0, match.start() - 50):min(len(sanitized_text), match.end() + 80)].strip()
+            if len(line) > HEURISTIC_EXCERPT_CHARS:
+                # Text without line breaks (typical of some PDF exports) would otherwise make
+                # the whole resume the "quote" for every claim.
+                line = _excerpt_around(sanitized_text, match.start(), match.end())
 
             metric_m = re.search(
                 r"\b\d+(?:[\.,]\d+)?\s*(?:%|persen|rps|tps|karyawan|user|pengguna|juta|miliar|kontrak|dokumen|kasus|proyek)\b|\b\d+\+?\s*(?:tahun|thn|bulan|bln)\b",

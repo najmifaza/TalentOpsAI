@@ -12,6 +12,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from app.core.scoring import is_tier3_metric_claim
 from app.core.triage_service import (
     HEURISTIC_EXCERPT_CHARS,
     _excerpt_around,
@@ -88,8 +89,37 @@ def test_multiline_cv_still_uses_the_line_as_quote():
         is_tech_role=True,
     )
     quotes = {c.technology: c.context_narrative for c in schema.claims}
-    # The heuristic keeps the first line where the term appears, so FastAPI resolves to the
-    # skills line; PostgreSQL's first hit is the bullet (the alias "PostgreSQL." with a
-    # trailing period is rejected by the word-boundary regex).
-    assert quotes.get("FastAPI") == "KEAHLIAN Python, FastAPI, PostgreSQL."
+    # FastAPI appears first in the bare skills line, but the heuristic now prefers a mention
+    # whose sentence carries a measurable result — that is what Tier 3 credit needs.
+    assert "90 ms" in (quotes.get("FastAPI") or "")
     assert "20 tabel" in (quotes.get("PostgreSQL") or "")
+
+def test_metric_bearing_sentence_is_preferred_over_a_bare_skill_list():
+    cv = (
+        "KEAHLIAN Python, FastAPI, PostgreSQL.\n"
+        "Mengembangkan layanan FastAPI untuk 40 endpoint dengan 30 ribu pengguna aktif.\n"
+    )
+    schema = _extract_heuristic_fallback(
+        sanitized_text=cv,
+        core_competencies=["FastAPI"],
+        job_title="Backend Engineer",
+        is_tech_role=True,
+    )
+    claim = next(c for c in schema.claims if c.technology == "FastAPI")
+
+    assert "30 ribu pengguna" in (claim.context_narrative or "")
+    assert claim.metric_string is not None
+    assert is_tier3_metric_claim(claim.context_narrative, claim.metric_string) is True
+
+
+def test_bare_skill_list_is_still_used_when_no_metric_exists():
+    cv = "KEAHLIAN Docker, Redis.\nMerawat layanan internal harian tanpa target terukur.\n"
+    schema = _extract_heuristic_fallback(
+        sanitized_text=cv,
+        core_competencies=["Docker"],
+        job_title="Backend Engineer",
+        is_tech_role=True,
+    )
+    claim = next(c for c in schema.claims if c.technology == "Docker")
+    assert claim.context_narrative
+    assert claim.metric_string is None

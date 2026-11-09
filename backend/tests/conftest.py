@@ -11,7 +11,10 @@ them with fake bytes, so the storage dir is pointed at a temp folder — writing
 
 import tempfile
 
+import pytest
+
 from app.core.config import settings
+from app.core.llm_adapter import reset_llm_circuit_breaker
 
 settings.MAINTENANCE_ENABLED = False
 settings.DEMO_PURGE_ENABLED = False
@@ -23,3 +26,12 @@ settings.RESUME_STORAGE_DIR = tempfile.mkdtemp(prefix="talentops_test_resumes_")
 settings.DUAL_MODEL_VERIFY = False
 settings.MODERATION_LLM_ENABLED = False
 settings.BIAS_LLM_ANALYSIS = False
+
+
+@pytest.fixture(autouse=True)
+def _clean_llm_circuit_breaker():
+    """The auth circuit breaker is process-wide; leaking state between tests would make
+    "quarantined" depend on test order."""
+    reset_llm_circuit_breaker()
+    yield
+    reset_llm_circuit_breaker()

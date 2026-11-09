@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import time
 import json
 import logging
 import os
@@ -40,6 +41,44 @@ def register_pre_cached_fixture(file_hash: str, parsed_json: dict[str, Any]) -> 
 
 class LLMAdapterError(Exception):
     pass
+
+
+# --- Circuit breaker for credential failures -------------------------------------------
+# A wrong or expired gateway key used to cost ~50 s per candidate: two models x two attempts
+# x the full timeout, every single run. Three consecutive rejections now quarantine the
+# gateway briefly so triage falls back to the heuristic engine immediately instead of
+# waiting out the retry budget on every file.
+AUTH_QUARANTINE_THRESHOLD = 3
+AUTH_QUARANTINE_SECONDS = 180.0
+_auth_failures = 0
+_quarantined_until = 0.0
+
+
+def reset_llm_circuit_breaker() -> None:
+    """Test hook and manual reset after fixing credentials."""
+    global _auth_failures, _quarantined_until
+    _auth_failures = 0
+    _quarantined_until = 0.0
+
+
+def circuit_breaker_state() -> dict:
+    return {
+        "auth_failures": _auth_failures,
+        "quarantined_until": _quarantined_until,
+        "open": time.monotonic() < _quarantined_until,
+    }
+
+
+def _note_auth_failure() -> None:
+    global _auth_failures, _quarantined_until
+    _auth_failures += 1
+    if _auth_failures >= AUTH_QUARANTINE_THRESHOLD:
+        _quarantined_until = time.monotonic() + AUTH_QUARANTINE_SECONDS
+        logger.error(
+            "LLM gateway rejected %s consecutive calls; pausing live calls for %ss",
+            _auth_failures,
+            AUTH_QUARANTINE_SECONDS,
+        )
 
 
 class LLMAdapter:
@@ -95,15 +134,32 @@ class LLMAdapter:
         if settings.LLM_FALLBACK_MODEL and settings.LLM_FALLBACK_MODEL != target_model:
             models_to_try.append(settings.LLM_FALLBACK_MODEL)
 
+        global _auth_failures, _quarantined_until
+
+        if _quarantined_until and time.monotonic() < _quarantined_until:
+            raise LLMAdapterError(
+                "GATEWAY_AUTH_QUARANTINE: gateway rejected credentials repeatedly; "
+                "live calls paused, heuristic engine will be used."
+            )
+
         last_err: Exception | None = None
-        call_timeout = min(settings.LLM_TIMEOUT, 12.0)
+        # The old 12 s ceiling was shorter than a thinking model's first token, so every
+        # attempt timed out and the pipeline fell back to the heuristic engine even though
+        # the gateway was healthy. Honour LLM_TIMEOUT instead, bounded to something sane.
+        call_timeout = max(5.0, min(settings.LLM_TIMEOUT, 60.0))
         max_retries = min(settings.LLM_MAX_RETRIES, 2)
+        # Routers that do not implement OpenAI strict-JSON reject the whole request with 400.
+        # Retrying once without `response_format` keeps structured extraction alive.
+        drop_response_format = False
 
         # trust_env=False prevents local loopback calls from being intercepted by global SOCKS/HTTP proxies
         async with httpx.AsyncClient(timeout=call_timeout, trust_env=False) as client:
             for current_model in models_to_try:
                 payload["model"] = current_model
+                drop_response_format = False
                 for attempt in range(1, max_retries + 1):
+                    if drop_response_format and "response_format" in payload:
+                        payload.pop("response_format", None)
                     try:
                         resp = await client.post(
                             f"{self.base_url}/chat/completions",
@@ -111,6 +167,8 @@ class LLMAdapter:
                             json=payload,
                         )
                         if resp.status_code == 200:
+                            _auth_failures = 0
+                            _quarantined_until = 0.0
                             data = resp.json()
                             content = data["choices"][0]["message"]["content"]
                             return {
@@ -120,15 +178,37 @@ class LLMAdapter:
                                 "content": content,
                                 "raw": data,
                             }
-                        if resp.status_code in (401, 403, 404):
+                        if resp.status_code in (401, 403):
                             logger.warning(
-                                "LLM Gateway auth/model error %s on %s: %s",
+                                "LLM Gateway auth error %s on %s: %s",
                                 resp.status_code,
                                 current_model,
                                 resp.text[:200],
                             )
-                            # Auth and model-not-found errors won't resolve on retry; break early to fallback
+                            _note_auth_failure()
+                            # Bad credentials apply to every model; stop burning time here.
+                            last_err = LLMAdapterError(
+                                f"GATEWAY_AUTH_{resp.status_code}: {resp.text[:200]}"
+                            )
                             break
+                        if resp.status_code in (400, 404, 422) and "response_format" in payload:
+                            logger.warning(
+                                "LLM Gateway rejected response_format (%s); retrying without it",
+                                resp.status_code,
+                            )
+                            drop_response_format = True
+                            continue
+                        if resp.status_code == 404:
+                            logger.warning(
+                                "LLM Gateway model not found %s: %s", current_model, resp.text[:200]
+                            )
+                            last_err = LLMAdapterError(
+                                f"MODEL_NOT_FOUND_{resp.status_code}: {current_model}"
+                            )
+                            break
+                        last_err = LLMAdapterError(
+                            f"HTTP_{resp.status_code}: {resp.text[:200]}"
+                        )
                         logger.warning(
                             "Attempt %s (%s) returned status %s: %s",
                             attempt,

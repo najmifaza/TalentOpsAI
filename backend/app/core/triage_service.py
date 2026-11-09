@@ -13,7 +13,12 @@ from app.core.broadcaster import sse_broadcaster
 from app.core.state import DistributedSemaphore
 from app.core.llm_adapter import LLMAdapter, PRE_CACHED_STORE, compute_file_hash
 from app.core.prompt import build_extraction_prompt, clean_llm_json_response
-from app.core.scoring import DeterministicScoringEngine, detect_experience_claim_inflation
+from app.core.scoring import (
+    METRIC_PATTERN,
+    DeterministicScoringEngine,
+    detect_experience_claim_inflation,
+    is_tier3_metric_claim,
+)
 from app.core.crosscheck import build_divergence_anomaly, compare_extractions, downgrade_confidence
 from app.core.interview_generator import generate_interview_questions
 from app.schemas.extraction import (
@@ -107,6 +112,21 @@ def _excerpt_around(text: str, start: int, end: int) -> str:
     return snippet.strip(" \t-•*|,;")
 
 
+def _excerpt_for_match(text: str, match) -> str:
+    """Line-sized excerpt for a matched term, with a window fallback for newline-free PDFs."""
+    start = max(0, text.rfind("\n", 0, match.start()))
+    end = text.find("\n", match.end())
+    if end == -1:
+        end = len(text)
+
+    excerpt = text[start:end].replace(chr(13), " ").replace(chr(10), " ").strip(" \t-•*")
+    if len(excerpt) < 15:
+        excerpt = text[max(0, match.start() - 50):min(len(text), match.end() + 80)].strip()
+    if len(excerpt) > HEURISTIC_EXCERPT_CHARS:
+        excerpt = _excerpt_around(text, match.start(), match.end())
+    return excerpt
+
+
 def _extract_heuristic_fallback(
     sanitized_text: str,
     core_competencies: List[str],
@@ -135,38 +155,37 @@ def _extract_heuristic_fallback(
             continue
         term_clean = term.strip()
         pattern = rf"(?<![a-z0-9+#.]){re.escape(term_clean.lower())}(?![a-z0-9+#.])"
-        match = re.search(pattern, text_lower)
-        if match:
-            seen_competencies.add(term_clean.lower())
-            start = max(0, sanitized_text.rfind("\n", 0, match.start()))
-            end = sanitized_text.find("\n", match.end())
-            if end == -1:
-                end = len(sanitized_text)
-            raw_line = sanitized_text[start:end]
-            line = raw_line.replace(chr(13), " ").replace(chr(10), " ").strip(" \t-•*")
-            if len(line) < 15:
-                line = sanitized_text[max(0, match.start() - 50):min(len(sanitized_text), match.end() + 80)].strip()
-            if len(line) > HEURISTIC_EXCERPT_CHARS:
-                # Text without line breaks (typical of some PDF exports) would otherwise make
-                # the whole resume the "quote" for every claim.
-                line = _excerpt_around(sanitized_text, match.start(), match.end())
+        matches = list(re.finditer(pattern, text_lower))
+        if not matches:
+            continue
 
-            metric_m = re.search(
-                r"\b\d+(?:[\.,]\d+)?\s*(?:%|persen|rps|tps|karyawan|user|pengguna|juta|miliar|kontrak|dokumen|kasus|proyek)\b|\b\d+\+?\s*(?:tahun|thn|bulan|bln)\b",
-                line,
-                re.IGNORECASE,
-            )
-            metric_str = metric_m.group(0) if metric_m else None
+        seen_competencies.add(term_clean.lower())
 
-            claims.append(
-                ClaimItem(
-                    dimension="SKILL",
-                    technology=term_clean,
-                    has_implementation_detail=True,
-                    context_narrative=line,
-                    metric_string=metric_str,
-                )
+        # The first mention is often a bare skills list ("KEAHLIAN Python, FastAPI, ...") which
+        # only reaches Tier 2. Prefer a mention whose sentence also carries a measurable result,
+        # because that is what Tier 3 credit is based on.
+        line = None
+        metric_str = None
+        for match in matches:
+            candidate_excerpt = _excerpt_for_match(sanitized_text, match)
+            # Reuse the scoring engine's pattern instead of a second list that drifts from it.
+            metric_m = METRIC_PATTERN.search(candidate_excerpt)
+            candidate_metric = metric_m.group(0) if metric_m else None
+            if line is None:
+                line, metric_str = candidate_excerpt, candidate_metric
+            if is_tier3_metric_claim(candidate_excerpt, candidate_metric):
+                line, metric_str = candidate_excerpt, candidate_metric
+                break
+
+        claims.append(
+            ClaimItem(
+                dimension="SKILL",
+                technology=term_clean,
+                has_implementation_detail=True,
+                context_narrative=line,
+                metric_string=metric_str,
             )
+        )
 
     # Timeline extraction: support both multi-line documents and un-broken single-line PDF streams
     timeline: List[CareerTimelineItem] = []

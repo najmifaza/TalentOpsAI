@@ -269,7 +269,7 @@ Implementasi basis data MariaDB InnoDB 3NF menjamin *data integrity* dan auditab
 
 ### 7.1. Mitigasi Halusinasi AI & Inkonsistensi Skor (Zero Hallucination Guarantee)
 * **Kalkulasi Deterministik:** Model LLM secara tegas dilarang melakukan perhitungan matematika skor atau penentuan status akhir. LLM hanya mengklasifikasikan bukti ke dalam format JSON Pydantic yang divalidasi ketat (*Strict Schema Enforcement*).
-* **Pencocokan Bobot Deterministik:** Formula skor $\sum (w_i 	imes s_i)$ dihitung langsung oleh fungsi matematika Python di backend, mengeliminasi variansi penilaian antarwaktu.
+* **Pencocokan Bobot Deterministik:** Formula skor Σ (bobot dimensi × skor dimensi) dihitung langsung oleh fungsi matematika Python di backend, mengeliminasi variansi penilaian antarwaktu.
 
 ### 7.2. Perlindungan Privasi Data & Anti-Kebocoran PII (UU PDP / GDPR Compliance)
 * **AES-256-GCM Envelope Encryption:** Setiap berkas dan data identitas kandidat dienkripsi menggunakan *Data Encryption Key* (DEK) unik per kandidat. DEK tersebut dienkripsi ulang menggunakan *Master Key Encryption Key* (KEK) tingkat sistem.
@@ -310,18 +310,3 @@ Desain antarmuka mengusung filosofi **Natural Mint Theme** yang ergonomis, kontr
 4. **Enterprise Multi-Tenant SaaS Isolation:** Skalabilitas skema basis data dari *Single Default Tenant* menuju isolasi skema per-perusahaan (*Tenant Schema Separation*) dengan kepatuhan sertifikasi SOC2 Type II dan ISO 27001.
 
 ---
-
-## 10. BLUEPRINT PENGUJIAN VIDEO DEMO (3–5 MENIT)
-
-Struktur naratif video demonstrasi sistem (sesuai ketentuan silabus GTNIC 2026):
-
-* **Menit 00:00 - 00:45 (Pitching Masalah Industri):**  
-  Pembukaan masalah 500 CV yang memicu kelelahan HR. Kontras antara ATS konvensional yang rapuh dengan TalentOps AI sebagai *Autonomous Recruitment Operating System*.
-* **Menit 00:45 - 01:45 (Demo Live Kasus 1: Budi Santoso - Strong Match):**  
-  Unggah CV -> Agen mengeksekusi ekstraksi dan sanitasi PII -> Verifikasi bukti proyek backend -> Kalkulasi skor deterministik 92.4 -> Pemesanan slot kalender sementara -> Rekomendasi `STRONG MATCH`.
-* **Menit 01:45 - 02:45 (Demo Live Kasus 2: Reza Pratama - Deteksi Anomali & Self-Healing):**  
-  Agen mengeksekusi *Career Timeline Auditor* -> Menemukan anomali tumpang tindih masa kerja 17 bulan -> Penjelasan visual pada *Evidence Graph* -> Pembuatan asesmen adaptif -> Uji coba bentrok kalender HTTP 409 -> Agen memulihkan diri (*RECOVERED*) memilih slot baru secara otonom.
-* **Menit 02:45 - 03:45 (Demo Live Kasus 3: Simulasi Kebijakan "What-If"):**  
-  HR mendemonstrasikan pengubahan parameter kualifikasi -> Mesin simulasi memproyeksikan perubahan metrik talent pool secara seketika -> Eksekusi persetujuan manusia (*Human-in-the-Loop*).
-* **Menit 03:45 - 04:30 (Penjelasan Arsitektur di Balik Layar & Penutup):**  
-  Tinjauan ringkas arsitektur 3-tier, pemisahan LLM vs Deterministic, enkripsi kriptografis, dan komitmen etika rekrutmen masa depan.

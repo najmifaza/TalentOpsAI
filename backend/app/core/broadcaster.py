@@ -26,6 +26,7 @@ import uuid
 from typing import AsyncGenerator, Dict, List, Optional, Set
 
 from app.core.config import settings
+from app.core.moderation import scrub_narration
 from app.core.state import key, redis_state
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,11 @@ INTERMEDIATE_TRIAGE_STEPS = {
     "github_repo_verification",
     "github_audit",
     "deterministic_scoring",
+    # Emitted by docs/RENCANA_PENGEMBANGAN_AI.md items #4 and #3. Any step name missing
+    # from this set is treated as terminal when status == "completed", which would close
+    # the SSE stream mid-run.
+    "interview_generation",
+    "crosscheck_verification",
 }
 
 
@@ -222,6 +228,19 @@ class SSEBroadcaster:
         details: Optional[dict] = None,
         is_terminal: Optional[bool] = None,
     ) -> None:
+        # Single choke point for outbound narration. Template-authored text only needs the
+        # deterministic layer, so no gateway call is spent per published step
+        # (see core/moderation.py).
+        if details and isinstance(details.get("ai_thought"), str):
+            scrubbed, blocked_reason = scrub_narration(details["ai_thought"])
+            if blocked_reason:
+                details = {
+                    **details,
+                    "ai_thought": scrubbed,
+                    "moderation_blocked": True,
+                    "moderation_reason": blocked_reason,
+                }
+
         if is_terminal is None:
             if step_name in INTERMEDIATE_TRIAGE_STEPS:
                 is_terminal = False

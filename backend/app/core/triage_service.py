@@ -11,9 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.broadcaster import sse_broadcaster
 from app.core.state import DistributedSemaphore
-from app.core.llm_adapter import LLMAdapter, compute_file_hash
+from app.core.llm_adapter import LLMAdapter, PRE_CACHED_STORE, compute_file_hash
 from app.core.prompt import build_extraction_prompt, clean_llm_json_response
 from app.core.scoring import DeterministicScoringEngine
+from app.core.crosscheck import build_divergence_anomaly, compare_extractions, downgrade_confidence
+from app.core.interview_generator import generate_interview_questions
 from app.schemas.extraction import (
     CandidateExtractionSchema,
     AnomalyFlags,
@@ -466,17 +468,31 @@ class AgentTriageService:
             )
 
             extraction_error = None
+            crosscheck: Optional[Dict[str, Any]] = None
+            crosscheck_models: Dict[str, str] = {}
             try:
-                llm_resp = await self.llm_adapter.complete(
-                    messages=prompt_msgs,
-                    file_hash=file_hash,
-                    use_cache=use_cache,
-                    response_format={"type": "json_object"},
+                primary_resp, secondary_resp = await self._run_extraction_pair(
+                    prompt_msgs, file_hash, use_cache
                 )
-                clean_json_str = clean_llm_json_response(llm_resp["content"])
+                clean_json_str = clean_llm_json_response(primary_resp["content"])
                 extracted_dict = json.loads(clean_json_str)
                 schema = CandidateExtractionSchema.model_validate(extracted_dict)
-                extraction_source = llm_resp.get("source", "LIVE")
+                extraction_source = primary_resp.get("source", "LIVE")
+                crosscheck_models["primary"] = primary_resp.get("model") or settings.LLM_MODEL_NAME
+
+                if secondary_resp is not None:
+                    crosscheck_models["crosscheck"] = (
+                        secondary_resp.get("model") or settings.LLM_CROSSCHECK_MODEL
+                    )
+                    try:
+                        secondary_schema = CandidateExtractionSchema.model_validate(
+                            json.loads(clean_llm_json_response(secondary_resp["content"]))
+                        )
+                        crosscheck = compare_extractions(schema, secondary_schema)
+                    except Exception as cc_exc:
+                        # A cross-check that cannot be parsed is a missing signal, never a
+                        # failed triage: the primary extraction still stands.
+                        logger.warning("Cross-check unusable for %s: %s", candidate_id, cc_exc)
             except Exception as e:
                 extraction_error = str(e)
                 logger.warning(f"Live extraction failed for {candidate_id}, using heuristic fallback: {e}")
@@ -504,6 +520,16 @@ class AgentTriageService:
                 f"AI mengekstraksi {len(schema.claims)} klaim kompetensi ({', '.join(extracted_skills[:5])}{'...' if len(extracted_skills) > 5 else ''}), "
                 f"termasuk {len(metric_claims)} klaim dengan metrik terukur. Ditemukan {len(schema.career_timeline)} riwayat kerja. Pendidikan: {edu_str}."
             )
+            if crosscheck:
+                extraction_thought += (
+                    f" Konsensus dua model: {int(crosscheck['agreement'] * 100)}% kesepakatan"
+                    + (
+                        " — divergen, hasil dieskalasi ke peninjauan manusia."
+                        if crosscheck["divergent"]
+                        else " (stabil)."
+                    )
+                )
+
             step_details = {
                 "source": extraction_source,
                 "claims_count": len(schema.claims),
@@ -513,6 +539,11 @@ class AgentTriageService:
             }
             if extraction_error:
                 step_details["llm_gateway_error"] = extraction_error
+            if crosscheck:
+                step_details["extraction_agreement"] = crosscheck["agreement"]
+                step_details["crosscheck_divergent"] = crosscheck["divergent"]
+                step_details["crosscheck_divergences"] = crosscheck["divergences"]
+                step_details["crosscheck_models"] = crosscheck_models
 
             await self._record_step(
                 db, run_id, candidate_id, masked_id, "llm_extraction",
@@ -620,6 +651,14 @@ class AgentTriageService:
                 competency_taxonomies=comp_tax,
                 job_title=job_title,
             )
+
+            # Two models disagreed on what the CV says, so the numeric score ships with
+            # less confidence and skips the automated shortlist path. Not a failure:
+            # this is the agent noticing its own ambiguity (item #4).
+            if crosscheck and crosscheck["divergent"]:
+                assessment["confidence_level"] = downgrade_confidence(assessment["confidence_level"])
+                assessment["triage_priority"] = "HIGH_ATTENTION"
+
             dur_ms = int((time.time() - t0) * 1000)
             dim = assessment["dimension_scores"]
             w_applied = assessment.get("weights_applied", weights or {})
@@ -754,9 +793,41 @@ class AgentTriageService:
                                     },
                                 )
 
+            # Divergence between the two extraction models becomes a normal anomaly row,
+            # so it shows up in the dossier next to the other findings instead of living
+            # only inside the trace payload.
+            if crosscheck and crosscheck["divergent"]:
+                divergence = build_divergence_anomaly(crosscheck, crosscheck_models)
+                await db.execute(
+                    text("""
+                        INSERT INTO candidate_anomalies (
+                            candidate_id, anomaly_type, severity, description, suggested_verification
+                        ) VALUES (
+                            :cid, :atype, :sev, :desc, :verify
+                        )
+                    """),
+                    {
+                        "cid": candidate_id,
+                        "atype": divergence["type"],
+                        "sev": divergence["severity"],
+                        "desc": divergence["description"],
+                        "verify": divergence["suggested_verification"],
+                    },
+                )
+
             # Persist Adaptive Assessments
             await db.execute(text("DELETE FROM candidate_assessments WHERE candidate_id = :id"), {"id": candidate_id})
-            for challenge in assessment["adaptive_challenges"]:
+            adaptive_challenges = await self._generate_adaptive_assessments(
+                schema=schema,
+                assessment=assessment,
+                job_title=job_title,
+                core_competencies=core_competencies,
+                run_id=run_id,
+                candidate_id=candidate_id,
+                masked_id=masked_id,
+                db=db,
+            )
+            for challenge in adaptive_challenges:
                 await db.execute(
                     text("""
                         INSERT INTO candidate_assessments (
@@ -902,6 +973,114 @@ class AgentTriageService:
             except Exception as db_err:
                 logger.error(f"Failed to reset candidate {candidate_id} status to failed: {db_err}")
             raise
+
+    async def _run_extraction_pair(
+        self,
+        prompt_msgs: List[Dict[str, str]],
+        file_hash: str,
+        use_cache: bool,
+    ) -> tuple:
+        """Primary extraction, plus an optional second model on the same prompt.
+
+        Both run concurrently: serialising them would double the pipeline latency for no
+        benefit. The second call is skipped for cached fixtures (nothing to compare) and
+        when the cross-check model is the primary one.
+        """
+        primary_task = self.llm_adapter.complete(
+            messages=prompt_msgs,
+            file_hash=file_hash,
+            use_cache=use_cache,
+            response_format={"type": "json_object"},
+        )
+
+        if use_cache and file_hash and file_hash in PRE_CACHED_STORE:
+            # Demo fixtures answer byte-identically by construction; comparing a cache hit
+            # against a live call would spend a gateway call to measure the cache.
+            return await primary_task, None
+
+        wants_crosscheck = (
+            settings.DUAL_MODEL_VERIFY
+            and settings.LLM_CROSSCHECK_MODEL
+            and settings.LLM_CROSSCHECK_MODEL != settings.LLM_MODEL_NAME
+        )
+        if not wants_crosscheck:
+            return await primary_task, None
+
+        crosscheck_task = self.llm_adapter.complete(
+            messages=prompt_msgs,
+            file_hash=file_hash,
+            use_cache=False,
+            model=settings.LLM_CROSSCHECK_MODEL,
+            response_format={"type": "json_object"},
+        )
+        primary_resp, secondary_resp = await asyncio.gather(
+            primary_task, crosscheck_task, return_exceptions=True
+        )
+
+        # The primary result decides the run; a dead cross-check must not mask it.
+        if isinstance(primary_resp, Exception):
+            raise primary_resp
+        if isinstance(secondary_resp, Exception):
+            logger.warning("Cross-check model unavailable: %s", secondary_resp)
+            return primary_resp, None
+        if primary_resp.get("source") != "LIVE":
+            # Pre-cached fixtures are deterministic by construction; comparing a cache hit
+            # against a live call measures the cache, not the model.
+            return primary_resp, None
+        return primary_resp, secondary_resp
+
+    async def _generate_adaptive_assessments(
+        self,
+        schema: CandidateExtractionSchema,
+        assessment: Dict[str, Any],
+        job_title: str,
+        core_competencies: List[str],
+        run_id: str,
+        candidate_id: int,
+        masked_id: str,
+        db: AsyncSession,
+    ) -> List[Dict[str, Any]]:
+        """LLM questions anchored to evidence; deterministic template on any failure."""
+        fallback = assessment.get("adaptive_challenges") or []
+        started = time.time()
+
+        generated = await generate_interview_questions(
+            self.llm_adapter,
+            job_title=job_title,
+            core_competencies=core_competencies,
+            claims=[c.model_dump() for c in schema.claims],
+            evidence_records=assessment.get("evidence_records") or [],
+            anomaly_details=assessment.get("anomaly_details") or [],
+            recommendation=assessment.get("recommendation") or "",
+            dimension_scores=assessment.get("dimension_scores") or {},
+        )
+
+        dur_ms = int((time.time() - started) * 1000)
+        questions = generated["questions"] if generated else fallback
+        source = "LLM_GENERATED" if generated else "DETERMINISTIC_TEMPLATE"
+
+        details = {
+            "source": source,
+            "questions_count": len(questions),
+            "target_skills": [q.get("target_skill") for q in questions][:6],
+            "model": (generated or {}).get("model"),
+            "backend_action": (
+                f"Generator asesmen adaptif menyusun {len(questions)} pertanyaan "
+                f"dari {len(schema.claims)} klaim terekstraksi ({dur_ms} ms)."
+            ),
+            "ai_thought": (
+                f"AI menyusun {len(questions)} pertanyaan wawancara yang menunjuk klaim spesifik "
+                f"kandidat ({', '.join([str(q.get('target_skill')) for q in questions[:3]]) or 'tanpa target'})."
+                if generated
+                else "Generator LLM tidak tersedia; pertanyaan fallback deterministik dipakai agar pipeline tetap utuh."
+            ),
+        }
+        await self._record_step(
+            db, run_id, candidate_id, masked_id, "interview_generation",
+            "completed", dur_ms, details
+        )
+        await sse_broadcaster.publish(candidate_id, "interview_generation", "completed", details)
+        return questions
 
     async def _record_step(
         self,

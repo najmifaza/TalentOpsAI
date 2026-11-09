@@ -41,6 +41,17 @@ class Settings(BaseSettings):
     LLM_TIMEOUT: float = 30.0
     LLM_MAX_RETRIES: int = 3
 
+    # --- AI feature flags (docs/RENCANA_PENGEMBANGAN_AI.md) -----------------
+    # Dual-model cross-check: a second model reads the same prompt and the agreement
+    # gates confidence. False restores the single-model behaviour exactly.
+    DUAL_MODEL_VERIFY: bool = True
+    LLM_CROSSCHECK_MODEL: str = "ag/gemini-3.8-flash-high"
+    # Outbound moderation. False => deterministic pattern layer only.
+    MODERATION_LLM_ENABLED: bool = True
+    MODERATION_LLM_MIN_CHARS: int = 300
+    # LLM layer on the job-description bias audit. The regex layer always runs.
+    BIAS_LLM_ANALYSIS: bool = True
+
     GITHUB_TOKEN: str = ""
     DEMO_MODE: bool = False
 

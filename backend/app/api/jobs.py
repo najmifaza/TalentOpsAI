@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import re
@@ -10,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.auth import require_roles
+from app.core.config import settings
 from app.core.scoring import DeterministicScoringEngine, inclusivity_from_findings
+from app.core.llm_adapter import LLMAdapter
+from app.core.prompt import clean_llm_json_response
+from app.schemas.extraction import _match_enum
 
 logger = logging.getLogger(__name__)
 
@@ -590,6 +595,137 @@ class BiasAnalysisRequest(BaseModel):
     custom_text: Optional[str] = Field(None, description="Teks kustom untuk analisis sebelum disimpan ke database")
 
 
+# ==============================================================================
+# Job-description bias audit — hybrid: deterministic regex + LLM nuance
+# ==============================================================================
+# The regex layer below stays authoritative and always runs: it is what makes the score
+# reproducible and unit-testable. The LLM layer only adds findings the patterns cannot
+# express ("energik dan single", "culture fit dengan tim muda"). On a collision the regex
+# finding wins, because its match offset in the source text is exact.
+#
+# Scores MUST keep flowing through `inclusivity_from_findings` — the audit endpoint and
+# the public career portal read the same function, and a second formula would let the two
+# disagree.
+
+BIAS_CATEGORIES = (
+    "GENDER_EXCLUSIVE_TERMS",
+    "AGE_DISCRIMINATION",
+    "INSTITUTION_PRESTIGE_BIAS",
+    "AMBIGUOUS_WORK_EXPECTATIONS",
+)
+BIAS_VALID_SEVERITIES = {"LOW", "MEDIUM", "HIGH"}
+BIAS_SEVERITY_ALIASES = {
+    "tinggi": "HIGH",
+    "high": "HIGH",
+    "sedang": "MEDIUM",
+    "menengah": "MEDIUM",
+    "medium": "MEDIUM",
+    "rendah": "LOW",
+    "low": "LOW",
+}
+
+BIAS_SYSTEM_PROMPT = (
+    "You audit Indonesian job advertisements for recruitment bias, for an enterprise HR system.\n"
+    "Find ONLY implicit bias the literal word lists below cannot catch:\n"
+    "- gender-coded wording (e.g. 'energik dan single', 'culture fit dengan tim muda')\n"
+    "- implicit age discrimination, disguised as energy or 'fresh' culture\n"
+    "- academic pedigree bias or socioeconomic filtering\n"
+    "- toxic or unbounded work expectations phrased politely\n"
+    "Rules: quote `matched_term` EXACTLY as it appears in the ad text; one finding per distinct "
+    "phrase; do not report anything that is not present verbatim.\n"
+    "Return ONLY raw JSON: {\"findings\": [{\"category\": \"GENDER_EXCLUSIVE_TERMS|AGE_DISCRIMINATION|"
+    "INSTITUTION_PRESTIGE_BIAS|AMBIGUOUS_WORK_EXPECTATIONS\", \"severity\": \"LOW|MEDIUM|HIGH\", "
+    "\"matched_term\": \"text from the ad\", \"actionable_suggestion\": \"how to rewrite it\"}]}"
+)
+
+# Bounded by design: the audit is a click-driven endpoint on a public portal, so a repeat
+# click on the same unedited ad must not pay for another gateway call.
+_bias_llm_cache: Dict[str, List[dict]] = {}
+
+
+def _normalize_llm_bias_finding(raw: Any, source_text: str) -> Optional[dict]:
+    """Drops anything the model could have invented; keeps only verbatim quotes."""
+    if not isinstance(raw, dict):
+        return None
+    matched = raw.get("matched_term")
+    if not isinstance(matched, str) or not matched.strip():
+        return None
+    matched = matched.strip()
+    if matched.lower() not in source_text.lower():
+        return None
+
+    category = _match_enum(raw.get("category"), set(BIAS_CATEGORIES), {}, "AMBIGUOUS_WORK_EXPECTATIONS")
+    severity = _match_enum(raw.get("severity"), BIAS_VALID_SEVERITIES, BIAS_SEVERITY_ALIASES, "MEDIUM")
+
+    position = source_text.lower().index(matched.lower())
+    start = max(0, position - 30)
+    end = min(len(source_text), position + len(matched) + 30)
+
+    suggestion = raw.get("actionable_suggestion")
+    if not isinstance(suggestion, str) or not suggestion.strip():
+        suggestion = "Rumuskan ulang frasa ini agar berfokus pada kompetensi dan kebutuhan pekerjaan."
+
+    return {
+        "category": category,
+        "severity": severity,
+        "matched_term": matched,
+        "context_snippet": f"...{source_text[start:end].strip()}...",
+        "actionable_suggestion": suggestion.strip()[:400],
+        "detected_by": "LLM",
+    }
+
+
+async def _llm_bias_findings(text_to_analyze: str) -> tuple:
+    """Returns (findings, analyzer). Never raises: the portal must still answer 200."""
+    if not settings.BIAS_LLM_ANALYSIS or not text_to_analyze.strip():
+        return [], "RULES_ONLY"
+
+    cache_key = hashlib.sha256(text_to_analyze.encode("utf-8")).hexdigest()
+    if cache_key in _bias_llm_cache:
+        return _bias_llm_cache[cache_key], "HYBRID"
+
+    try:
+        adapter = LLMAdapter()
+        response = await adapter.complete(
+            messages=[
+                {"role": "system", "content": BIAS_SYSTEM_PROMPT},
+                {"role": "user", "content": text_to_analyze[:6000]},
+            ],
+            use_cache=False,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
+        payload = json.loads(clean_llm_json_response(response["content"]))
+    except Exception as exc:
+        logger.warning("Bias LLM layer unavailable, rules-only audit returned: %s", exc)
+        return [], "RULES_ONLY"
+
+    raw_findings = payload.get("findings") if isinstance(payload, dict) else None
+    if not isinstance(raw_findings, list):
+        return [], "HYBRID"
+
+    findings = [
+        normalized
+        for normalized in (_normalize_llm_bias_finding(item, text_to_analyze) for item in raw_findings)
+        if normalized
+    ][:10]
+    _bias_llm_cache[cache_key] = findings
+    return findings, "HYBRID"
+
+
+def _merge_bias_findings(rule_findings: List[dict], llm_findings: List[dict]) -> List[dict]:
+    """Regex findings take precedence on the same (category, matched_term) pair."""
+    merged: List[dict] = []
+    seen = set()
+    for finding in list(rule_findings) + list(llm_findings):
+        key = (finding.get("category"), str(finding.get("matched_term", "")).strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(finding)
+    return merged
+
+
 @router.post("/{job_id}/analyze-bias")
 async def analyze_job_bias(
     job_id: int,
@@ -663,6 +799,10 @@ async def analyze_job_bias(
                 "actionable_suggestion": rule["suggestion"],
             })
 
+    # Layer 2: implicit wording the patterns cannot express.
+    llm_findings, analyzer = await _llm_bias_findings(text_to_analyze)
+    findings = _merge_bias_findings(findings, llm_findings)
+
     inclusivity_score, inclusivity_rating = inclusivity_from_findings(findings)
 
     # Persist audit result to database
@@ -681,5 +821,6 @@ async def analyze_job_bias(
         "inclusivity_rating": inclusivity_rating,
         "total_bias_flags": len(findings),
         "bias_findings": findings,
+        "analyzer": analyzer,
         "compliance_notes": "Selaras asas nondiskriminasi Pasal 5 & 6 UU No. 13 Tahun 2003 tentang Ketenagakerjaan dan target SDG 8.5.",
     }

@@ -8,6 +8,7 @@ import {
   RotateCcw,
   Sparkles,
   ShieldCheck,
+  ShieldAlert,
   Check
 } from 'lucide-react';
 import { issueSseTicket } from '../lib/api';
@@ -51,8 +52,14 @@ const BACKEND_STEPS = [
     timeTarget: '< 2 ms',
   },
   {
+    key: 'interview_generation',
+    title: '7. Konsensus Model & Simulasi Wawancara',
+    subtitle: 'Pembandingan dua model ekstraksi dan penyusunan pertanyaan dari bukti kandidat',
+    timeTarget: '~ 1.5 s',
+  },
+  {
     key: 'triage_completed',
-    title: '7. Keputusan Akhir & Jadwal Wawancara',
+    title: '8. Keputusan Akhir & Jadwal Wawancara',
     subtitle: 'Penetapan status rekomendasi & penyiapan jadwal wawancara',
     timeTarget: '< 5 ms',
   }
@@ -69,8 +76,10 @@ const STEP_INDEX_MAP = {
   'github_repo_verification': 4,
   'github_audit': 4,
   'deterministic_scoring': 5,
-  'triage_completed': 6,
-  'agent_decision': 6
+  'interview_generation': 6,
+  'crosscheck_verification': 6,
+  'triage_completed': 7,
+  'agent_decision': 7
 };
 
 export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageComplete }) {
@@ -521,6 +530,67 @@ export default function AgentTraceModal({ candidate, isOpen, onClose, onTriageCo
                             {s}
                           </span>
                         ))}
+                      </div>
+                    )}
+
+                    {/* Konsensus dua model ekstraksi (item #4) */}
+                    {details?.extraction_agreement !== undefined && details?.extraction_agreement !== null && (
+                      <div className="pt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] text-slate-400 font-sans font-semibold">Konsensus Dua Model:</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                            details.crosscheck_divergent
+                              ? 'bg-amber-950/60 text-amber-300 border-amber-800/40'
+                              : 'bg-emerald-950/60 text-emerald-400 border-emerald-800/40'
+                          }`}
+                          title={
+                            details.crosscheck_divergent
+                              ? 'Kedua model membaca CV secara berbeda. Keyakinan skor diturunkan dan berkas dieskalasi ke review manusia.'
+                              : 'Kedua model ekstraksi sepakat atas isi CV.'
+                          }
+                        >
+                          {Math.round(Number(details.extraction_agreement) * 100)}%
+                          {' · '}
+                          {details.crosscheck_divergent ? 'DIVERGEN' : 'STABIL'}
+                        </span>
+                        {details.crosscheck_models?.primary && (
+                          <span className="text-[10px] font-mono text-slate-500">
+                            {details.crosscheck_models.primary}
+                            {' vs '}
+                            {details.crosscheck_models.crosscheck}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {Array.isArray(details?.crosscheck_divergences) && details.crosscheck_divergences.length > 0 && (
+                      <ul className="pt-1 space-y-0.5 text-[10.5px] text-amber-200/90 font-sans list-disc pl-5">
+                        {details.crosscheck_divergences.slice(0, 4).map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {/* Keahlian target pertanyaan wawancara (item #3) */}
+                    {Array.isArray(details?.target_skills) && details.target_skills.length > 0 && (
+                      <div className="pt-1 flex flex-wrap gap-1.5 items-center">
+                        <span className="text-[10px] text-slate-400 font-sans font-semibold">Target Pertanyaan:</span>
+                        {details.target_skills.map((skill, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-indigo-950/50 text-indigo-200 border border-indigo-800/40">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Penyaring keluaran (item #8) */}
+                    {details?.moderation_blocked && (
+                      <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/25 text-rose-200 text-[11px] flex items-start gap-2">
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                        <div className="font-sans leading-relaxed">
+                          <span className="font-semibold text-rose-400 font-mono">Penyaring Keluaran: </span>
+                          <span>Narasi ditahan otomatis ({details.moderation_reason || 'frasa tidak lolos sensor'}).</span>
+                        </div>
                       </div>
                     )}
 

@@ -623,6 +623,7 @@ class AgentTriageService:
             # ==================================================================
             t0 = time.time()
             verified_repos = {}
+            verifikasi_profil: Optional[Dict[str, Any]] = None
             if is_tech_role:
                 candidate_github_url = schema.github_url or candidate.get("github_url")
 
@@ -633,14 +634,34 @@ class AgentTriageService:
                         verified_repos[claim.repo_url] = repo_audit
 
                 if candidate_github_url and candidate_github_url not in verified_repos:
-                    if "/repos/" not in candidate_github_url and candidate_github_url.count("/") == 4:
+                    profile_url = self.github_adapter.normalize_profile_url(candidate_github_url)
+                    if profile_url:
+                        # Most applicants paste their profile, not one repository. One listing
+                        # call verifies every public repo on it; scoring takes the best result.
+                        profile_audit = await self.github_adapter.list_owner_repositories(profile_url)
+                        for repo_url, audit in profile_audit["repos"].items():
+                            verified_repos.setdefault(repo_url, audit)
+                        if not profile_audit["repos"]:
+                            # No public repo means nothing to score, but the shape is still valid,
+                            # so the profile itself carries the verdict (keeps portfolio at 20).
+                            verified_repos[profile_url] = profile_audit["summary"]
+                        verifikasi_profil = profile_audit
+                    elif "/repos/" not in candidate_github_url and candidate_github_url.count("/") == 4:
                         # Specific repo format
                         repo_audit = await self.github_adapter.verify_repository(candidate_github_url)
                         verified_repos[candidate_github_url] = repo_audit
 
                 verified_repo_names = list(verified_repos.keys())
+                if verifikasi_profil and verifikasi_profil.get("profile"):
+                    repo_thought_prefix = (
+                        f"Profil GitHub berisi {len(verifikasi_profil['profile'])} repo publik "
+                        f"({', '.join(verifikasi_profil['profile'][:4])}). "
+                    )
+                else:
+                    repo_thought_prefix = ""
                 repo_thought = (
-                    f"Audit Repositori GitHub ({len(verified_repo_names)} repo): Memeriksa kode sumber, keaslian repo, dan riwayat commit kandidat "
+                    repo_thought_prefix
+                    + f"Audit Repositori GitHub ({len(verified_repo_names)} repo): Memeriksa kode sumber, keaslian repo, dan riwayat commit kandidat "
                     f"({', '.join(verified_repo_names) if verified_repo_names else 'URL GitHub tidak disertakan/tidak valid'})."
                 )
                 repo_backend_action = f"GitHub REST API v3 verifikasi selesai ({dur_ms} ms). {len(verified_repo_names)} repositori valid."
@@ -653,6 +674,7 @@ class AgentTriageService:
             repo_step_details = {
                 "repos_verified": len(verified_repos),
                 "repos": list(verified_repos.keys()),
+                "github_profile": (verifikasi_profil or {}).get("summary"),
                 "is_tech_role": is_tech_role,
                 "backend_action": repo_backend_action,
                 "ai_thought": repo_thought,

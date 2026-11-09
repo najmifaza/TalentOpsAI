@@ -69,8 +69,11 @@ def normalize_weight_config(weights: Optional[Dict[str, Any]]) -> Optional[Dict[
     return cleaned or None
 
 
+# Units that make a sentence a measurable result. `persen` and `menit` were missing, so
+# "menurunkan beban database 45 persen" scored as an unquantified claim (Tier 2) even though
+# it states a result — the most common way an Indonesian CV reports an outcome.
 METRIC_PATTERN = re.compile(
-    r"(?i)(?<![\w.])(?:\d+(?:[.,]\d+)*\+?\s?(?:%|x|ms|sec|detik|rps|qps|tps|req/s|users?|pengguna|k|jt|juta|miliar|m|b|rb|ribu|transaksi|dokumen|kontrak|klien|peserta|karyawan|leads)(?![a-z0-9])|(?:rp|\$|idr|usd)\s?\d[\d.,]*)"
+    r"(?i)(?<![\w.])(?:\d+(?:[.,]\d+)*\+?\s?(?:%|persen|poin|x|ms|sec|detik|menit|jam|hari|rps|qps|tps|req/s|users?|pengguna|k|jt|juta|miliar|m|b|rb|ribu|transaksi|dokumen|kontrak|klien|peserta|karyawan|leads|kali)(?![a-z0-9])|(?:rp|\$|idr|usd)\s?\d[\d.,]*)"
 )
 
 CONTEXT_KEYWORDS = {

@@ -326,3 +326,17 @@ def test_empty_and_edge_case_inputs():
     assert res["confidence_level"] == "LOW"
     assert res["unresolved_risk"] == "LOW"
 
+
+
+def test_persen_and_menit_count_as_measurable_results():
+    """Satuan yang paling sering dipakai CV Indonesia dulu tidak dihitung sebagai hasil
+    terukur, sehingga klaim dengan angka tetap jatuh ke Tier 2 (kasus #TK-991E49)."""
+    from app.core.scoring import is_tier3_metric_claim
+
+    assert is_tier3_metric_claim(
+        "Menerapkan cache Redis berlapis, menurunkan beban database 45 persen pada jam sibuk.", None
+    ) is True
+    assert is_tier3_metric_claim(
+        "Menyusun dashboard Grafana yang menurunkan waktu deteksi gangguan menjadi 4 menit.", None
+    ) is True
+    assert is_tier3_metric_claim("Menjaga kualitas kode dengan disiplin.", None) is False

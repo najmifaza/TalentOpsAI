@@ -192,7 +192,7 @@ Python 3.12 + FastAPI Core (Async) + Pydantic v2 + Cryptography Engine + aiomysq
 - Ingestion & Security Filter: PII Sanitizer & PDF Hidden Text Exploit Detector
 - Cryptographic Privacy: AES-256-GCM Envelope Encryption (DEK/KEK) + Blind Indexing
 - Identity Security: Single-Use Burn-on-Read Ticket untuk Streaming Real-Time SSE
-- Autonomous Agent State Machine (ReAct Cycle Orchestration):
+- Pipeline Investigasi 7 Tahap (berurutan, terekam di audit trail):
   [Understand] -> [Sanitize PII] -> [Investigate Claims] -> [Trace Evidence] ->
   [4D Deterministic Score] -> [Generate Adaptive Challenge] -> [Atomic Schedule]
 - Bounded Self-Healing Circuit:
@@ -207,13 +207,13 @@ Python 3.12 + FastAPI Core (Async) + Pydantic v2 + Cryptography Engine + aiomysq
 9Router API Gateway             MariaDB 10.11+ Enterprise RDBMS (InnoDB 3NF)
 Model: Gemini 3.8 / 3.7 Flash   14 Tabel Relasional Normalisasi Penuh:
 - Strict JSON Schema Output     - RBAC Users, OAuth Tokens, Consent Records
-- Multi-turn Function Calling   - Candidates, Evidence, Anomalies, Assessments
+- Dual-Model Cross-Check (konsensus dua model)   - Candidates, Evidence, Anomalies, Assessments
 - Zero Arithmetic Hallucination - Interview Slots (Locking), Scorecards, Reviews
 - Deterministic Temperature 0.2 - Agent Steps, PII Access Logs, Blog Posts
 ```
 
-### 5.1. Alur Logika State Machine & Tool Calling (Rubrik GTNIC 25% + 15% + 15%)
-Agen tidak mengeksekusi instruksi linier buta, melainkan bekerja melalui **Agentic State Machine** berbasis siklus *Reasoning + Acting (ReAct)*:
+### 5.1. Alur Investigasi Tujuh Tahap (Rubrik GTNIC 25% + 15% + 15%)
+Agen bekerja melalui tujuh tahap investigasi yang berjalan berurutan. Setiap tahap mencatat masukan, luaran, dan durasinya sendiri pada tabel audit, sehingga seluruh proses dapat diperiksa ulang oleh HR maupun auditor kepatuhan. Bila satu tahap gagal, sistem memiliki jalur pemulihan yang jelas dan tidak menghentikan proses secara keseluruhan:
 1. **Tool `extract_and_sanitize_resume`:** Mengekstrak teks dari berkas PDF, memindai injeksi teks tersembunyi, dan mengaburkan PII nama/email/telepon menjadi identitas anonim `#TK-[6-HEX]`.
 2. **Tool `investigate_claims_and_evidence`:** Mengidentifikasi klaim pengalaman dan keahlian, memvalidasi bukti primer (nomor halaman berkas, tautan GitHub riil), dan mencatat kontribusi skor ke tabel `candidate_evidence`.
 3. **Tool `audit_career_timeline`:** Menganalisis rentang bulan dan tahun kerja. Jika terdeteksi tumpang tindih (>3 bulan tanpa status freelance) atau lonjakan level jabatan fiktif, anomali dicatat ke tabel `candidate_anomalies`.
@@ -222,11 +222,13 @@ Agen tidak mengeksekusi instruksi linier buta, melainkan bekerja melalui **Agent
 6. **Tool `reserve_interview_slot`:** Menemukan slot kalender kosong dan menguncinya secara atomik (`status = 'tentative'`).
 7. **Human-in-the-Loop Triaging:** Berkas diarahkan ke antrean `waiting_approval` bagi HR untuk persetujuan akhir.
 
+Setelah penilaian selesai, agen menjalankan dua pemeriksaan silang sebelum hasil ditampilkan: **konsensus dua model** untuk memastikan pembacaan CV tidak bergantung pada satu model saja, dan **penyaring keluaran** untuk memastikan teks yang ditampilkan bebas dari muatan yang tidak pantas. Keduanya dijelaskan pada §7.
+
 ### 5.2. Skema Basis Data Relasional 14 Tabel (Kualitas Rekayasa Sistem 15%)
 Implementasi basis data MariaDB InnoDB 3NF menjamin *data integrity* dan auditabilitas menyeluruh:
 1. `users`: Manajemen pengguna dan otentikasi RBAC (`admin`, `recruiter`, `hiring_manager`, `compliance_officer`) berbasis hash PBKDF2-HMAC-SHA256 (100.000 iterasi, salt per pengguna) dengan proteksi brute-force (kunci 15 menit setelah 5 kali gagal).
 2. `oauth_tokens`: Kredensial integrasi kalender terenkripsi (Google Calendar / Mock Calendar).
-3. `job_descriptions`: Definisi kualifikasi, bobot 4 dimensi, dan taksonomi peran (*Universal Domain IT vs Non-IT* via Migrasi 007).
+3. `job_descriptions`: Definisi kualifikasi, bobot 4 dimensi yang dapat dikonfigurasi per lowongan, dan taksonomi peran (*Universal Domain IT vs Non-IT* via Migrasi 007).
 4. `candidates`: Master data kandidat dengan enkripsi amplop (*Envelope Encryption* AES-256-GCM), DEK terenkripsi KEK, *Blind Index* email, identitas tersamar `#TK-[6-HEX]`, dan status siklus hidup.
 5. `consent_records`: Rekam jejak persetujuan pemrosesan data pribadi (UU PDP) dengan bukti hash dan user agent.
 6. `candidate_evidence`: Relasi penelusuran bukti atomik (*Evidence Graph*) yang memuat kutipan klaim, sumber bukti dokumen, dan badge verifikasi.
@@ -251,6 +253,8 @@ Implementasi basis data MariaDB InnoDB 3NF menjamin *data integrity* dan auditab
 5. **"What-If?" Policy Simulator:** Alat simulasi kontrafaktual instan bagi eksekutif untuk melihat dampak pengubahan syarat rekrutmen terhadap ukuran talent pool dan beban kerja tim HR.
 6. **Bounded Self-Healing Circuit:** Kemampuan pulih mandiri saat terjadi gangguan jaringan atau tabrakan slot kalender tanpa memutus pipeline.
 7. **Human-in-the-Loop (HITL) Triaging Gatekeeper:** Menjamin AI tidak pernah membuat keputusan pemecatan/penolakan sepihak; kendali final tetap di tangan manusia.
+8. **Audit Bahasa Lowongan:** Memeriksa teks lowongan dari istilah yang berpotensi diskriminatif (gender, batas usia, prestise almamater, ekspektasi kerja berlebihan) dan menampilkan skor inklusivitas pada portal karier publik.
+9. **Simulasi Wawancara per Kandidat:** Pertanyaan wawancara disusun dari bukti yang benar-benar dimiliki kandidat, sehingga HR tidak lagi memakai daftar pertanyaan generik untuk semua pelamar.
 
 ### 6.2. Metrik Efisiensi Operasional & Estimasi ROI Bisnis
 
@@ -285,6 +289,15 @@ Implementasi basis data MariaDB InnoDB 3NF menjamin *data integrity* dan auditab
 
 ---
 
+### 7.5. Anti-Halusinasi Berbasis Kutipan
+Setiap keahlian yang dicatat sistem wajib dapat ditemukan kembali sebagai kutipan asli di dalam CV. Apabila model hanya menyebut nama teknologi tanpa kalimat pendukung, klaim tersebut tetap ditampilkan namun ditandai belum terverifikasi dan menurunkan tingkat keyakinan sistem. Angka capaian baru dihitung sebagai bukti bila disertai konteks yang jelas (misalnya waktu respons, jumlah pengguna, atau nilai rupiah), sehingga kalimat promosi seperti "100% berdedikasi" tidak ikut menaikkan skor.
+
+### 7.6. Konsensus Dua Model
+Dua model bahasa membaca CV yang sama secara terpisah. Bila keduanya menghasilkan daftar keahlian dan riwayat kerja yang sejalan, hasil dianggap stabil. Bila berbeda jauh, sistem tidak memaksakan skor: tingkat keyakinan diturunkan satu tingkat, kandidat diberi tanda perlu perhatian, dan berkas diarahkan ke peninjauan manusia beserta catatan perbedaan yang ditemukan.
+
+### 7.7. Penyaring Keluaran
+Seluruh teks yang dihasilkan sistem — narasi penalaran, pertanyaan wawancara, dan saran perbaikan lowongan — melewati penyaring sebelum ditampilkan. Teks yang memuat ujaran kebencian, kekerasan, atau materi eksplisit diganti dengan versi netral, dan kejadian tersebut tercatat pada jejak audit.
+
 ## 8. TANGKAPAN LAYAR ANTARMUKA DAN INTERAKSI AI AGENT
 
 Desain antarmuka mengusung filosofi **Natural Mint Theme** yang ergonomis, kontras tinggi, dan berorientasi pada kemudahan navigasi pengguna industri:
@@ -293,8 +306,8 @@ Desain antarmuka mengusung filosofi **Natural Mint Theme** yang ergonomis, kontr
    Menampilkan KPI rekrutmen, grafik distribusi skor 4 dimensi, status antrean pemrosesan, dan daftar kandidat terbagi atas *High Attention* vs *Standard*.
 2. **Modal Interaktif Candidate Evidence Graph:**  
    Menampilkan visualisasi simpul (*nodes & edges*) yang menghubungkan skor akhir kandidat ke setiap butir bukti riil di dokumen CV dan repositori eksternal, lengkap dengan nomor halaman dan badge verifikasi.
-3. **Execution Trace & Tool Calling Feed (Real-Time SSE):**  
-   Panel interaksi transparan yang menyajikan jejak penalaran agen (*ReAct thoughts*), pemanggilan alat (*tool calling parameter*), dan status pemulihan sistem secara waktu nyata.
+3. **Execution Trace & Integrasi Eksternal Feed (Real-Time SSE):**  
+   Panel interaksi transparan yang menyajikan jejak penalaran agen, pemanggilan integrasi eksternal (verifikasi repositori dan penguncian jadwal), serta status pemulihan sistem secara waktu nyata.
 4. **"What-If?" Policy Simulation Matrix:**  
    Kanvas interaktif dengan tuas geser (*dynamic sliders*) untuk menguji sensitivitas ambang skor dan memproyeksikan rasio kelulusan kandidat secara instan.
 5. **Portal Karir Publik & Applicant Tracking (`/careers` & `/careers/track`):**  

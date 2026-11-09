@@ -87,10 +87,6 @@ def setup_document() -> Document:
     normal.paragraph_format.space_after = Pt(6)
     normal.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
-    footer = section.footer.paragraphs[0]
-    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _set_run_font(footer.add_run("Halaman "), size=10)
-    _add_page_field(footer)
     return doc
 
 
@@ -175,7 +171,23 @@ def build_cover(doc: Document):
         _spacing(para, line=1.15, before=before, after=0)
         _set_run_font(para.add_run(text), size=12, bold=True)
 
-    doc.paragraphs[-1].add_run().add_break(WD_BREAK.PAGE)
+    body_sec = doc.add_section()
+    body_sec.page_width = Cm(21.0)
+    body_sec.page_height = Cm(29.7)
+    body_sec.top_margin = Cm(3.0)
+    body_sec.bottom_margin = Cm(3.0)
+    body_sec.left_margin = Cm(4.0)
+    body_sec.right_margin = Cm(3.0)
+    body_sec.footer.is_linked_to_previous = False
+
+    pgNumType = OxmlElement("w:pgNumType")
+    pgNumType.set(qn("w:start"), "1")
+    body_sec._sectPr.append(pgNumType)
+
+    footer = body_sec.footer.paragraphs[0]
+    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _set_run_font(footer.add_run("Halaman "), size=10)
+    _add_page_field(footer)
 
 
 # ---------------------------------------------------------------------- rendering
@@ -272,6 +284,19 @@ def render_body(doc: Document, md_text: str, start_marker: str):
         stripped = line.strip()
 
         if not stripped or stripped in ("---", "***", "<br>", "&nbsp;", "\\"):
+            list_counter = 0
+            i += 1
+            continue
+
+        img_match = re.match(r'^<p align="center">\s*<img\s+src="([^"]+)"[^>]*>\s*</p>', stripped, re.I) or re.match(r'^!\[([^\]]*)\]\(([^)]+)\)', stripped)
+        if img_match:
+            img_src = img_match.group(1) if len(img_match.groups()) == 1 else img_match.group(2)
+            img_path = (HERE / img_src).resolve() if not Path(img_src).is_absolute() else Path(img_src)
+            if img_path.exists():
+                para = doc.add_paragraph()
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                _spacing(para, line=1.0, before=6, after=4)
+                para.add_run().add_picture(str(img_path), width=Cm(CONTENT_WIDTH_CM))
             list_counter = 0
             i += 1
             continue

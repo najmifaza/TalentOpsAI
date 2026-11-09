@@ -1,0 +1,44 @@
+<mxfile host="app.diagrams.net" agent="TalentOpsAI">
+  <diagram id="talentops-architecture" name="3-Tier Enterprise Architecture">
+    <mxGraphModel dx="1226" dy="710" grid="0" gridSize="1" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="827" background="light-dark(#ffffff, #121212)" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#000000;fontFamily=Times New Roman;" value="Gambar 1. Arsitektur Sistem 3-Tier Enterprise TalentOps AI" vertex="1">
+          <mxGeometry height="25" width="670" x="250" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tier1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;align=center;verticalAlign=top;spacingTop=8;fontColor=#000000;fontSize=12;fontFamily=Times New Roman;" value="&lt;b&gt;LAPISAN PRESENTASI &amp;amp; INTERAKSI PENGGUNA&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;React 18 • Vite 5 • Tailwind CSS • Lucide Icons • Klien Aliran SSE&lt;/font&gt;&lt;hr style=&quot;border: 0.5px solid #000000;&quot;&gt;&lt;div align=&quot;left&quot; style=&quot;padding: 2px 8px; font-size: 11px; line-height: 1.4;&quot;&gt;• &lt;b&gt;Modul Antarmuka:&lt;/b&gt; Papan Kanban Triase, Grafik Bukti Interaktif, Kanvas Kebijakan &amp;quot;What-If&amp;quot;&lt;br&gt;• &lt;b&gt;Umpan Operasional:&lt;/b&gt; Jejak Eksekusi Agen Waktu-Nyata (SSE), Manajemen Konten Blog, Gerbang Masuk RBAC&lt;br&gt;• &lt;b&gt;Portal Publik:&lt;/b&gt; Pendaftaran Lowongan Karir &amp;amp; Pelacakan Status Mandiri (`/careers`, `/careers/track`)&lt;br&gt;• &lt;b&gt;Infrastruktur Host:&lt;/b&gt; Domain Produksi `talentops.ai.id` / Jaringan Komputasi Tepi Vercel&lt;/div&gt;" vertex="1">
+          <mxGeometry height="130" width="670" x="250" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="conn1" edge="1" parent="1" source="tier1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#000000,#000000);strokeWidth=1.2;fontColor=#000000;fontSize=10;fontFamily=Times New Roman;align=center;labelBackgroundColor=#FFFFFF;endArrow=block;endFill=1;" target="tier2" value="HTTPS REST API (JSON) + Tiket Autentikasi Aliran SSE Sekali Pakai">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tier2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;align=center;verticalAlign=top;spacingTop=8;fontColor=#000000;fontSize=12;fontFamily=Times New Roman;" value="&lt;b&gt;LAPISAN INTI AGEN AI &amp;amp; MESIN DETERMINISTIK&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;Python 3.12 • FastAPI (Asinkron) • Pydantic v2 • Mesin Kriptografi • aiomysql&lt;/font&gt;&lt;hr style=&quot;border: 0.5px solid #000000;&quot;&gt;&lt;div align=&quot;left&quot; style=&quot;padding: 2px 8px; font-size: 11px; line-height: 1.4;&quot;&gt;• &lt;b&gt;Sanitasi &amp;amp; Keamanan:&lt;/b&gt; Pembersih Data Pribadi (PII) &amp;amp; Detektor Eksploit Teks Putih Tersembunyi PDF&lt;br&gt;• &lt;b&gt;Privasi Kriptografis:&lt;/b&gt; Enkripsi Amplop AES-256-GCM (DEK/KEK) + Indeks Buta SHA-256 (Pencarian Email)&lt;br&gt;• &lt;b&gt;Jalur Investigasi 7 Tahap:&lt;/b&gt; [Pahami] → [Anonimkan PII] → [Investigasi Klaim] → [Lacak Bukti] → [Kalkulasi Skor Matematis Deterministik 4D] → [Sintesis Ujian Adaptif] → [Reservasi Slot Atomik]&lt;br&gt;• &lt;b&gt;Pemulihan Mandiri Terbatas:&lt;/b&gt; Percobaan Ulang Otomatis (≤3 kali) &amp;amp; Resolusi Bentrok Kalender Dinamis (HTTP 409)&lt;br&gt;• &lt;b&gt;Lingkungan Server:&lt;/b&gt; VPS Ubuntu, Nginx Reverse Proxy (Sertifikat SSL Let&#39;s Encrypt, Protokol HTTP/2)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="670" x="250" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="tier3_left" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;align=center;verticalAlign=top;spacingTop=8;fontColor=#000000;fontSize=12;fontFamily=Times New Roman;" value="&lt;b&gt;GERBANG INFERENSI KECERDASAN BUATAN&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;Gerbang API 9Router (Port Lokal 20128)&lt;br&gt;Model Fondasi: Gemini 3.8 / 3.7 Flash&lt;/font&gt;&lt;hr style=&quot;border: 0.5px solid #000000;&quot;&gt;&lt;div align=&quot;left&quot; style=&quot;padding: 2px 8px; font-size: 11px; line-height: 1.4;&quot;&gt;• Validasi Ketat Format Skema JSON (Pydantic)&lt;br&gt;• Pemeriksaan Silang Konsensus Dua Model&lt;br&gt;• Nol Halusinasi Aritmatika (Larangan Hitung LLM)&lt;br&gt;• Inferensi Deterministik (Suhu: 0.2)&lt;br&gt;• Penyaring Sanitasi Muatan Teks Waktu-Nyata&lt;/div&gt;" vertex="1">
+          <mxGeometry height="175" width="315" x="250" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="tier3_right" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1.5;align=center;verticalAlign=top;spacingTop=8;fontColor=#000000;fontSize=12;fontFamily=Times New Roman;" value="&lt;b&gt;LAPISAN PERSISTENSI DATA &amp;amp; AUDIT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 11px;&quot;&gt;MariaDB 10.11+ RDBMS Enterprise&lt;br&gt;(Normalisasi Penuh 3NF InnoDB)&lt;/font&gt;&lt;hr style=&quot;border: 0.5px solid #000000;&quot;&gt;&lt;div align=&quot;left&quot; style=&quot;padding: 2px 8px; font-size: 11px; line-height: 1.4;&quot;&gt;• &lt;b&gt;Tabel Inti:&lt;/b&gt; Pengguna (RBAC), Token OAuth, Persetujuan PDP&lt;br&gt;• &lt;b&gt;Data Kandidat:&lt;/b&gt; Deskripsi Lowongan, Pelamar (Enkripsi AES)&lt;br&gt;• &lt;b&gt;Investigasi:&lt;/b&gt; Graf Bukti, Rekam Anomali, Ujian Adaptif&lt;br&gt;• &lt;b&gt;Operasional:&lt;/b&gt; Slot Jadwal (Kunci Atomik Baris), Lembar Skor&lt;br&gt;• &lt;b&gt;Audit &amp;amp; Regulasi:&lt;/b&gt; Jejak Langkah Agen, Keputusan HR, Log Akses PII&lt;/div&gt;" vertex="1">
+          <mxGeometry height="175" width="315" x="605" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="conn_left" edge="1" parent="1" source="tier2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=light-dark(#000000,#000000);strokeWidth=1.2;fontColor=#000000;fontSize=10;fontFamily=Times New Roman;align=center;labelBackgroundColor=#FFFFFF;endArrow=block;endFill=1;" target="tier3_left" value="Soket TCP Lokal (Port 20128)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="407" y="420" />
+              <mxPoint x="407" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="conn_right" edge="1" parent="1" source="tier2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.2;fontColor=#000000;fontSize=10;fontFamily=Times New Roman;align=center;labelBackgroundColor=#FFFFFF;endArrow=block;endFill=1;strokeColor=light-dark(#000000,#000000);" target="tier3_right" value="Kolam Koneksi Asinkron aiomysql">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="762" y="420" />
+              <mxPoint x="762" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

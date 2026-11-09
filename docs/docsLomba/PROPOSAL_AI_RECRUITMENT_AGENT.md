@@ -98,7 +98,7 @@
 
 ---
 
-## IDENTITAS KARYA DAN TIM PENGEMBANG
+## 1. IDENTITAS KARYA DAN TIM PENGEMBANG
 
 * **Judul Karya:**  
   **TalentOps AI : Sistem Rekrutmen Mandiri Berbasis Kecerdasan Buatan**
@@ -112,49 +112,18 @@
   * **Live Interface Web:** `https://talentops.ai.id/`
   * **Repositori GitHub Publik:** `https://github.com/najmifaza/TalentOpsAI`
   * **Video Demo (3–5 menit):** `-`
-* **Format Pengumpulan Berkas:** `GTNIC2026_AIAgent_DoaIbu.pdf`  
-* **Standar Tipografi Dokumen:** Kertas A4, Times New Roman 12 pt, Spasi 1.5, Margin Kiri 4 cm, Atas/Bawah/Kanan 3 cm, Maksimal 15 Halaman (termasuk Sampul Berlogo Resmi GTNIC 2026).
 
 ---
 
-# STRUKTUR MASTER PROPOSAL (SESUAI GUIDEBOOK GTNIC 2026)
+## 2. TUJUAN, MANFAAT, DAN SOLUSI OTOMATISASI AI AGENT
 
----
-
-## 1. JUDUL KARYA DAN IDENTITAS TIM
-* **Judul:** TalentOps AI : Sistem Rekrutmen Mandiri Berbasis Kecerdasan Buatan
-* **Tim:** Doa Ibu (Universitas Jenderal Soedirman)
-* **Ketua Tim:** Adridinan Najmi Faza (NIM: H1D025059)
-* **Anggota:** Timotius Willy Narendra (NIM: H1D025052), Fardizza Vinda Rahman (NIM: H1D025067)
-* **Penempatan Logo:** Logo Resmi GARDA TECH NATIONAL INNOVATION COMPETITION (GTNIC) 2026 dan Logo Universitas tersemat pada halaman sampul utama.
-
----
-
-## 2. LATAR BELAKANG MASALAH OPERASIONAL ENTERPRISE & INDUSTRI
-
-### 2.1. Ledakan Volume Pelamar & Krisis Kelelahan Kognitif HR
-Dalam operasional rekrutmen enterprise skala menengah hingga besar, pembukaan satu posisi strategis (misalnya *Senior Backend Engineer* atau *Financial Analyst*) lazim menerima 250 hingga 500 berkas Curriculum Vitae (CV) dalam hitungan hari. Berdasarkan studi operasional industri, seorang spesialis *Talent Acquisition* rata-rata menghabiskan waktu 6 hingga 10 menit untuk meninjau satu CV secara manual. Untuk memproses 500 berkas, dibutuhkan lebih dari 65 jam kerja intensif. Situasi ini secara tak terhindarkan memicu *cognitive fatigue* (kelelahan kognitif), di mana ketelitian manusia menurun drastis setelah meninjau berkas ke-30, sehingga membuka peluang terjadinya lolosnya klaim palsu atau penolakan sepihak terhadap kandidat yang sebenarnya berkualifikasi tinggi.
-
-### 2.2. Kegagalan Generasi ATS Konvensional (Keyword Matching)
-Sistem *Applicant Tracking System* (ATS) konvensional yang beredar di industri saat ini masih mengandalkan pencocokan kata kunci statis (*syntactic keyword matching*). Kelemahan fatal dari pendekatan ini adalah kerentanannya terhadap eksploitasi *keyword stuffing* dan peretasan teks putih (*white font text hacking*), di mana pelamar menyisipkan kata kunci tersembunyi dengan warna teks putih agar lolos penyaringan mesin. Sebaliknya, kandidat kompeten yang menggunakan sinonim atau variasi bahasa alami sering kali langsung tereliminasi secara tidak adil.
-
-### 2.3. Bahaya Integrasi "Thin Wrapper" LLM Tanpa Landasan Bukti
-Ketika banyak organisasi berupaya mengadopsi kecerdasan buatan generatif, sebagian besar solusi yang dikembangkan hanya berupa *thin wrapper* di atas antarmuka obrolan (chat prompt). Pendekatan naif ini membawa tiga risiko destruktif bagi enterprise:
-1. **Halusinasi Data & Aritmatika:** LLM sering kali mengarang tahun pengalaman, salah menjumlahkan durasi kerja, atau memberikan skor numerik yang tidak konsisten antarsesinya.
-2. **Ketiadaan Bukti (Lack of Evidence Traceability):** HR hanya menerima skor tanpa kemampuan menelusuri dari mana skor tersebut diperoleh (*black-box reasoning*).
-3. **Pelanggaran Kepatuhan & Privasi (UU PDP / GDPR):** Pengunggahan berkas CV mentah berisikan data pribadi (PII) sensitif seperti nomor KTP/telepon/alamat ke API publik melanggar prinsip perlindungan privasi enterprise.
-
----
-
-## 3. TUJUAN, MANFAAT, DAN SOLUSI OTOMATISASI AI AGENT
-
-### 3.1. Tujuan Pengembangan
+### 2.1. Tujuan Pengembangan
 1. Mengembangkan agen otonom cerdas (*Autonomous AI Agent*) yang mampu mengeksekusi siklus investigasi rekrutmen berantai (*Understand -> Sanitize -> Investigate -> Trace Evidence -> Score -> Challenge -> Schedule -> HITL Gatekeeper*) secara mandiri.
 2. Memisahkan secara tegas antara **penalaran probabilitis LLM** (konteks, klasifikasi klaim, sintesis soal) dengan **eksekusi deterministik backend** (kalkulasi skor matematis, transaksi database ACID, proteksi bentrok kalender).
 3. Menjamin transparansi keputusan 100% melalui *Candidate Evidence Graph*, di mana setiap poin penilaian terhubung langsung ke kutipan teks dokumen primer (*ground-truth citation*).
 4. Menerapkan perlindungan data tingkat enterprise berbasis *AES-256-GCM Envelope Encryption* dan pemusnahan kunci kriptografis (*Crypto-Shredding*) demi kepatuhan UU PDP dan GDPR.
 
-### 3.2. Manfaat Nyata bagi Industri & Nilai Bisnis
+### 2.2. Manfaat Nyata bagi Industri & Nilai Bisnis
 * **Peningkatan Efisiensi Waktu 97.5%:** Memangkas durasi peninjauan awal per berkas dari 480 detik (8 menit) manual menjadi hanya **12 detik** di panel tinjau HR, dengan latensi pemrosesan agen di balik layar rata-rata **7.84 detik**.
 * **Eliminasi Kesalahan Fatal (Zero Bad-Hire Risk from Overlaps):** Deteksi otomatis pemalsuan riwayat karier seperti tumpang tindih tanggal kerja (*timeline overlap*) dan inflasi jabatan (*title inflation*).
 * **Efisiensi Anggaran Wawancara:** Mengeliminasi pemborosan waktu pewawancara teknis (*engineering leads*) dengan menyaring kandidat sebelum tahap wawancara langsung melalui *Adaptive Gap-Based Technical Challenge*.
@@ -162,7 +131,7 @@ Ketika banyak organisasi berupaya mengadopsi kecerdasan buatan generatif, sebagi
 
 ---
 
-## 4. TARGET PERUSAHAAN DAN PENGGUNA INDUSTRI
+## 3. TARGET PERUSAHAAN DAN PENGGUNA INDUSTRI
 
 1. **Enterprise & Perusahaan Teknologi Berskala Menengah-Besar:** Menghadapi rasio ratusan pelamar per posisi dengan kebutuhan standar verifikasi teknis yang ketat.
 2. **Divisi Talent Acquisition (TA) & Human Resource Operation:** Pengguna primer yang mengendalikan alur kerja seleksi, meninjau hasil investigasi agen, dan melakukan konfirmasi keputusan akhir (*Human-in-the-Loop*).
@@ -172,47 +141,17 @@ Ketika banyak organisasi berupaya mengadopsi kecerdasan buatan generatif, sebagi
 
 ---
 
-## 5. ARSITEKTUR SISTEM AI DAN REKAYASA PERANGKAT LUNAK
+## 4. ARSITEKTUR SISTEM AI DAN REKAYASA PERANGKAT LUNAK
 
-TalentOps AI dibangun dengan arsitektur **3-Tier Enterprise** yang memisahkan lapisan klien, mesin orkestrasi agen, basis data relasional MariaDB 14 tabel normalisasi (dengan audit append-only), dan gateway inferensi AI:
+TalentOps AI dibangun dengan arsitektur **3-Tier Enterprise** yang memisahkan lapisan presentasi pengguna, inti agen otonom & mesin deterministik, basis data relasional MariaDB 14 tabel normalisasi (dengan jejak audit append-only), serta gerbang inferensi model kecerdasan buatan:
 
-```
-[PRESENTATION & INTERACTION TIER]
-React 18 + Vite 5 + Tailwind CSS (Natural Mint Theme) + Lucide Icons + SSE Client
-- Fitur UI: Candidate Triage Kanban, Interactive Evidence Graph, What-If Policy Canvas,
-            Real-Time Agent Execution Trace Feed, Public Career & Tracking Portal,
-            Admin Blog CMS, dan Role-Based Access Control Login Gate
-- Host: Production Domain `https://talentops.ai.id` / Vercel Edge Network
+<p align="center">
+  <img src="assets/arsitektur_sistem_talentops.png" alt="Gambar 1. Arsitektur Sistem 3-Tier Enterprise TalentOps AI" width="100%" />
+</p>
 
-                        | HTTPS REST API (JSON) + Authenticated SSE Stream Ticket
-                        v
+*Gambar 1. Arsitektur Sistem 3-Tier Enterprise TalentOps AI*
 
-[AGENT CORE & DETERMINISTIC ENGINE TIER]
-Python 3.12 + FastAPI Core (Async) + Pydantic v2 + Cryptography Engine + aiomysql
-- Ingestion & Security Filter: PII Sanitizer & PDF Hidden Text Exploit Detector
-- Cryptographic Privacy: AES-256-GCM Envelope Encryption (DEK/KEK) + Blind Indexing
-- Identity Security: Single-Use Burn-on-Read Ticket untuk Streaming Real-Time SSE
-- Pipeline Investigasi 7 Tahap (berurutan, terekam di audit trail):
-  [Understand] -> [Sanitize PII] -> [Investigate Claims] -> [Trace Evidence] ->
-  [4D Deterministic Score] -> [Generate Adaptive Challenge] -> [Atomic Schedule]
-- Bounded Self-Healing Circuit:
-  * Exponential Backoff Retry (<= 3) untuk Transient Timeout/Deadlock
-  * Dynamic Conflict Recovery (HTTP 409) pada bentrok kalender
-- Host: Ubuntu VPS, Nginx Reverse Proxy (SSL Let's Encrypt, HTTP/2, Gzip)
-
-        | Local TCP Socket (Port 20128) | aiomysql Async Connection Pool
-        v                               v
-
-[AI INFERENCE GATEWAY]          [DATA PERSISTENCE & AUDIT TIER]
-9Router API Gateway             MariaDB 10.11+ Enterprise RDBMS (InnoDB 3NF)
-Model: Gemini 3.8 / 3.7 Flash   14 Tabel Relasional Normalisasi Penuh:
-- Strict JSON Schema Output     - RBAC Users, OAuth Tokens, Consent Records
-- Dual-Model Cross-Check (konsensus dua model)   - Candidates, Evidence, Anomalies, Assessments
-- Zero Arithmetic Hallucination - Interview Slots (Locking), Scorecards, Reviews
-- Deterministic Temperature 0.2 - Agent Steps, PII Access Logs, Blog Posts
-```
-
-### 5.1. Alur Investigasi Tujuh Tahap (Rubrik GTNIC 25% + 15% + 15%)
+### 4.1. Alur Investigasi Tujuh Tahap (Rubrik GTNIC 25% + 15% + 15%)
 Agen bekerja melalui tujuh tahap investigasi yang berjalan berurutan. Setiap tahap mencatat masukan, luaran, dan durasinya sendiri pada tabel audit, sehingga seluruh proses dapat diperiksa ulang oleh HR maupun auditor kepatuhan. Bila satu tahap gagal, sistem memiliki jalur pemulihan yang jelas dan tidak menghentikan proses secara keseluruhan:
 1. **Tool `extract_and_sanitize_resume`:** Mengekstrak teks dari berkas PDF, memindai injeksi teks tersembunyi, dan mengaburkan PII nama/email/telepon menjadi identitas anonim `#TK-[6-HEX]`.
 2. **Tool `investigate_claims_and_evidence`:** Mengidentifikasi klaim pengalaman dan keahlian, memvalidasi bukti primer (nomor halaman berkas, tautan GitHub riil), dan mencatat kontribusi skor ke tabel `candidate_evidence`.
@@ -222,9 +161,9 @@ Agen bekerja melalui tujuh tahap investigasi yang berjalan berurutan. Setiap tah
 6. **Tool `reserve_interview_slot`:** Menemukan slot kalender kosong dan menguncinya secara atomik (`status = 'tentative'`).
 7. **Human-in-the-Loop Triaging:** Berkas diarahkan ke antrean `waiting_approval` bagi HR untuk persetujuan akhir.
 
-Setelah penilaian selesai, agen menjalankan dua pemeriksaan silang sebelum hasil ditampilkan: **konsensus dua model** untuk memastikan pembacaan CV tidak bergantung pada satu model saja, dan **penyaring keluaran** untuk memastikan teks yang ditampilkan bebas dari muatan yang tidak pantas. Keduanya dijelaskan pada §7.
+Setelah penilaian selesai, agen menjalankan dua pemeriksaan silang sebelum hasil ditampilkan: **konsensus dua model** untuk memastikan pembacaan CV tidak bergantung pada satu model saja, dan **penyaring keluaran** untuk memastikan teks yang ditampilkan bebas dari muatan yang tidak pantas. Keduanya dijelaskan pada §6.
 
-### 5.2. Skema Basis Data Relasional 14 Tabel (Kualitas Rekayasa Sistem 15%)
+### 4.2. Skema Basis Data Relasional 14 Tabel (Kualitas Rekayasa Sistem 15%)
 Implementasi basis data MariaDB InnoDB 3NF menjamin *data integrity* dan auditabilitas menyeluruh:
 1. `users`: Manajemen pengguna dan otentikasi RBAC (`admin`, `recruiter`, `hiring_manager`, `compliance_officer`) berbasis hash PBKDF2-HMAC-SHA256 (100.000 iterasi, salt per pengguna) dengan proteksi brute-force (kunci 15 menit setelah 5 kali gagal).
 2. `oauth_tokens`: Kredensial integrasi kalender terenkripsi (Google Calendar / Mock Calendar).
@@ -243,9 +182,9 @@ Implementasi basis data MariaDB InnoDB 3NF menjamin *data integrity* dan auditab
 
 ---
 
-## 6. FITUR UTAMA AI AGENT & METRIK ESTIMASI EFISIENSI OPERASIONAL (ROI)
+## 5. FITUR UTAMA AI AGENT & METRIK ESTIMASI EFISIENSI OPERASIONAL (ROI)
 
-### 6.1. Fitur Utama Sistem
+### 5.1. Fitur Utama Sistem
 1. **Autonomous Evidence-Based Investigation:** Ekstraksi klaim berbasis bukti riil dengan penelusuran kutipan halaman berkas dan repositori GitHub.
 2. **Interactive Candidate Evidence Graph:** Visualisasi simpul interaktif yang menghubungkan skor evaluasi dengan bukti otentik (*ground-truth*).
 3. **Career Timeline & Anomaly Auditor:** Algoritma deterministik pencegah kecurangan masa kerja dan inflasi gelar secara otomatis.
@@ -256,7 +195,7 @@ Implementasi basis data MariaDB InnoDB 3NF menjamin *data integrity* dan auditab
 8. **Audit Bahasa Lowongan:** Memeriksa teks lowongan dari istilah yang berpotensi diskriminatif (gender, batas usia, prestise almamater, ekspektasi kerja berlebihan) dan menampilkan skor inklusivitas pada portal karier publik.
 9. **Simulasi Wawancara per Kandidat:** Pertanyaan wawancara disusun dari bukti yang benar-benar dimiliki kandidat, sehingga HR tidak lagi memakai daftar pertanyaan generik untuk semua pelamar.
 
-### 6.2. Metrik Efisiensi Operasional & Estimasi ROI Bisnis
+### 5.2. Metrik Efisiensi Operasional & Estimasi ROI Bisnis
 
 | Parameter Metrik | Operasional Konvensional (Manual) | Dengan TalentOps AI | Dampak Efisiensi (ROI) |
 |---|---|---|---|
@@ -269,36 +208,36 @@ Implementasi basis data MariaDB InnoDB 3NF menjamin *data integrity* dan auditab
 
 ---
 
-## 7. BATASAN SISTEM DAN MITIGASI RISIKO
+## 6. BATASAN SISTEM DAN MITIGASI RISIKO
 
-### 7.1. Mitigasi Halusinasi AI & Inkonsistensi Skor (Zero Hallucination Guarantee)
+### 6.1. Mitigasi Halusinasi AI & Inkonsistensi Skor (Zero Hallucination Guarantee)
 * **Kalkulasi Deterministik:** Model LLM secara tegas dilarang melakukan perhitungan matematika skor atau penentuan status akhir. LLM hanya mengklasifikasikan bukti ke dalam format JSON Pydantic yang divalidasi ketat (*Strict Schema Enforcement*).
 * **Pencocokan Bobot Deterministik:** Formula skor Σ (bobot dimensi × skor dimensi) dihitung langsung oleh fungsi matematika Python di backend, mengeliminasi variansi penilaian antarwaktu.
 
-### 7.2. Perlindungan Privasi Data & Anti-Kebocoran PII (UU PDP / GDPR Compliance)
+### 6.2. Perlindungan Privasi Data & Anti-Kebocoran PII (UU PDP / GDPR Compliance)
 * **AES-256-GCM Envelope Encryption:** Setiap berkas dan data identitas kandidat dienkripsi menggunakan *Data Encryption Key* (DEK) unik per kandidat. DEK tersebut dienkripsi ulang menggunakan *Master Key Encryption Key* (KEK) tingkat sistem.
 * **Blind Indexing (SHA-256 with Salt):** Pencarian kandidat via email dilakukan melalui hash blind index tanpa pernah mendekripsi data kolom email di basis data.
 * **Crypto-Shredding pada Right to Erasure:** Apabila kandidat mengajukan penghapusan data sesuai UU PDP, sistem memusnahkan DEK kandidat tersebut. Sekalipun data terenkripsi masih berada di media backup fisik, data tersebut secara matematis mustahil didekripsi kembali.
 
-### 7.3. Mitigasi Eksploitasi Teks Tersembunyi (White Text & Prompt Injection)
+### 6.3. Mitigasi Eksploitasi Teks Tersembunyi (White Text & Prompt Injection)
 * Modul `hidden_text_detector` memeriksa lapisan visual PDF untuk mendeteksi teks dengan ukuran font mendekati 0 atau warna font identik dengan warna latar belakang (*white text on white background*). Berkas yang terindikasi manipulasi diberi penanda anomali beresiko tinggi (*HIGH severity*).
 
-### 7.4. Bounded Self-Healing & Fallback Recovery
+### 6.4. Bounded Self-Healing & Fallback Recovery
 * Jika API inferensi LLM mengalami *rate limit* atau *transient timeout*, sirkuit pemulihan mengeksekusi *exponential backoff retry* maksimal 3 kali.
 * Jika slot kalender wawancara yang ditargetkan telah dipesan transaksi lain (`HTTP 409 Conflict`), agen secara otomatis melakukan query ulang slot alternatif berikutnya tanpa menggagalkan proses triase.
 
 ---
 
-### 7.5. Anti-Halusinasi Berbasis Kutipan
+### 6.5. Anti-Halusinasi Berbasis Kutipan
 Setiap keahlian yang dicatat sistem wajib dapat ditemukan kembali sebagai kutipan asli di dalam CV. Apabila model hanya menyebut nama teknologi tanpa kalimat pendukung, klaim tersebut tetap ditampilkan namun ditandai belum terverifikasi dan menurunkan tingkat keyakinan sistem. Angka capaian baru dihitung sebagai bukti bila disertai konteks yang jelas (misalnya waktu respons, jumlah pengguna, atau nilai rupiah), sehingga kalimat promosi seperti "100% berdedikasi" tidak ikut menaikkan skor.
 
-### 7.6. Konsensus Dua Model
+### 6.6. Konsensus Dua Model
 Dua model bahasa membaca CV yang sama secara terpisah. Bila keduanya menghasilkan daftar keahlian dan riwayat kerja yang sejalan, hasil dianggap stabil. Bila berbeda jauh, sistem tidak memaksakan skor: tingkat keyakinan diturunkan satu tingkat, kandidat diberi tanda perlu perhatian, dan berkas diarahkan ke peninjauan manusia beserta catatan perbedaan yang ditemukan.
 
-### 7.7. Penyaring Keluaran
+### 6.7. Penyaring Keluaran
 Seluruh teks yang dihasilkan sistem — narasi penalaran, pertanyaan wawancara, dan saran perbaikan lowongan — melewati penyaring sebelum ditampilkan. Teks yang memuat ujaran kebencian, kekerasan, atau materi eksplisit diganti dengan versi netral, dan kejadian tersebut tercatat pada jejak audit.
 
-## 8. TANGKAPAN LAYAR ANTARMUKA DAN INTERAKSI AI AGENT
+## 7. TANGKAPAN LAYAR ANTARMUKA DAN INTERAKSI AI AGENT
 
 Desain antarmuka mengusung filosofi **Natural Mint Theme** yang ergonomis, kontras tinggi, dan berorientasi pada kemudahan navigasi pengguna industri:
 
@@ -315,7 +254,7 @@ Desain antarmuka mengusung filosofi **Natural Mint Theme** yang ergonomis, kontr
 
 ---
 
-## 9. RENCANA PENGEMBANGAN LANJUTAN (FUTURE DEVELOPMENT)
+## 8. RENCANA PENGEMBANGAN LANJUTAN (FUTURE DEVELOPMENT)
 
 1. **Multi-Agent Collaborative Interview Panel:** Menghadirkan beberapa agen AI dengan spesialisasi berbeda (*Architecture Agent, Culture-Fit Agent, Security Auditor Agent*) untuk melakukan penilaian multi-perspektif secara konsensus.
 2. **Autonomous Multi-Calendar Real-Time Sync:** Memperluas integrasi kalender langsung ke ekosistem Microsoft Outlook 365 dan Calendly Enterprise API dengan deteksi ketersediaan antar-zona waktu global.

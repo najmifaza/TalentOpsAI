@@ -452,3 +452,42 @@ Ditulis setelah kode selesai, bukan sebagai rencana.
    `HIGH_ATTENTION`, dan anomali baru muncul di dossier.
 4. Audit bias lowongan lewat API menampilkan `analyzer: "HYBRID"` dan temuan kiasan yang lolos
    dari keempat regex.
+
+---
+
+## 13. Perbaikan Prioritas 1 & 2 (9 November 2026)
+
+Audit lanjutan menemukan cacat yang tidak terlihat dari dokumen mana pun. Semuanya
+diperbaiki dan diuji; `pytest backend/tests -q` → **351 passed, 0 failed**.
+
+### 13.1 Prioritas 1 — cacat fungsional
+
+| # | Cacat | Perbaikan | Bukti |
+|---|---|---|---|
+| 1 | Bobot per lowongan diabaikan. Baris DB memakai key `w_skill/w_exp/w_edu/w_port`, mesin skor mencari `SKILL/...`; semua nilai jatuh ke 0.0, total 0, lalu jatuh ke `DEFAULT_WEIGHTS` | `normalize_weight_config()` di `scoring.py` menerima kedua gaya key | Skor loker berbobot 0.45: **86.00** (sebelumnya 76.00, sama dengan default) |
+| 2 | `weights_applied` dibaca narasi tetapi tidak pernah dikembalikan mesin skor, sehingga semua lowongan dilaporkan 40/30/10/20 | Dikembalikan dari `compute_full_assessment` | `test_weight_config_normalization.py` |
+| 3 | Audit bias hanya membaca `raw_text` (±180 karakter ringkasan) | Menggabungkan `raw_text` + `description_text` + `requirements_text` | Bias almamater & batas usia di `requirements_text` kini tertangkap |
+| 4 | Title inflation hanya mengenali kosakata Inggris | Ditambah `manager/manajer/kepala/koordinator/supervisor/direktur` dan `staf/administrasi/asisten/operator` | "Staf → Manajer" kini berflag |
+| 5 | Kandidat bisa macet `analyzing` selamanya (15 dari 21 percobaan triase produksi tidak pernah finalisasi) | Job `stale-triage` di `maintenance.py`: reset ke `failed` bila tidak ada langkah agen baru selama `STALE_TRIAGE_MINUTES` (15 menit) | `test_maintenance.py` — termasuk penjagaan agar run aktif tidak direset |
+| 6 | Payload publik mengirim bobot mentah ke pelamar | Dinormalisasi di `careers.py` | — |
+
+Catatan konsistensi tambahan: temuan yang diproduksi agen sendiri (divergensi dua model,
+inflasi klaim pengalaman) kini **menghitung ulang rekomendasi** lewat matriks keputusan,
+bukan hanya menambal nilai. Sebelumnya mungkin muncul `STRONG_MATCH` dengan keyakinan
+`MEDIUM`, yang bertentangan dengan `scoring.py`.
+
+### 13.2 Prioritas 2 — deteksi baru
+
+| # | Deteksi | Perilaku |
+|---|---|---|
+| 7 | `EXPERIENCE_CLAIM_INFLATION` | Klaim "N tahun pengalaman" dibandingkan rentang tanggal yang terbaca; selisih ≥ 1.5 tahun → risk naik ke MEDIUM, prioritas `HIGH_ATTENTION`. Tetap diam bila timeline tidak bisa diurai |
+| 8 | `DUPLICATE_RESUME_UPLOAD` | Hash SHA-256 sama dengan berkas kandidat lain → ditandai berikut nomor berkas asalnya. **Tidak ditolak**, karena melamar ulang itu sah |
+| 9 | OCR | **Belum dikerjakan.** Lihat §13.3 |
+
+### 13.3 Mengapa OCR dipisahkan
+
+CV hasil scan hanya ditandai `PDF_IMAGE_ONLY_PAGE`; isinya tidak masuk penilaian. OCR bukan
+perubahan satu berkas: membutuhkan paket sistem di VPS (`tesseract`), konversi halaman PDF
+ke gambar, dan penanganan kegagalan saat mesin OCR tidak ada. Itu pekerjaan tersendiri dengan
+risiko deploy yang nyata, jadi dipisahkan alih-alih diselipkan ke batch perbaikan ini.
+Sampai OCR dipasang, keterbatasan ini tetap ditulis apa adanya di proposal (§7).

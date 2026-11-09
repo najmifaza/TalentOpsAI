@@ -740,14 +740,32 @@ async def analyze_job_bias(
     Calculates Inclusivity Score and persists flagged ambiguities.
     """
     job_res = await db.execute(
-        text("SELECT id, title, department, raw_text, flagged_ambiguities FROM job_descriptions WHERE id = :id"),
+        text(
+            """SELECT id, title, department, raw_text, description_text, requirements_text,
+                      flagged_ambiguities
+               FROM job_descriptions WHERE id = :id"""
+        ),
         {"id": job_id},
     )
     job = job_res.mappings().first()
     if not job:
         raise HTTPException(status_code=404, detail="JOB_NOT_FOUND")
 
-    text_to_analyze = (payload.custom_text if payload and payload.custom_text else job["raw_text"]) or ""
+    # `raw_text` alone is a one-paragraph summary; the discriminating wording lives in the
+    # description and requirements sections ("lulusan universitas terakreditasi", "law firm
+    # terkemuka"), so the audit reads the whole vacancy text.
+    if payload and payload.custom_text:
+        text_to_analyze = payload.custom_text
+    else:
+        text_to_analyze = "\n\n".join(
+            part
+            for part in (
+                job.get("raw_text"),
+                job.get("description_text"),
+                job.get("requirements_text"),
+            )
+            if part and str(part).strip()
+        )
 
     # Rule-based linguistic patterns for recruitment equity
     bias_rules = [

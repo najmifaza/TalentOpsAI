@@ -29,6 +29,46 @@ for _k, _vals in SKILL_TAXONOMY_MAP.items():
         _v_norm = _v.strip().lower()
         _BIDIRECTIONAL_TAXONOMY.setdefault(_v_norm, set()).add(_k_norm)
 
+WEIGHT_KEY_ALIASES = {
+    "SKILL": "SKILL",
+    "W_SKILL": "SKILL",
+    "W_SKILLS": "SKILL",
+    "EXPERIENCE": "EXPERIENCE",
+    "W_EXPERIENCE": "EXPERIENCE",
+    "W_EXP": "EXPERIENCE",
+    "EDUCATION": "EDUCATION",
+    "W_EDUCATION": "EDUCATION",
+    "W_EDU": "EDUCATION",
+    "PORTFOLIO": "PORTFOLIO",
+    "W_PORTFOLIO": "PORTFOLIO",
+    "W_PORT": "PORTFOLIO",
+}
+
+
+def normalize_weight_config(weights: Optional[Dict[str, Any]]) -> Optional[Dict[str, float]]:
+    """
+    Maps any accepted weight key style onto {SKILL, EXPERIENCE, EDUCATION, PORTFOLIO}.
+
+    Rows written by the legacy seeder use `w_skill/w_exp/w_edu/w_port`, while the jobs API
+    writes `SKILL/...`. Without this mapping the scoring engine found no key at all, zeroed
+    every dimension, and silently fell back to DEFAULT_WEIGHTS — per-vacancy weights looked
+    configured but never applied. Returns None when nothing usable was supplied, so callers
+    can fall back deliberately instead of scoring everything at 0.
+    """
+    if not isinstance(weights, dict):
+        return None
+    cleaned: Dict[str, float] = {}
+    for key, value in weights.items():
+        canonical = WEIGHT_KEY_ALIASES.get(str(key).strip().upper())
+        if not canonical:
+            continue
+        try:
+            cleaned[canonical] = float(value)
+        except (TypeError, ValueError):
+            continue
+    return cleaned or None
+
+
 METRIC_PATTERN = re.compile(
     r"(?i)(?<![\w.])(?:\d+(?:[.,]\d+)*\+?\s?(?:%|x|ms|sec|detik|rps|qps|tps|req/s|users?|pengguna|k|jt|juta|miliar|m|b|rb|ribu|transaksi|dokumen|kontrak|klien|peserta|karyawan|leads)(?![a-z0-9])|(?:rp|\$|idr|usd)\s?\d[\d.,]*)"
 )
@@ -226,6 +266,81 @@ def parse_date_to_months(
     return None
 
 
+EXPERIENCE_CLAIM_PATTERNS = (
+    re.compile(
+        r"(?:pengalaman\s+(?:kerja\s+)?(?:lebih\s+dari\s+|minimal\s+|sekitar\s+|kurang\s+lebih\s+)?)"
+        r"(\d{1,2})\s*\+?\s*(?:tahun|thn|years?)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(\d{1,2})\s*\+?\s*(?:tahun|thn|years?)\s+(?:pengalaman|experience|of\s+experience)",
+        re.IGNORECASE,
+    ),
+    re.compile(r"(\d{1,2})\s*\+(?:\s*)?(?:tahun|thn|years?)", re.IGNORECASE),
+)
+# A CV claiming "8 tahun pengalaman" while the parsed timeline totals 16 months is one of the
+# most common inflations and nothing used to compare the two. 1.5 years of slack absorbs the
+# rounding a legitimate summary sentence normally carries.
+EXPERIENCE_CLAIM_TOLERANCE_YEARS = 1.5
+MAX_PLAUSIBLE_CLAIMED_YEARS = 45
+
+
+def claimed_experience_years(text: str) -> Optional[int]:
+    """Largest self-declared years-of-experience figure found in the resume text."""
+    if not text:
+        return None
+    claims: List[int] = []
+    for pattern in EXPERIENCE_CLAIM_PATTERNS:
+        for match in pattern.finditer(text):
+            try:
+                value = int(match.group(1))
+            except (TypeError, ValueError):
+                continue
+            if 1 <= value <= MAX_PLAUSIBLE_CLAIMED_YEARS:
+                claims.append(value)
+    return max(claims) if claims else None
+
+
+def detect_experience_claim_inflation(
+    text: str,
+    merged_years: Optional[float],
+    *,
+    tolerance_years: float = EXPERIENCE_CLAIM_TOLERANCE_YEARS,
+) -> Optional[Dict[str, Any]]:
+    """
+    Compares a self-declared experience figure against the merged employment timeline.
+
+    Returns an anomaly dict when the claim cannot be reconciled with the dates, else None.
+    Silent when the timeline is unparseable: a detection that fires on bad parsing is worse
+    than no detection.
+    """
+    claimed = claimed_experience_years(text)
+    if claimed is None:
+        return None
+    if merged_years is None:
+        return None
+
+    merged = float(merged_years)
+    if claimed - merged < tolerance_years:
+        return None
+
+    return {
+        "type": "EXPERIENCE_CLAIM_INFLATION",
+        "severity": "MEDIUM",
+        "claimed_years": claimed,
+        "timeline_years": round(merged, 2),
+        "description": (
+            f"CV menyatakan {claimed} tahun pengalaman, sedangkan rentang tanggal pekerjaan yang "
+            f"terbaca hanya setara {round(merged, 2)} tahun. Selisih ini perlu dikonfirmasi sebelum "
+            "klaim senioritas dipakai dalam penilaian."
+        ),
+        "suggested_verification": (
+            f"Minta kandidat menjelaskan dasar klaim {claimed} tahun pengalaman (misalnya pengalaman "
+            "sebelum riwayat kerja yang tercantum, proyek lepas, atau peran yang tidak dicantumkan)."
+        ),
+    }
+
+
 def normalize_technology_key(name: str) -> str:
     """Identity of a technology name for dedupe: retains + and # (C++, C# != C), collapses dots (Next.js == nextjs)."""
     return re.sub(r"[^a-z0-9+#]", "", (name or "").lower())
@@ -316,6 +431,8 @@ class DeterministicScoringEngine:
     - S_edu (Education Scalar)
     - S_port (Portfolio Top Verified Repo)
     """
+
+    normalize_weight_config = staticmethod(normalize_weight_config)
 
     DEFAULT_WEIGHTS = {
         "SKILL": 0.4,
@@ -675,8 +792,18 @@ class DeterministicScoringEngine:
 
         title_inflation_flagged = bool(anomalies.get("title_inflation_detected"))
         if not title_inflation_flagged and len(timeline) >= 2:
-            junior_rx = re.compile(r"\b(intern|magang|junior|trainee|fresh graduate)\b", re.IGNORECASE)
-            lead_rx = re.compile(r"\b(lead|head|director|chief|vp|principal|architect|cto|ceo)\b", re.IGNORECASE)
+            # Indonesian titles are the common case here, so the vocabulary is not
+            # English-only: "Staf -> Manajer dalam 3 bulan" used to pass untouched.
+            junior_rx = re.compile(
+                r"\b(intern|magang|junior|trainee|fresh graduate|staf|staff|asisten|assistant"
+                r"|operator|pelaksana|admin|administrasi)\b",
+                re.IGNORECASE,
+            )
+            lead_rx = re.compile(
+                r"\b(lead|head|director|chief|vp|principal|architect|cto|ceo|manager|manajer"
+                r"|kepala|koordinator|supervisor|supervisi|direktur|general manager|gm)\b",
+                re.IGNORECASE,
+            )
             for i, t1 in enumerate(timeline):
                 r1_title = str(t1.get("role") or "")
                 if not junior_rx.search(r1_title):
@@ -819,6 +946,7 @@ class DeterministicScoringEngine:
     ) -> Dict[str, Any]:
         """Runs complete deterministic scoring pipeline and returns detailed evaluation bundle."""
         current_time = as_of or datetime.now()
+        weights = normalize_weight_config(weights)
         w = weights or cls.DEFAULT_WEIGHTS
         # Sanitize weights: enforce non-negative numbers and ensure all dimensions are keyed
         cleaned_w = {}
@@ -924,5 +1052,8 @@ class DeterministicScoringEngine:
             "anomaly_flags": anomaly_flags,
             "anomaly_details": anomaly_details,
             "evidence_records": skill_evidence,
+            # The weights actually applied after normalisation. The triage narration used to
+            # read a key no one returned, so every vacancy was reported as 40/30/10/20.
+            "weights_applied": dict(w_norm),
             "adaptive_challenges": adaptive_challenges,
         }

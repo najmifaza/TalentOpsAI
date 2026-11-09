@@ -50,6 +50,35 @@ async def purge_demo_candidates() -> None:
         logger.info("maintenance: purged %s demo candidate row(s)", res.rowcount)
 
 
+async def reset_stale_triage_runs() -> None:
+    """Returns candidates abandoned in `analyzing` back to `failed`.
+
+    A worker killed mid-run (deploy, OOM, gateway hang) leaves the row `analyzing` forever:
+    the except-branch that writes `failed` never executes because the process is gone. The
+    NOT EXISTS guard keeps live runs safe — a running triage writes agent steps every step,
+    so only rows with no recent step are touched.
+    """
+    minutes = max(1, settings.STALE_TRIAGE_MINUTES)
+    async with AsyncSessionLocal() as db:
+        res = await db.execute(
+            text("""
+                UPDATE candidates c
+                SET c.status = 'failed'
+                WHERE c.status = 'analyzing'
+                  AND c.created_at < (NOW() - INTERVAL :minutes MINUTE)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM agent_steps s
+                      WHERE s.candidate_id = c.id
+                        AND s.created_at > (NOW() - INTERVAL :minutes MINUTE)
+                  )
+            """),
+            {"minutes": minutes},
+        )
+        await db.commit()
+    if res.rowcount:
+        logger.warning("maintenance: reset %s stale `analyzing` candidate(s) to failed", res.rowcount)
+
+
 async def _run_forever(name: str, interval: int, job) -> None:
     while True:
         try:
@@ -65,7 +94,10 @@ async def _run_forever(name: str, interval: int, job) -> None:
 def start_background_tasks() -> list[asyncio.Task]:
     if not settings.MAINTENANCE_ENABLED:
         return []
-    jobs = [("slot-cleaner", SLOT_CLEANER_INTERVAL_SECONDS, release_expired_slots)]
+    jobs = [
+        ("slot-cleaner", SLOT_CLEANER_INTERVAL_SECONDS, release_expired_slots),
+        ("stale-triage", SLOT_CLEANER_INTERVAL_SECONDS, reset_stale_triage_runs),
+    ]
     if settings.DEMO_PURGE_ENABLED:
         jobs.append(("demo-purge", DEMO_PURGE_INTERVAL_SECONDS, purge_demo_candidates))
     tasks = [asyncio.create_task(_run_forever(n, i, j), name=f"maintenance:{n}") for n, i, j in jobs]

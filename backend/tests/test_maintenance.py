@@ -31,7 +31,8 @@ async def test_demo_purge_only_starts_when_explicitly_enabled():
         finally:
             for t in tasks:
                 t.cancel()
-        assert names == {"maintenance:slot-cleaner"}
+        # slot-cleaner and the stale-triage sweeper are unconditional; demo-purge is not.
+        assert names == {"maintenance:slot-cleaner", "maintenance:stale-triage"}
     finally:
         settings.MAINTENANCE_ENABLED = original_maint
         settings.DEMO_PURGE_ENABLED = original_purge
@@ -71,3 +72,39 @@ def test_app_logging_reaches_stderr():
     assert root.level <= logging.INFO, "root level blocks INFO; app logs will be dropped"
     # Production runs as `backend.app.*` (systemd ExecStart), tests as `app.*`.
     assert logging.getLogger("backend.app.core.maintenance").isEnabledFor(logging.INFO)
+
+
+@pytest.mark.asyncio
+async def test_stale_triage_sweeper_guards_live_runs():
+    """A killed worker must not leave a candidate in `analyzing` forever, and a running
+    triage must never be reset: the query only touches rows with no recent agent step."""
+    captured = {}
+
+    class _FakeSession:
+        async def execute(self, statement, params=None):
+            captured["sql"] = str(statement)
+            captured["params"] = params
+            return type("R", (), {"rowcount": 2})()
+
+        async def commit(self):
+            captured["committed"] = True
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+    original = maintenance.AsyncSessionLocal
+    maintenance.AsyncSessionLocal = lambda: _FakeSession()
+    try:
+        await maintenance.reset_stale_triage_runs()
+    finally:
+        maintenance.AsyncSessionLocal = original
+
+    sql = " ".join(captured["sql"].split())
+    assert "status = 'analyzing'" in sql
+    assert "status = 'failed'" in sql
+    assert "NOT EXISTS" in sql, "live runs would be reset without the freshness guard"
+    assert captured["params"]["minutes"] == settings.STALE_TRIAGE_MINUTES
+    assert captured["committed"] is True

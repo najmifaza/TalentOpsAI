@@ -598,6 +598,43 @@ async def hr_direct_upload(
         )
         cand_id = res.lastrowid
 
+        # Same bytes in a second dossier: usually one person applying twice, occasionally a
+        # shared template. Flagged for HR, never blocked — a re-application is legitimate.
+        duplicate_res = await db.execute(
+            text("""
+                SELECT id, masked_identifier FROM candidates
+                WHERE file_hash_sha256 = :file_hash AND id <> :cand_id AND is_deleted = FALSE
+                ORDER BY id ASC LIMIT 1
+            """),
+            {"file_hash": file_hash, "cand_id": cand_id},
+        )
+        duplicate_row = duplicate_res.mappings().first()
+        if duplicate_row and "id" in duplicate_row:
+            original_id = duplicate_row["id"]
+            original_masked = duplicate_row.get("masked_identifier") or f"#{original_id}"
+            await db.execute(
+                text("""
+                    INSERT INTO candidate_anomalies (
+                        candidate_id, anomaly_type, severity, description, suggested_verification
+                    ) VALUES (
+                        :cand_id, 'DUPLICATE_RESUME_UPLOAD', 'MEDIUM',
+                        :desc, :verify
+                    )
+                """),
+                {
+                    "cand_id": cand_id,
+                    "desc": (
+                        "Berkas ini identik dengan berkas yang sudah pernah masuk pada kandidat "
+                        f"{original_masked} (hash SHA-256 sama). Bisa berarti pelamar yang sama "
+                        "melamar dua kali atau memakai berkas yang dipakai bersama."
+                    ),
+                    "verify": (
+                        f"Bandingkan berkas kandidat {original_masked} dengan berkas ini, lalu "
+                        "pastikan apakah pelamarnya orang yang sama sebelum menilai keduanya."
+                    ),
+                },
+            )
+
         if hidden_text_detected:
             await db.execute(
                 text("""

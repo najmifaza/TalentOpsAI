@@ -13,7 +13,7 @@ from app.core.broadcaster import sse_broadcaster
 from app.core.state import DistributedSemaphore
 from app.core.llm_adapter import LLMAdapter, PRE_CACHED_STORE, compute_file_hash
 from app.core.prompt import build_extraction_prompt, clean_llm_json_response
-from app.core.scoring import DeterministicScoringEngine
+from app.core.scoring import DeterministicScoringEngine, detect_experience_claim_inflation
 from app.core.crosscheck import build_divergence_anomaly, compare_extractions, downgrade_confidence
 from app.core.interview_generator import generate_interview_questions
 from app.schemas.extraction import (
@@ -32,6 +32,14 @@ logger = logging.getLogger(__name__)
 # one it picked (PRD Bab 5.3 Siklus 6). Bounded on purpose: a slot war must not turn
 # one triage run into an unbounded loop.
 CALENDAR_RECOVERY_ATTEMPTS = 5
+
+
+RISK_ESCALATION = {"LOW": "MEDIUM", "MEDIUM": "MEDIUM", "HIGH": "HIGH"}
+
+
+def _escalate_risk(risk: str) -> str:
+    """LOW -> MEDIUM, never downward: a system-detected finding must not soften a real risk."""
+    return RISK_ESCALATION.get((risk or "").upper(), "MEDIUM")
 
 
 def _flag_severity(flag: str) -> str:
@@ -652,11 +660,37 @@ class AgentTriageService:
                 job_title=job_title,
             )
 
-            # Two models disagreed on what the CV says, so the numeric score ships with
-            # less confidence and skips the automated shortlist path. Not a failure:
-            # this is the agent noticing its own ambiguity (item #4).
-            if crosscheck and crosscheck["divergent"]:
+            # Findings the agent produces about its own reading. Computed after the score
+            # so they can adjust it before anything is persisted.
+            crosscheck_divergent = bool(crosscheck and crosscheck["divergent"])
+            experience_claim = detect_experience_claim_inflation(
+                sanitized_text, assessment.get("merged_experience_years") or 0.0
+            )
+
+            if crosscheck_divergent:
                 assessment["confidence_level"] = downgrade_confidence(assessment["confidence_level"])
+            if experience_claim:
+                assessment["unresolved_risk"] = _escalate_risk(assessment["unresolved_risk"])
+
+            if crosscheck_divergent or experience_claim:
+                # Re-derive the recommendation from the adjusted inputs. A STRONG_MATCH
+                # carrying MEDIUM confidence would contradict the decision matrix in
+                # scoring.py, so the verdict is recomputed rather than patched.
+                (
+                    assessment["recommendation"],
+                    _,
+                    assessment["rule_applied"],
+                ) = DeterministicScoringEngine.evaluate_decision_points(
+                    overall_score=assessment["overall_score"],
+                    confidence=assessment["confidence_level"],
+                    risk=assessment["unresolved_risk"],
+                    has_prompt_injection=bool(
+                        anomalies_dict.get("prompt_injection_detected")
+                        or anomalies_dict.get("hidden_text_detected")
+                    ),
+                    cutoff_threshold=85.0,
+                )
+                # Self-detected uncertainty always reaches a human, whatever the score.
                 assessment["triage_priority"] = "HIGH_ATTENTION"
 
             dur_ms = int((time.time() - t0) * 1000)
@@ -669,6 +703,16 @@ class AgentTriageService:
                 f"Portofolio={dim['PORTFOLIO']} (bobot {int(w_applied.get('PORTFOLIO', 0.2)*100)}%). "
                 f"Total Skor Akhir: {assessment['overall_score']}/100 -> Rekomendasi: {assessment['recommendation']}."
             )
+            if crosscheck_divergent or experience_claim:
+                reasons = []
+                if crosscheck_divergent:
+                    reasons.append("konsensus dua model divergen")
+                if experience_claim:
+                    reasons.append(
+                        f"klaim {experience_claim['claimed_years']} tahun vs timeline "
+                        f"{experience_claim['timeline_years']} tahun"
+                    )
+                scoring_thought += " Penyesuaian: " + "; ".join(reasons) + "."
             scoring_details = {
                 "overall_score": assessment["overall_score"],
                 "dimension_scores": assessment["dimension_scores"],
@@ -796,7 +840,7 @@ class AgentTriageService:
             # Divergence between the two extraction models becomes a normal anomaly row,
             # so it shows up in the dossier next to the other findings instead of living
             # only inside the trace payload.
-            if crosscheck and crosscheck["divergent"]:
+            if crosscheck_divergent:
                 divergence = build_divergence_anomaly(crosscheck, crosscheck_models)
                 await db.execute(
                     text("""
@@ -812,6 +856,24 @@ class AgentTriageService:
                         "sev": divergence["severity"],
                         "desc": divergence["description"],
                         "verify": divergence["suggested_verification"],
+                    },
+                )
+
+            if experience_claim:
+                await db.execute(
+                    text("""
+                        INSERT INTO candidate_anomalies (
+                            candidate_id, anomaly_type, severity, description, suggested_verification
+                        ) VALUES (
+                            :cid, :atype, :sev, :desc, :verify
+                        )
+                    """),
+                    {
+                        "cid": candidate_id,
+                        "atype": experience_claim["type"],
+                        "sev": experience_claim["severity"],
+                        "desc": experience_claim["description"],
+                        "verify": experience_claim["suggested_verification"],
                     },
                 )
 

@@ -119,7 +119,7 @@ async def test_llm_outage_returns_rules_only(monkeypatch):
     assert mode == "RULES_ONLY"
 
 
-def _mock_db(raw_text: str):
+def _mock_db(raw_text: str, description_text="", requirements_text=""):
     mock_db = AsyncMock()
     mock_res = MagicMock()
     mock_res.mappings.return_value.first.return_value = {
@@ -127,15 +127,21 @@ def _mock_db(raw_text: str):
         "title": "Backend Engineer",
         "department": "Engineering",
         "raw_text": raw_text,
+        "description_text": description_text,
+        "requirements_text": requirements_text,
         "flagged_ambiguities": None,
     }
     mock_db.execute = AsyncMock(return_value=mock_res)
     return mock_db
 
 
-def _post_bias(raw_text: str, monkeypatch, adapter):
+def _post_bias(raw_text: str, monkeypatch, adapter, description_text="", requirements_text="",
+               send_custom_text=True):
+    """`send_custom_text=False` exercises the stored-vacancy path, where the endpoint reads
+    the job row instead of the recruiter-supplied text."""
     monkeypatch.setattr(jobs_api, "LLMAdapter", lambda: adapter)
-    mock_db = _mock_db(raw_text)
+    mock_db = _mock_db(raw_text, description_text, requirements_text)
+    body = {"custom_text": raw_text} if send_custom_text else {}
 
     async def override_get_db():
         yield mock_db
@@ -144,7 +150,7 @@ def _post_bias(raw_text: str, monkeypatch, adapter):
     try:
         return client.post(
             "/api/jobs/1/analyze-bias",
-            json={"custom_text": raw_text},
+            json=body,
             headers=_auth_headers(),
         )
     finally:
@@ -181,3 +187,43 @@ def test_score_never_diverges_from_shared_scorer(monkeypatch):
     expected, rating = inclusivity_from_findings(data["bias_findings"])
     assert data["inclusivity_score"] == expected
     assert data["inclusivity_rating"] == rating
+
+def test_audit_reads_description_and_requirements_not_just_raw_text(monkeypatch):
+    """`raw_text` is a one-paragraph summary; the discriminating wording lives in the
+    requirements section and used to be invisible to the audit."""
+    adapter = _FakeAdapter({"findings": []})
+    response = _post_bias(
+        "Membangun arsitektur microservices performa tinggi.",
+        monkeypatch,
+        adapter,
+        description_text="Memimpin tim teknis untuk produk inti.",
+        requirements_text="Lulusan PTN ternama, usia maksimal 30 tahun, diutamakan pria.",
+        send_custom_text=False,
+    )
+
+    assert response.status_code == 200
+    categories = {f["category"] for f in response.json()["bias_findings"]}
+    assert "AGE_DISCRIMINATION" in categories
+    assert "GENDER_EXCLUSIVE_TERMS" in categories
+
+
+def test_llm_layer_receives_the_combined_text(monkeypatch):
+    captured = {}
+
+    class _CapturingAdapter(_FakeAdapter):
+        async def complete(self, **kwargs):
+            captured["text"] = kwargs["messages"][-1]["content"]
+            return await super().complete(**kwargs)
+
+    _post_bias(
+        "Ringkasan singkat lowongan.",
+        monkeypatch,
+        _CapturingAdapter({"findings": []}),
+        description_text="Deskripsi lengkap peran.",
+        requirements_text="Syarat: pengalaman 5 tahun.",
+        send_custom_text=False,
+    )
+
+    assert "Ringkasan singkat lowongan." in captured["text"]
+    assert "Deskripsi lengkap peran." in captured["text"]
+    assert "Syarat: pengalaman 5 tahun." in captured["text"]

@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     # MAINTENANCE_ENABLED: slot `tentative` cleaner, every 5 minutes (PRD Bab 6.3).
     # Disabled under pytest so the loop does not outlive the test session.
     MAINTENANCE_ENABLED: bool = True
+    # Runs stuck in `analyzing` longer than this (with no fresh agent step) are reset to
+    # `failed`, so a killed worker cannot leave a candidate spinning forever (PRD Bab 5.3).
+    STALE_TRIAGE_MINUTES: int = 15
     # DEMO_PURGE_ENABLED: hard-delete candidates older than 4 hours (PRD Bab 8.2).
     # Separate from DEMO_MODE on purpose: the purge deletes every candidate past the
     # cutoff, including the seeded judging dataset. Enable only on a throwaway demo DB.

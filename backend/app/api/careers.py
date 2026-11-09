@@ -490,7 +490,12 @@ async def track_application_status(tracking_token: str, db: AsyncSession = Depen
             weights = json.loads(weights)
         except Exception:
             weights = None
-    weights = weights or DeterministicScoringEngine.DEFAULT_WEIGHTS
+    # Normalised so the applicant sees the weights the vacancy actually scores with, not an
+    # empty label produced by a legacy key style the engine never read.
+    weights = (
+        DeterministicScoringEngine.normalize_weight_config(weights)
+        or DeterministicScoringEngine.DEFAULT_WEIGHTS
+    )
 
     # Alasan keputusan dihitung ulang dari skor tersimpan, bukan disimpan sebagai
     # kolom baru: satu sumber kebenaran tetap scoring.py. has_prompt_injection

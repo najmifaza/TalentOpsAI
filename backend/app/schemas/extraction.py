@@ -212,6 +212,14 @@ class AnomalyFlags(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+# A claim quote must be an excerpt, not a document. Without this ceiling the guard happily
+# "verified" a 5.000-character narrative: the whole CV is trivially a substring of itself, so
+# every claim looked verified and the Evidence Graph rendered the entire resume as one quote.
+MAX_QUOTE_CHARS = 320
+MAX_QUOTE_WORDS = 45
+MAX_METRIC_CHARS = 60
+
+
 class CandidateExtractionSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -240,7 +248,26 @@ class CandidateExtractionSchema(BaseModel):
             if not claim.has_implementation_detail:
                 continue
 
-            narrative = (claim.context_narrative or "").strip().lower()
+            raw_narrative = (claim.context_narrative or "").strip()
+            too_long = (
+                len(raw_narrative) > MAX_QUOTE_CHARS
+                or len(raw_narrative.split()) > MAX_QUOTE_WORDS
+            )
+            if too_long:
+                claim.has_implementation_detail = False
+                claim.context_narrative = None
+                claim.metric_string = None
+                if self.anomalies:
+                    self.anomalies.notes.append(
+                        f"Substring guard rejected an oversized quote for '{claim.technology}' "
+                        f"({len(raw_narrative)} chars); a quotation must be one excerpt, not the document."
+                    )
+                continue
+
+            if claim.metric_string and len(claim.metric_string) > MAX_METRIC_CHARS:
+                claim.metric_string = claim.metric_string[:MAX_METRIC_CHARS]
+
+            narrative = raw_narrative.lower()
             norm_narrative = " ".join(narrative.split())
             norm_claim_alphanumeric = _normalize_tokens(narrative)
 

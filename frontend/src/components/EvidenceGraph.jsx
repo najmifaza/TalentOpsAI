@@ -39,6 +39,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.talentops
 // --- CUSTOM NODES (Grafana Labs Enterprise Theme) ---
 
 // 1. Candidate Root Node (Layer 1)
+// Evidence rows written before the quote-length guard can carry an entire resume as
+// `claim_text`. Cap the display so a stale row cannot flood the panel; the backend now
+// rejects oversized quotes at extraction time.
+const MAX_VISIBLE_QUOTE = 320;
+const asExcerpt = (value) => {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (text.length <= MAX_VISIBLE_QUOTE) return text;
+  const cut = text.slice(0, MAX_VISIBLE_QUOTE);
+  return `${cut.slice(0, cut.lastIndexOf(' '))}…`;
+};
+
 function CandidateNode({ data }) {
   const recBadge = (() => {
     switch (data.recommendation) {
@@ -375,10 +386,10 @@ function buildGraphFromRealData(candidate, evidenceList = [], anomaliesList = []
       id: `ev-item-${ev.id}`,
       skill: ev.target_competency || 'Kompetensi Teridentifikasi',
       desc: verified
-        ? ev.claim_text
+        ? asExcerpt(ev.claim_text)
         : 'Disebut di CV tanpa kalimat pendukung yang lolos verifikasi teks asli.',
       confidence: Math.round(Number(ev.confidence || 0.75) * 100),
-      quote: ev.claim_text || '',
+      quote: asExcerpt(ev.claim_text),
       verified,
       matchedRequirement: ev.matched_requirement || null,
       source: ev.evidence_source || 'CV / Resume',

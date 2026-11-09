@@ -341,6 +341,22 @@ def detect_experience_claim_inflation(
     }
 
 
+# Defence in depth for the Evidence Graph: the substring guard already rejects oversized
+# narratives, but a stored row must never carry a whole document as its "quote" either.
+EVIDENCE_EXCERPT_CHARS = 320
+
+
+def _as_excerpt(text: Any) -> str:
+    """Returns one bounded excerpt; empty string when there is nothing usable."""
+    if not text or not isinstance(text, str):
+        return ""
+    cleaned = " ".join(text.split())
+    if len(cleaned) <= EVIDENCE_EXCERPT_CHARS:
+        return cleaned
+    clipped = cleaned[:EVIDENCE_EXCERPT_CHARS].rsplit(" ", 1)[0]
+    return f"{clipped}…"
+
+
 def normalize_technology_key(name: str) -> str:
     """Identity of a technology name for dedupe: retains + and # (C++, C# != C), collapses dots (Next.js == nextjs)."""
     return re.sub(r"[^a-z0-9+#]", "", (name or "").lower())
@@ -511,7 +527,7 @@ class DeterministicScoringEngine:
                     "matched_requirement": req_comp,
                     # Empty means "no verbatim quote survived the guard"; the UI must
                     # not present a technology name as a resume quotation.
-                    "claim_text": best_claim.get("context_narrative") or "",
+                    "claim_text": _as_excerpt(best_claim.get("context_narrative")),
                     "evidence_source": best_claim.get("source_location") or "CV Skills Section",
                     "score_contribution": round(best_match_score * 100, 2),
                     "confidence": conf,
@@ -531,7 +547,7 @@ class DeterministicScoringEngine:
                 "dimension": "SKILL",
                 "target_competency": tech,
                 "matched_requirement": None,
-                "claim_text": claim.get("context_narrative") or "",
+                "claim_text": _as_excerpt(claim.get("context_narrative")),
                 "evidence_source": claim.get("source_location") or "CV Skills Section",
                 "score_contribution": 0.0,
                 "confidence": 0.75 if has_impl else 0.50,

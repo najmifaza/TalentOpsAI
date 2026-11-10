@@ -1,40 +1,66 @@
 # TalentOps AI
 
-Human-centric agentic recruitment ecosystem: an autonomous agent investigates a
-candidate dossier, scores it deterministically, and stops at a Human-in-the-Loop gate
-before anything is dispatched. Built for **GTNIC 2026 (AI Agent Development)** and
-**UINIC 8.0 (Web Development)**.
+Agen rekrutmen otonom berbasis bukti. Agen membaca berkas pelamar, menyaring data
+pribadi lebih dulu, menghitung skor dengan aritmetika deterministik, dan berhenti di
+gerbang persetujuan manusia sebelum ada keputusan yang dikirim.
 
-- Live web: https://talentops.ai.id
-- Backend API: https://api.talentops.ai.id
-- Product requirement document: [`docs/PRD_TALENTOPS_AI_MASTER.md`](docs/PRD_TALENTOPS_AI_MASTER.md)
-- Remaining-work log (honest gaps): [`docs/STATUS_PEKERJAAN_BELUM_SELESAI.md`](docs/STATUS_PEKERJAAN_BELUM_SELESAI.md)
+Dibuat untuk **GTNIC 2026 (AI Agent Development)** dan **UINIC 8.0 (Web Development)**.
 
-## What the agent actually does
+- Demo web: https://talentops.ai.id
+- Demo API: https://api.talentops.ai.id
+- PRD: [`docs/PRD_TALENTOPS_AI_MASTER.md`](docs/PRD_TALENTOPS_AI_MASTER.md)
+- Catatan pekerjaan yang belum selesai: [`docs/STATUS_PEKERJAAN_BELUM_SELESAI.md`](docs/STATUS_PEKERJAAN_BELUM_SELESAI.md)
 
-Seven autonomously executed cycles per candidate (`backend/app/core/triage_service.py`):
+## Delapan tahap agen
 
-1. Ingestion + magic-byte validation (PDF `%PDF-`, DOCX `PK\x03\x04`)
-2. Hidden-text / prompt-injection audit (`core/hidden_text_detector.py`) — PDF render mode 3, near-white text, ≤1pt glyphs, DOCX `w:vanish` / `w:hidden`
-3. Structured extraction via 9router → Gemini 3.8, strict Pydantic schema
-4. Anti-hallucination substring guard (unverified narrative is nulled, tier dropped)
-5. GitHub portfolio verification (SSRF-guarded, programmer roles only)
-6. Deterministic 4D scoring — SKILL 40 / EXPERIENCE 30 / EDUCATION 10 / PORTFOLIO 20 — plus timeline overlap & title-inflation audit (`core/scoring.py`)
-7. Adaptive gap-based challenge + tentative calendar lock, then stop at `waiting_approval`
+Setiap kandidat melewati delapan tahap berurutan, semuanya tercatat di tabel
+`agent_steps` (masukan, luaran, durasi) dan dialirkan ke UI lewat SSE:
 
-Every step is streamed over SSE (single-use 60 s ticket) and written to `agent_steps`.
+1. Sensor privasi data pribadi: ekstrak teks PDF, pindai teks tersembunyi, kaburkan
+   nama/email/telepon menjadi identitas anonim `#TK-[6-HEX]`
+2. Uji integritas berkas: render mode 3, teks nyaris putih, glyph maksimal 1pt pada
+   PDF, serta `w:vanish` / `w:hidden` pada DOCX
+3. Analisis riwayat dan kompetensi: ekstraksi klaim lewat gateway LLM dengan skema
+   Pydantic ketat
+4. Pencocokan bukti kalimat asli: klaim tanpa kutipan pendukung ditandai belum
+   terverifikasi dan menurunkan tingkat keyakinan
+5. Verifikasi portofolio: GitHub REST API (SSRF-guarded), dilewati adaptif untuk peran
+   non-teknis
+6. Skor 4 dimensi deterministik: SKILL 40 / EXPERIENCE 30 / EDUCATION 10 / PORTFOLIO
+   20, dihitung Python murni, plus audit tumpang tindih tanggal kerja dan inflasi
+   jabatan (`backend/app/core/scoring.py`)
+7. Konsensus dua model dan simulasi wawancara: selisih bacaan menurunkan keyakinan,
+   soal wawancara disusun dari celah kompetensi kandidat
+8. Keputusan akhir dan penguncian slot: rekomendasi, pencarian slot kosong secara
+   atomik, lalu berhenti di antrean `waiting_approval`
+
+## Yang sudah jalan
+
+- Portal karier publik: daftar lowongan, lamaran tanpa akun, token pelacakan rahasia,
+  dan halaman lacak mandiri
+- Notifikasi email otomatis per perubahan status (lamaran diterima, permintaan
+  informasi tambahan, jadwal wawancara, konfirmasi hapus data) lewat Resend, dengan
+  pengiriman best-effort: kegagalan email tidak menghentikan triase
+- Panel HR: antrean triage, dossier kandidat, Candidate Evidence Graph, Agent Trace,
+  simulasi wawancara, dan scorecard pasca-wawancara
+- "What-If?" policy simulator untuk menguji sensitivitas ambang skor
+- Modul blog portal karier yang dikelola dari panel admin: kategori, gambar sampul,
+  draf atau terbit, estimasi waktu baca dihitung otomatis
+- Audit bahasa lowongan dan skor inklusivitas di portal publik
+- Jejak audit append-only, log akses PII, dan Right to Erasure lewat crypto-shredding
 
 ## Stack
 
-| Layer | Choice |
+| Lapisan | Pilihan |
 |---|---|
 | Frontend | React 18.3, Vite 5.4, Tailwind 3.4, @xyflow/react (React Flow 12) |
 | Backend | Python 3.11, FastAPI, Pydantic v2, SQLAlchemy async (`aiomysql`) |
-| Database | MariaDB 10.11 / InnoDB, 14 tables, 3NF (`backend/migrations`) |
-| Crypto | AES-256-GCM envelope encryption (DEK/KEK), HMAC-SHA256 blind index |
-| Auth | JWT + in-memory blacklist, PBKDF2-HMAC-SHA256 (100k), 5-fail/15-min lock |
-| LLM | 9router gateway (`LLM_ROUTER_BASE_URL`), model + fallback via env |
-| Proxy | Nginx: TLS, HTTP/2, gzip, rate limit 5 r/m on public apply |
+| Basis data | MariaDB 10.11 / InnoDB, 14 tabel 3NF (`backend/migrations`) |
+| Kripto | AES-256-GCM envelope encryption (DEK/KEK), blind index SHA-256 + salt |
+| Auth | JWT + blacklist in-memory, PBKDF2-HMAC-SHA256 (100k iterasi), kunci 15 menit setelah 5 kali gagal |
+| LLM | Gateway kompatibel-OpenAI (`LLM_ROUTER_BASE_URL`), model utama dan cadangan lewat env |
+| Email | Resend (API HTTPS atau SMTP relay), `EMAIL_PROVIDER` menentukan status aktif |
+| Proxy | Nginx: TLS, HTTP/2, gzip, rate limit 5 r/m pada endpoint lamaran publik |
 
 ## Quickstart
 
@@ -43,8 +69,8 @@ Every step is streamed over SSE (single-use 60 s ticket) and written to `agent_s
 cd backend
 python -m venv ../.venv && ../.venv/Scripts/activate      # Windows
 pip install -r requirements.txt
-cp .env.example .env        # fill DATABASE_URL, MASTER_KEK, HMAC_PEPPER, JWT_SECRET
-python scripts/init_db.py   # applies backend/migrations/*.sql in order
+cp .env.example .env        # isi DATABASE_URL, MASTER_KEK, HMAC_PEPPER, JWT_SECRET
+python scripts/init_db.py   # menerapkan backend/migrations/*.sql berurutan
 SEED_DEFAULT_PASSWORD='<strong-password>' python scripts/seed_data.py
 uvicorn app.main:app --reload --port 8002
 
@@ -55,40 +81,60 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Tests (no database needed; DB-touching tests use fakes/in-memory):
+Tes backend (tidak butuh database; tes yang menyentuh DB memakai fake/in-memory):
 
 ```bash
 cd backend && ../.venv/Scripts/python.exe -m pytest -q
 ```
 
-## Repository layout
+## Struktur repositori
 
 ```
-backend/app/api/         REST endpoints (auth, careers, candidates, jobs, slots, blog, audit)
-backend/app/core/        agent orchestration, scoring, crypto, sanitizer, detectors, erasure
-backend/app/adapters/    GitHub REST + calendar adapters
-backend/migrations/      DDL 001–010, applied by scripts/init_db.py
-backend/data/            golden dataset: 25 synthetic CVs + 4 pre-cached fixtures
-backend/tests/           pytest suite
-frontend/src/            React app (careers portal, HR dashboard, evidence graph, what-if studio)
-nginx/                   production reverse-proxy config
-docs/                    PRD, status log, worklogs, competition documents
+backend/app/api/         endpoint REST (auth, careers, candidates, jobs, slots, blog, audit)
+backend/app/core/        orkestrasi agen, skoring, kripto, sanitizer, detektor, erasure
+backend/app/adapters/    GitHub REST + adapter kalender
+backend/migrations/      DDL 001-010, dijalankan scripts/init_db.py
+backend/data/            golden dataset: 25 CV sintetis + 4 fixture pra-cache
+backend/tests/           suite pytest
+frontend/src/            aplikasi React (portal karier, panel HR, evidence graph, what-if studio)
+nginx/                   konfigurasi reverse proxy produksi
+docs/                    PRD, log status, worklog, dokumen lomba
 ```
 
-## Operational constraints (read before deploying)
+## Dokumen dan aset lomba
 
-- **One Uvicorn worker.** No Redis in the deployed topology, so SSE tickets and the
-  triage semaphore are per-process. `--workers 2` silently breaks the trace stream.
-- **No external credentials are committed.** `GOOGLE_CLIENT_ID`/`SECRET` and
-  `RESEND_API_KEY` are empty by default; the calendar and email paths report their
-  real status instead of pretending to work.
-- **`DEMO_PURGE_ENABLED` is `False`.** The 4-hour purge deletes *every* candidate,
-  including the judging dataset; it only becomes safe with an `is_demo` column.
-- **Use synthetic data** for any public demo. `DemoDataBanner` reminds users of this.
+| Berkas | Isi |
+|---|---|
+| `docs/docsLomba/GTNIC2026_AIAgent_DoaIbu.pdf` | proposal final |
+| `docs/docsLomba/PROPOSAL_AI_RECRUITMENT_AGENT.md` | sumber markdown proposal, dibangun `_build_proposal.py` |
+| `docs/docsLomba/pitch_deck/` | pitch deck 6 slide (HTML interaktif, PDF, PNG 1920x1080) |
+| `docs/docsLomba/scriptvideo.md` | naskah video demo, pemetaan aset, dan checklist rekaman |
+| `docs/docsLomba/demo_cv/` | paket CV demo, generator, dan skrip verifikasi detektor |
+| `docs/docsLomba/assets/` | tangkapan layar antarmuka dan diagram arsitektur |
+| `docs/worklogs/` | worklog per anggota tim |
 
-## Data protection
+Paket CV demo membuktikan setiap detektor bekerja. Unggah `cv_01` untuk alur normal
+(`STRONG_MATCH`), lalu `cv_14` untuk berkas curang berlapis yang memicu karantina
+keamanan, tumpang tindih 24 bulan, inflasi klaim pengalaman, inflasi jabatan, dan jeda
+karier dalam satu unggahan. Perintah lengkap ada di `demo_cv/README.md`.
 
-Candidate identity is encrypted per record (AES-256-GCM, unique DEK wrapped by the
-master KEK). Right to erasure shreds the DEK and overwrites the blind index
-(`core/erasure.py`), leaving the audit trail intact. Unmasking is blocked during blind
-review and every access is written to `pii_access_logs`.
+## Batasan operasional (baca sebelum deploy)
+
+- **Satu worker Uvicorn.** Tanpa Redis, tiket SSE dan semaphore triase bersifat
+  per-proses. `--workers 2` memutus aliran trace secara diam-diam.
+- **Tidak ada kredensial eksternal di dalam repo.** `GOOGLE_CLIENT_ID`/`SECRET`,
+  `RESEND_API_KEY`, dan kunci gateway LLM kosong secara bawaan; jalur kalender, email,
+  dan ekstraksi melaporkan status aslinya alih-alih berpura-pura berhasil.
+- **Tanpa API key gateway, ekstraksi jatuh ke mesin heuristik** dan penyebabnya
+  dicatat di jejak audit.
+- **`DEMO_PURGE_ENABLED` bernilai `False`.** Purge 4 jam menghapus setiap kandidat,
+  termasuk dataset penjurian; baru aman setelah ada kolom `is_demo`.
+- **Pakai data sintetis** untuk demo publik. `DemoDataBanner` mengingatkan pengguna.
+- **Berkas scan tanpa lapisan teks belum dibaca substansinya**, hanya ditandai butuh OCR.
+
+## Perlindungan data
+
+Identitas kandidat dienkripsi per record (AES-256-GCM, DEK unik dibungkus KEK master).
+Right to Erasure memusnahkan DEK dan menimpa blind index (`core/erasure.py`), sementara
+jejak audit tetap utuh. Unmasking diblokir selama blind review, dan setiap akses dicatat
+di `pii_access_logs`.

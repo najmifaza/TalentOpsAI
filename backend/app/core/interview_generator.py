@@ -247,3 +247,86 @@ async def generate_interview_questions(
         "model": response.get("model") or settings.LLM_MODEL_NAME,
         "source": response.get("source", "LIVE"),
     }
+
+def build_evidence_questions(
+    claims: List[Dict[str, Any]],
+    evidence_records: Optional[List[Dict[str, Any]]] = None,
+    core_competencies: Optional[List[str]] = None,
+    max_questions: int = MAX_QUESTIONS,
+) -> List[Dict[str, str]]:
+    """Deterministic questions built from the candidate's own claims.
+
+    The gap-based template in `scoring.py` only fires when a candidate has a weak or risky
+    competency. A strong candidate therefore ended up with ZERO questions whenever the model
+    gateway was unavailable (production case #TK-DA7D88: SKILL 100, no gap, tab empty).
+    This path always produces questions, anchored to quotes the candidate actually wrote.
+    """
+    scores: Dict[str, float] = {}
+    for ev in evidence_records or []:
+        competency = (ev.get("target_competency") or "").strip().lower()
+        if competency:
+            scores[competency] = max(scores.get(competency, 0.0), float(ev.get("score_contribution") or 0.0))
+
+    ordered = sorted(
+        [c for c in (claims or []) if isinstance(c, dict)],
+        key=lambda c: scores.get(((c.get("technology") or c.get("competency") or "").strip().lower()), 0.0),
+        reverse=True,
+    )
+
+    questions: List[Dict[str, str]] = []
+    seen: set = set()
+    for claim in ordered:
+        skill = (claim.get("technology") or claim.get("competency") or "").strip()
+        if not skill or skill == "-" or skill.lower() in seen:
+            continue
+        context = (claim.get("context_narrative") or "").strip()
+        if not context:
+            continue
+        seen.add(skill.lower())
+
+        metric = (claim.get("metric_string") or "").strip()
+        detailed = bool(claim.get("has_implementation_detail"))
+        quote = context[:220] + ("..." if len(context) > 220 else "")
+
+        if metric and detailed:
+            difficulty = "L3_EDGE_CASE"
+            question = (
+                f"CV Anda menyebut: \u201c{quote}\u201d. Sebutkan angka {metric} pada bagian itu. "
+                f"Jelaskan bagaimana angka tersebut diukur, hambatan terbesar saat menerapkan {skill}, "
+                f"dan apa yang Anda lakukan ketika hasilnya tidak sesuai target."
+            )
+            criteria = (
+                f"Menilai kemampuan menjelaskan asal angka {metric}, penalaran kompromi teknis pada {skill}, "
+                "serta kesiapan menghadapi kegagalan dan cara pemulihannya."
+            )
+        elif detailed:
+            difficulty = "L2_SYSTEM_DESIGN"
+            question = (
+                f"CV Anda menyebut: \u201c{quote}\u201d. Ceritakan rancangan teknis penerapan {skill} pada kasus itu: "
+                f"pilihan desain, hal yang Anda korbankan, dan cara Anda mengujinya."
+            )
+            criteria = (
+                f"Menilai kedalaman rancangan {skill}, kesadaran kompromi teknis, dan cara pengujian yang dilakukan."
+            )
+        else:
+            difficulty = "L1_FUNDAMENTAL"
+            question = (
+                f"CV Anda menyebut {skill} dalam kalimat: \u201c{quote}\u201d. "
+                f"Jelaskan konsep dasarnya dan satu contoh penerapan yang pernah Anda kerjakan."
+            )
+            criteria = (
+                f"Menilai pemahaman dasar {skill} dan kemampuan mengaitkannya dengan pengalaman nyata."
+            )
+
+        questions.append(
+            {
+                "target_skill": skill,
+                "difficulty_level": _match_enum(difficulty, VALID_DIFFICULTY, DIFFICULTY_ALIASES, "L1_FUNDAMENTAL"),
+                "scenario_question": question,
+                "evaluation_criteria": criteria,
+            }
+        )
+        if len(questions) >= max_questions:
+            break
+
+    return questions

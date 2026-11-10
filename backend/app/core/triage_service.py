@@ -20,7 +20,7 @@ from app.core.scoring import (
     is_tier3_metric_claim,
 )
 from app.core.crosscheck import build_divergence_anomaly, compare_extractions, downgrade_confidence
-from app.core.interview_generator import generate_interview_questions
+from app.core.interview_generator import build_evidence_questions, generate_interview_questions
 from app.schemas.extraction import (
     CandidateExtractionSchema,
     AnomalyFlags,
@@ -1187,8 +1187,19 @@ class AgentTriageService:
         )
 
         dur_ms = int((time.time() - started) * 1000)
-        questions = generated["questions"] if generated else fallback
-        source = "LLM_GENERATED" if generated else "DETERMINISTIC_TEMPLATE"
+        if generated:
+            questions, source = generated["questions"], "LLM_GENERATED"
+        elif fallback:
+            questions, source = fallback, "DETERMINISTIC_TEMPLATE"
+        else:
+            # Strong candidates have no competency gap, so the gap template yields nothing.
+            # Without this the interview tab is empty whenever the model gateway is down.
+            questions = build_evidence_questions(
+                [c.model_dump() for c in schema.claims],
+                assessment.get("evidence_records") or [],
+                core_competencies,
+            )
+            source = "DETERMINISTIC_EVIDENCE"
 
         details = {
             "source": source,

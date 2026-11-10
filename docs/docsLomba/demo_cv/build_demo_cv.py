@@ -270,6 +270,74 @@ CVS = [
         case="prompt injection (teks putih + tak terlihat)",
         expect="PDF_WHITE_TEXT + PDF_INVISIBLE_RENDER_MODE (HIGH) → SECURITY_QUARANTINE_PROMPT_INJECTION, mustahil STRONG_MATCH",
     ),
+    # ------------------------------------------------------------------ #1b Berkas curang berlapis
+    _cv(
+        slug="cv_14_backend_multi_anomali",
+        job="1 · Senior Backend Engineer",
+        name="Yoga Prasetya Ramadhan",
+        headline="Backend Engineer · Layanan Internal · Integrasi API",
+        contact="Bekasi · yoga.prasetya@example.com · +62 815-8899-1200",
+        profile=(
+            "Backend engineer dengan pengalaman 8 tahun pada layanan internal, integrasi API, dan "
+            "perawatan basis data operasional. Terbiasa memegang tanggung jawab teknis sekaligus "
+            "koordinasi tim lintas divisi."
+        ),
+        skills="Python, FastAPI, PostgreSQL, Docker, Redis, SQLAlchemy, Git, CI/CD",
+        skills_tools="Pendukung: Alembic, pytest, Nginx, Linux, Grafana, Postman",
+        github="https://github.com/tiangolo/fastapi",
+        experiences=[
+            # Pemicu TITLE_INFLATION_DETECTED: jenjang "Staf" -> "Manager" dalam 2 bulan.
+            ("Staf IT Support | CV Media Kreatif",
+             "Januari 2019 – November 2019",
+             [
+                 "Menangani tiket gangguan aplikasi internal rata-rata 40 kasus per bulan.",
+                 "Menyusun panduan penggunaan sistem absensi untuk 180 karyawan.",
+                 "Merawat basis data MySQL operasional dan menjadwalkan pencadangan harian.",
+             ]),
+            # Pemicu CONCURRENT_FULLTIME_OVERLAP (9 bulan) sekaligus pasangan inflasi jabatan.
+            ("Manager Backend Engineering | PT Nusantara Digital",
+             "Maret 2019 – November 2019",
+             [
+                 "Memimpin empat engineer pada pengembangan layanan integrasi API internal.",
+                 "Menyusun rencana rilis dua mingguan dan mengawal tiga rilis besar.",
+                 "Menetapkan standar review kode untuk enam layanan Python.",
+             ]),
+            # Pemicu CONCURRENT_FULLTIME_OVERLAP_24_MONTHS bersama peran berikutnya.
+            ("Senior Backend Engineer | PT Karya Awan Nusantara",
+             "Januari 2021 – Desember 2022",
+             [
+                 "Membangun layanan FastAPI untuk 60 endpoint internal dengan 25 ribu pengguna.",
+                 "Mengoptimalkan query PostgreSQL pada tabel transaksi hingga waktu respons 0,9 detik.",
+                 "Menambahkan cache Redis yang memangkas beban basis data 40 persen.",
+                 "Menyusun pipeline CI/CD GitHub Actions untuk lima layanan.",
+             ]),
+            # Peran penuh waktu kedua pada periode yang sama persis.
+            ("Backend Engineer | PT Solusi Prima Digital",
+             "Januari 2021 – Desember 2022",
+             [
+                 "Mengembangkan layanan integrasi pembayaran untuk 30 mitra usaha.",
+                 "Merawat 14 tabel PostgreSQL dan menyusun skema Alembic untuk 20 perubahan.",
+                 "Menulis 90 kasus uji pytest dengan cakupan modul inti 70 persen.",
+                 "Menyusun dokumentasi kontrak API bagi dua tim konsumen internal.",
+             ]),
+        ],
+        projects=[
+            ("Panel Pemantauan Layanan (internal)",
+             "Menyusun dashboard Grafana untuk enam layanan dan menurunkan waktu deteksi gangguan."),
+        ],
+        certifications=["Pelatihan Docker Dasar, Dicoding (2021)"],
+        languages="Bahasa Indonesia (native), Inggris (menengah)",
+        organizations="Anggota komunitas pengembang Python wilayah Jabodetabek sejak 2020.",
+        education="S1 Teknik Informatika, Universitas Bina Nusantara, lulus 2018 (IPK 3,32/4,00)",
+        case="berkas curang berlapis (anomali klaim + prompt injection)",
+        expect=(
+            "5 anomali dari satu unggahan: SECURITY_QUARANTINE_PROMPT_INJECTION (HIGH), "
+            "CONCURRENT_FULLTIME_OVERLAP_24_MONTHS, TITLE_INFLATION_DETECTED, CAREER_BREAK_FLAG, "
+            "EXPERIENCE_CLAIM_INFLATION (klaim 8 tahun vs timeline ±2,9 tahun) → REVIEW_REQUIRED, "
+            "prioritas HIGH_ATTENTION; unggah ulang → DUPLICATE_RESUME_UPLOAD"
+        ),
+        timeline_years=2.92,
+    ),
     # ------------------------------------------------------------------ #3 Non-IT
     _cv(
         slug="cv_11_tax_accounting",
@@ -322,10 +390,7 @@ CVS = [
 # Dua paket: `ringkas` (default) untuk demo lomba, `penuh` untuk menguji semua detektor.
 PACK_RINGKAS = {
     "cv_01_backend_strong",
-    "cv_02_backend_overlap",
-    "cv_04_backend_experience_inflation",
-    "cv_07_backend_prompt_injection",
-    "cv_11_tax_accounting",
+    "cv_14_backend_multi_anomali",
 }
 PACKS = {"ringkas": PACK_RINGKAS, "penuh": None}
 
@@ -514,6 +579,8 @@ def verify(paths):
 
     print("\n=== VERIFIKASI DETEKTOR ===")
     for spec in CVS:
+        if spec["slug"] not in paths:
+            continue
         pdf_path = paths[spec["slug"]]
         if not pdf_path.exists():
             continue
@@ -545,8 +612,8 @@ ulang lewat `build_demo_cv.py` — jangan diedit manual, ubah spesifikasinya di 
 ## Cara membuat ulang
 
 ```bash
-python build_demo_cv.py             # paket ringkas (6 berkas, default)
-python build_demo_cv.py --set penuh # semua kasus (13 berkas)
+python build_demo_cv.py             # paket ringkas (2 berkas inti video, default)
+python build_demo_cv.py --set penuh # semua kasus (14 berkas)
 python build_demo_cv.py --no-pdf    # DOCX saja
 python build_demo_cv.py --verify    # cetak hasil audit detektor untuk tiap berkas
 ```
@@ -559,15 +626,14 @@ python build_demo_cv.py --verify    # cetak hasil audit detektor untuk tiap berk
 
 1. **cv_01** unggah ke lowongan #1 → tunjukkan `STRONG_MATCH` dan slot wawancara terkunci
    otomatis, lalu buka tab **Simulasi Wawancara AI**.
-2. **cv_02** unggah ke lowongan #1 → anomali kerja bertumpuk 24 bulan muncul di dossier
-   bersama kedua peran dan periodenya.
-3. **cv_03** → inflasi jabatan; **cv_04** → inflasi klaim pengalaman; **cv_05** → jeda karier.
-4. **cv_07** → berkas dikarantina: teks putih dan teks tak terlihat tertangkap, prioritas
-   `HIGH_ATTENTION`, mustahil `STRONG_MATCH`.
-5. **cv_08** → CV scan: sistem jujur menyatakan berkas butuh OCR, bukan mengarang nilai.
-6. **cv_01 lalu cv_09** → berkas identik ditandai duplikat berikut nomor dossier asalnya.
-7. **cv_11 / cv_12 / cv_13** → jalur non-IT: audit GitHub dilewati adaptif, bukti dokumen
-   tetap ditelusuri.
+2. **cv_14** unggah ke lowongan #1 → satu berkas memicu enam temuan sekaligus: karantina
+   keamanan, kerja bertumpuk 24 bulan, inflasi klaim pengalaman, inflasi jabatan, dan jeda
+   karier. Verdict `REVIEW_REQUIRED`, prioritas `HIGH_ATTENTION`.
+3. **cv_14 diunggah ulang** → berkas identik ditandai `DUPLICATE_RESUME_UPLOAD` berikut nomor
+   dossier asalnya. Tidak perlu berkas tambahan.
+4. Berkas paket `penuh` (`cv_02`–`cv_13`) tetap tersedia bila perlu menguji detektor satu per
+   satu: `cv_03` inflasi jabatan, `cv_05` jeda karier, `cv_06` repo GitHub tidak ada, `cv_08`
+   CV scan, `cv_11`–`cv_13` jalur non-IT.
 
 ## Verifikasi
 
@@ -602,6 +668,7 @@ Hasil `--offline` yang sudah terbukti (9 November 2026):
 | cv_03 | `TITLE_INFLATION_DETECTED` | MEDIUM |
 | cv_04 | klaim 8 tahun vs timeline 1,42 tahun → inflasi terdeteksi | MEDIUM (dari pipeline) |
 | cv_05 | `CAREER_BREAK_FLAG` | LOW |
+| cv_14 | `SECURITY_QUARANTINE_PROMPT_INJECTION`, `CONCURRENT_FULLTIME_OVERLAP_9_MONTHS`, `CONCURRENT_FULLTIME_OVERLAP_24_MONTHS`, `TITLE_INFLATION_DETECTED`, `CAREER_BREAK_FLAG` + inflasi klaim 8 tahun vs 2,92 tahun | HIGH → `REVIEW_REQUIRED` |
 | cv_01, cv_06, cv_07, cv_08, cv_10–cv_13 | tidak ada flag struktural | LOW |
 
 ## Catatan untuk penguji
@@ -642,7 +709,7 @@ def main():
         paths[spec["slug"]] = pdf_path
 
         if not args.no_pdf and export_pdf(docx_path, pdf_path):
-            if spec["case"].startswith("prompt injection"):
+            if "prompt injection" in spec["case"]:
                 inject_hidden_text(pdf_path)
             elif spec["case"].startswith("CV hasil scan"):
                 rasterize_to_scan(pdf_path)

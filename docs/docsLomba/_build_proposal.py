@@ -18,7 +18,7 @@ from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK, WD_TAB_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Pt
+from docx.shared import Cm, Pt, RGBColor
 
 HERE = Path(__file__).resolve().parent
 MD_PATH = HERE / "PROPOSAL_AI_RECRUITMENT_AGENT.md"
@@ -29,6 +29,7 @@ PDF_PATH = HERE / "GTNIC2026_AIAgent_DoaIbu.pdf"
 FONT = "Times New Roman"
 MONO = "Consolas"
 BODY_PT = 12
+IMAGE_WIDTH_CM = 11.2
 CONTENT_WIDTH_CM = 14.0  # A4 21 cm - margin kiri 4 cm - margin kanan 3 cm
 
 
@@ -55,7 +56,7 @@ def _spacing(paragraph, line=1.5, before=0, after=6):
     fmt.space_after = Pt(after)
 
 
-def _shade(cell, hex_fill="F2F2F2"):
+def _shade(cell, hex_fill="E9E9E9"):
     tc_pr = cell._tc.get_or_add_tcPr()
     shd = OxmlElement("w:shd")
     shd.set(qn("w:val"), "clear")
@@ -109,67 +110,57 @@ def _add_page_field(paragraph):
 
 
 def build_cover(doc: Document):
-    """Cover must carry the official GTNIC 2026 logo (guidebook section 6)."""
-    # Both marks live in one centered paragraph: a 3-column table pushed the pair
-    # off the page centre because the logo widths are not equal.
-    logo_para = doc.add_paragraph()
-    logo_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _spacing(logo_para, line=1.0, before=0, after=10)
-    marks = (("logo_gtnic.png", Cm(6.0)), ("logo_unsoed.png", Cm(3.0)))
-    for index, (name, width) in enumerate(marks):
-        if index:
-            _set_run_font(logo_para.add_run("       "), size=12)
-        path = ASSETS / name
-        if path.exists():
-            logo_para.add_run().add_picture(str(path), width=width)
-        else:
-            _set_run_font(logo_para.add_run(f"[{name} tidak ditemukan]"), size=10)
+    """Sampul mengikuti Template Resmi Proposal GTNIC 2026: satu kolom rata tengah,
+    judul karya, kategori, sub-tema, lalu daftar tim dengan format
+    "Nama - Asal Kampus". Logo GTNIC tetap disertakan (Guidebook §6 mewajibkannya).
+    """
 
-    def block(text, size, after=4, before=6):
+    def block(text, size, after=4, before=6, bold=True, italic=False):
         para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _spacing(para, line=1.15, before=before, after=after)
-        _set_run_font(para.add_run(text), size=size, bold=True)
+        _set_run_font(para.add_run(text), size=size, bold=bold or None, italic=italic or None)
+        return para
 
-    block("PROPOSAL KARYA INOVASI", 16, after=2)
-    block("GARDA TECH NATIONAL INNOVATION COMPETITION", 12.5, after=2)
-    block("(GTNIC) 2026", 13, after=2)
-    block("KATEGORI LOMBA: AI AGENT DEVELOPMENT", 12, after=14)
-    block("TALENTOPS AI", 15, after=2)
-    block("SISTEM REKRUTMEN MANDIRI", 12.5, after=0)
-    block("BERBASIS KECERDASAN BUATAN", 12.5, after=16)
+    block("PROPOSAL KARYA (AI AGENT)", 16, after=4, before=0)
+    block("GARDA TECH NATIONAL INNOVATION COMPETITION (GTNIC) 2026", 14, after=10)
+    block("KATEGORI: AI AGENT DEVELOPMENT", 12, after=2, bold=True)
+    block(
+        "Sub-Tema: \u201cBuilding Intelligent AI Agents for Enterprise Productivity\u201d",
+        12,
+        after=26,
+        bold=False,
+    )
 
-    para = doc.add_paragraph()
-    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _spacing(para, line=1.15, before=10, after=2)
-    _set_run_font(para.add_run("Disusun oleh:"), size=12)
-    para = doc.add_paragraph()
-    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _spacing(para, line=1.15, after=10)
-    _set_run_font(para.add_run("Tim Doa Ibu"), size=12, bold=True)
+    logo_para = doc.add_paragraph()
+    logo_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _spacing(logo_para, line=1.0, before=0, after=26)
+    gtnic = ASSETS / "logo_gtnic.png"
+    if gtnic.exists():
+        logo_para.add_run().add_picture(str(gtnic), height=Cm(3.0))
+    else:
+        _set_run_font(logo_para.add_run("[logo_gtnic.png tidak ditemukan]"), size=10)
 
-    for name, nim in (
-        ("Adridinan Najmi Faza", "H1D025059 (Ketua Tim)"),
-        ("Timotius Willy Narendra", "H1D025052 (Anggota)"),
-        ("Fardizza Vinda Rahman", "H1D025067 (Anggota)"),
+    block("JUDUL KARYA / APLIKASI WEB:", 14, after=4, before=0)
+    # Judul dipecah dua baris dengan sengaja: satu baris penuh menyisakan kata terakhir
+    # menggantung sendirian di baris kedua.
+    block("TalentOps AI :", 14, after=0)
+    block("Sistem Rekrutmen Mandiri Berbasis Kecerdasan Buatan", 13, after=30)
+
+    block("Disusun Oleh Tim:", 12, after=2, before=0, bold=False)
+    block("Tim Doa Ibu", 13, after=10)
+
+    for index, name in enumerate(
+        (
+            "Adridinan Najmi Faza",
+            "Timotius Willy Narendra",
+            "Fardizza Vinda Rahman",
+        )
     ):
         para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _spacing(para, line=1.15, after=2)
-        _set_run_font(para.add_run(name), size=12, bold=True, italic=True)
-        _set_run_font(para.add_run(" : " + nim), size=12)
-
-    for text, before in (
-        ("JURUSAN INFORMATIKA", 150),
-        ("FAKULTAS TEKNIK", 0),
-        ("UNIVERSITAS JENDERAL SOEDIRMAN", 0),
-        ("PURWOKERTO", 0),
-        ("2026", 0),
-    ):
-        para = doc.add_paragraph()
-        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _spacing(para, line=1.15, before=before, after=0)
-        _set_run_font(para.add_run(text), size=12, bold=True)
+        _set_run_font(para.add_run(f"{index + 1}. {name} - Universitas Jenderal Soedirman"), size=12)
 
     body_sec = doc.add_section()
     body_sec.page_width = Cm(21.0)
@@ -184,9 +175,9 @@ def build_cover(doc: Document):
     pgNumType.set(qn("w:start"), "1")
     body_sec._sectPr.append(pgNumType)
 
+    # Nomor halaman polos di tengah bawah, seperti template.
     footer = body_sec.footer.paragraphs[0]
     footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    _set_run_font(footer.add_run("Halaman "), size=10)
     _add_page_field(footer)
 
 
@@ -208,23 +199,32 @@ def add_inline(paragraph, text, size=BODY_PT):
             token, italic = token[1:-1], True
         run = paragraph.add_run(token)
         _set_run_font(run, size=size, bold=bold or None, italic=italic or None)
+        if _looks_like_link(token):
+            # Proposal referensi menampilkan tautan biru bergaris bawah.
+            run.font.color.rgb = RGBColor(0x05, 0x63, 0xC1)
+            run.font.underline = True
+            run.font.italic = None
 
 
-def add_table(doc: Document, rows):
+def _looks_like_link(text: str) -> bool:
+    return bool(re.match(r"^(https?://|www\.)\S+$", text.strip(), re.I))
+
+
+def add_table(doc: Document, rows, widths_cm=None, body_pt=9.5):
     header, body = rows[0], rows[1:]
     table = doc.add_table(rows=len(rows), cols=len(header))
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = False
-    col_width = Cm(CONTENT_WIDTH_CM / max(1, len(header)))
+    default_width = CONTENT_WIDTH_CM / max(1, len(header))
     for r, row in enumerate([header] + body):
         for col, text in enumerate(row[: len(header)]):
             cell = table.rows[r].cells[col]
-            cell.width = col_width
+            cell.width = Cm(widths_cm[col]) if widths_cm else Cm(default_width)
             para = cell.paragraphs[0]
             _spacing(para, line=1.0, after=2)
             para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            add_inline(para, text, size=10 if r == 0 else 9.5)
+            add_inline(para, text, size=10 if r == 0 else body_pt)
             if r == 0:
                 _shade(cell)
                 for run in para.runs:
@@ -288,15 +288,35 @@ def render_body(doc: Document, md_text: str, start_marker: str):
             i += 1
             continue
 
-        img_match = re.match(r'^<p align="center">\s*<img\s+src="([^"]+)"[^>]*>\s*</p>', stripped, re.I) or re.match(r'^!\[([^\]]*)\]\(([^)]+)\)', stripped)
+        # The joined-lines form matters: the source document often puts <p align="center">
+        # and its <img> on separate lines, and a single-line regex silently drops the figure.
+        joined = stripped + " " + (lines[i + 1].strip() if i + 1 < len(lines) else "")
+        img_match = (
+            re.match(r'^<p align="center">\s*<img\s+src="([^"]+)"[^>]*>\s*</p>', joined, re.I)
+            or re.match(r'^<img\s+src="([^"]+)"[^>]*>\s*$', stripped, re.I)
+            or re.match(r'^!\[([^\]]*)\]\(([^)]+)\)', stripped)
+        )
+        if img_match:
+            # skip the continuation line consumed above
+            if stripped.startswith("<p") and len(lines) > i + 1 and lines[i + 1].strip().startswith("<img"):
+                i += 1
         if img_match:
             img_src = img_match.group(1) if len(img_match.groups()) == 1 else img_match.group(2)
             img_path = (HERE / img_src).resolve() if not Path(img_src).is_absolute() else Path(img_src)
             if img_path.exists():
                 para = doc.add_paragraph()
                 para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                _spacing(para, line=1.0, before=6, after=4)
-                para.add_run().add_picture(str(img_path), width=Cm(CONTENT_WIDTH_CM))
+                _spacing(para, line=1.0, before=6, after=2)
+                # Diagram arsitektur lebih tinggi daripada tangkapan layar, jadi diberi
+                # lebar sendiri agar tidak mendorong satu halaman penuh.
+                width = Cm(10.2) if "arsitektur" in img_src else Cm(IMAGE_WIDTH_CM)
+                para.add_run().add_picture(str(img_path), width=width)
+                caption = img_match.group(1) if len(img_match.groups()) == 1 else img_match.group(1)
+                if caption and not caption.startswith("http"):
+                    cap = doc.add_paragraph()
+                    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    _spacing(cap, line=1.0, before=0, after=8)
+                    _set_run_font(cap.add_run(caption), size=10, italic=True)
             list_counter = 0
             i += 1
             continue
@@ -333,16 +353,19 @@ def render_body(doc: Document, md_text: str, start_marker: str):
         if heading:
             level = len(heading.group(1))
             text = heading.group(2).replace("**", "").strip()
+            sizes = {1: 13, 2: 12, 3: 12, 4: 11.5}
+            # Layout referensi: bab KAPITAL tebal tanpa italic, sub-bab Title Case tebal.
+            display = text.upper() if level == 2 else text
+
             para = doc.add_paragraph()
             para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            sizes = {1: 13, 2: 12.5, 3: 12, 4: 12}
-            _spacing(para, line=1.15, before=12 if level <= 2 else 8, after=6)
+            _spacing(para, line=1.15, before=8 if level <= 2 else 6, after=3)
             para.paragraph_format.keep_with_next = True
             _set_run_font(
-                para.add_run(text),
+                para.add_run(display),
                 size=sizes[level],
                 bold=True,
-                italic=True if level >= 3 else None,
+                italic=True if level >= 4 else None,
             )
             list_counter = 0
             i += 1
@@ -394,8 +417,10 @@ def render_body(doc: Document, md_text: str, start_marker: str):
         text, nxt = _gather_continuation(lines, i)
         body = stripped + ((" " + text) if text else "")
         para = doc.add_paragraph()
-        _spacing(para, line=1.5, after=6)
+        _spacing(para, line=1.5, after=3)
         para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        # Indentasi baris pertama, mengikuti proposal referensi.
+        para.paragraph_format.first_line_indent = Cm(1.27)
         add_inline(para, body)
         list_counter = 0
         i = nxt

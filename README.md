@@ -8,8 +8,9 @@ Dibuat untuk **GTNIC 2026 (AI Agent Development)** dan **UINIC 8.0 (Web Developm
 
 - Demo web: https://talentops.ai.id
 - Demo API: https://api.talentops.ai.id
-- PRD: [`docs/PRD_TALENTOPS_AI_MASTER.md`](docs/PRD_TALENTOPS_AI_MASTER.md)
-- Catatan pekerjaan yang belum selesai: [`docs/STATUS_PEKERJAAN_BELUM_SELESAI.md`](docs/STATUS_PEKERJAAN_BELUM_SELESAI.md)
+- Dokumen teknis (PRD, rencana pengembangan, worklog tim) dan aset lomba (proposal,
+  pitch deck, naskah video, paket CV demo) tidak disertakan di repo ini; tersedia
+  sebagai lampiran pengumpulan.
 
 ## Delapan tahap agen
 
@@ -97,26 +98,15 @@ backend/migrations/      DDL 001-010, dijalankan scripts/init_db.py
 backend/data/            golden dataset: 25 CV sintetis + 4 fixture pra-cache
 backend/tests/           suite pytest
 frontend/src/            aplikasi React (portal karier, panel HR, evidence graph, what-if studio)
-nginx/                   konfigurasi reverse proxy produksi
-docs/                    PRD, log status, worklog, dokumen lomba
 ```
 
-## Dokumen dan aset lomba
+## Aset demo
 
-| Berkas | Isi |
-|---|---|
-| `docs/docsLomba/GTNIC2026_AIAgent_DoaIbu.pdf` | proposal final |
-| `docs/docsLomba/PROPOSAL_AI_RECRUITMENT_AGENT.md` | sumber markdown proposal, dibangun `_build_proposal.py` |
-| `docs/docsLomba/pitch_deck/` | pitch deck 6 slide (HTML interaktif, PDF, PNG 1920x1080) |
-| `docs/docsLomba/scriptvideo.md` | naskah video demo, pemetaan aset, dan checklist rekaman |
-| `docs/docsLomba/demo_cv/` | paket CV demo, generator, dan skrip verifikasi detektor |
-| `docs/docsLomba/assets/` | tangkapan layar antarmuka dan diagram arsitektur |
-| `docs/worklogs/` | worklog per anggota tim |
-
-Paket CV demo membuktikan setiap detektor bekerja. Unggah `cv_01` untuk alur normal
-(`STRONG_MATCH`), lalu `cv_14` untuk berkas curang berlapis yang memicu karantina
-keamanan, tumpang tindih 24 bulan, inflasi klaim pengalaman, inflasi jabatan, dan jeda
-karier dalam satu unggahan. Perintah lengkap ada di `demo_cv/README.md`.
+Paket CV demo dipakai untuk membuktikan setiap detektor bekerja: unggah `cv_01` untuk
+alur normal (`STRONG_MATCH`), lalu `cv_14` untuk berkas curang berlapis yang memicu
+karantina keamanan, tumpang tindih 24 bulan, inflasi klaim pengalaman, inflasi jabatan,
+dan jeda karier dalam satu unggahan. Berkas dan generatornya ada di arsip dokumen
+(lihat bagian atas), bukan di repo ini.
 
 ## Batasan operasional (baca sebelum deploy)
 
